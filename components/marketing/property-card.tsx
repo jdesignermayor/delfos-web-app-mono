@@ -16,7 +16,7 @@ export function PropertyCard({
 }) {
   return (
     <Link
-      href="/dashboard"
+      href={`/propiedades/${property.slug}`}
       onMouseEnter={onActivate}
       onMouseLeave={onDeactivate}
       onFocus={onActivate}

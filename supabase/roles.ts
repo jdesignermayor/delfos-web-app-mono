@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/supabase/admin";
 import { createClient } from "@/supabase/server";
 
 /** Must match the rows seeded in the `roles` table. */
@@ -19,7 +20,11 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data } = await supabase
+  // Row Level Security on `public.users` doesn't grant a user SELECT access
+  // to their own row, so this reads the profile with the service-role client
+  // instead — scoped to the caller's own verified id, never anything else.
+  const admin = createAdminClient();
+  const { data } = await admin
     .from("users")
     .select("name, email, roles(name)")
     .eq("id", user.id)

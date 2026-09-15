@@ -48,7 +48,7 @@ export async function FeaturedCarouselSection() {
   const properties = await getFeaturedProperties();
 
   return (
-    <section className="mx-auto w-full max-w-[100rem] px-4 py-14 sm:px-6">
+    <section className="mx-auto w-full max-w-[100rem] px-4 py-14 sm:px-6 bg-white">
       <PropertyCarousel title="Explora propiedades en Medellín" properties={properties} />
     </section>
   );

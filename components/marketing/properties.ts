@@ -31,6 +31,12 @@ export type Property = {
   lng: number;
   /** Photo URL. When absent, cards fall back to the tinted placeholder. */
   image?: string;
+  /** Gallery photo URLs for the property detail page. Falls back to tinted placeholders when absent. */
+  images?: string[];
+  /** Short marketing description shown on the detail page. */
+  description?: string;
+  /** Building/unit amenities shown in the "Servicios" section of the detail page. */
+  amenities?: string[];
 };
 
 /** Default map view — roughly the centre of the Aburrá Valley. */
@@ -294,6 +300,10 @@ export const BUDGET_OPTIONS: { value: string; label: string; operation: Operatio
   { value: "arriendo-2500", label: "Hasta $2.5M / mes", operation: "arrendar" },
   { value: "arriendo-4000", label: "Hasta $4M / mes", operation: "arrendar" },
 ];
+
+export function getPropertyBySlug(slug: string): Property | undefined {
+  return PROPERTIES.find((property) => property.slug === slug);
+}
 
 export function filterProperties(filters: PropertyFilters): Property[] {
   const query = filters.ubicacion?.trim().toLowerCase();

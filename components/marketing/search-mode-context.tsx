@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import type { Operation } from "@/components/marketing/properties";
 
@@ -15,14 +15,20 @@ export const SEARCH_MODES: { value: SearchMode; label: string }[] = [
 type SearchModeContextValue = {
   mode: SearchMode;
   setMode: (mode: SearchMode) => void;
+  /** Anchors the hero's PropertySearch so the navbar can watch its visibility. */
+  heroSearchRef: RefObject<HTMLDivElement | null>;
+  /** The sticky site header, so other components can measure its live height. */
+  navbarRef: RefObject<HTMLElement | null>;
 };
 
 const SearchModeContext = createContext<SearchModeContextValue | null>(null);
 
 export function SearchModeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<SearchMode>("comprar");
+  const heroSearchRef = useRef<HTMLDivElement | null>(null);
+  const navbarRef = useRef<HTMLElement | null>(null);
   return (
-    <SearchModeContext.Provider value={{ mode, setMode }}>
+    <SearchModeContext.Provider value={{ mode, setMode, heroSearchRef, navbarRef }}>
       {children}
     </SearchModeContext.Provider>
   );

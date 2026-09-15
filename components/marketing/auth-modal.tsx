@@ -59,6 +59,10 @@ export function AuthModal({ state }: { state: UseOverlayStateReturn }) {
       state.close();
       if (result.role === "superadmin") {
         router.push("/dashboard");
+      } else {
+        // No dedicated account area for other roles yet — at least refresh
+        // server-rendered data so the session takes effect immediately.
+        router.refresh();
       }
     });
   }

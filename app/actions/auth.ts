@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/supabase/admin";
-import type { RoleName } from "@/supabase/roles";
+import { getCurrentUser, type RoleName } from "@/supabase/roles";
 import { createClient } from "@/supabase/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -112,19 +112,13 @@ export async function signInAccount(input: {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     return { success: false, error: "Correo o contraseña incorrectos." };
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("roles(name)")
-    .eq("id", data.user.id)
-    .maybeSingle();
-
-  const role = (profile?.roles?.name as RoleName | undefined) ?? null;
-  return { success: true, role };
+  const user = await getCurrentUser();
+  return { success: true, role: user?.role ?? null };
 }
 
 export async function signOutAccount(): Promise<never> {
