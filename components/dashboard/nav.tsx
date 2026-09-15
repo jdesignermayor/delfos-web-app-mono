@@ -1,0 +1,35 @@
+import type { ComponentType, SVGProps } from "react";
+
+import { BuildingIcon, GridIcon, KeyIcon, UsersIcon } from "@/components/icons";
+import type { RoleName } from "@/supabase/roles";
+
+export type NavItem = {
+  label: string;
+  href: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  badge?: string;
+};
+
+export type NavSection = {
+  title: string;
+  items: NavItem[];
+};
+
+const NAV_BY_ROLE: Partial<Record<RoleName, NavSection[]>> = {
+  superadmin: [
+    {
+      title: "Overview",
+      items: [
+        { label: "Dashboard", href: "/dashboard", icon: GridIcon },
+        { label: "Properties management", href: "/dashboard/properties", icon: BuildingIcon },
+        { label: "User management", href: "/dashboard/users", icon: UsersIcon },
+        { label: "Developers", href: "/dashboard/developers", icon: KeyIcon },
+      ],
+    },
+  ],
+};
+
+/** Sidebar sections available to a given role — empty for roles with no dashboard access. */
+export function getNavSections(role: RoleName | null): NavSection[] {
+  return (role && NAV_BY_ROLE[role]) || [];
+}

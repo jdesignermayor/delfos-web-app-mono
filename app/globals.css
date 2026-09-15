@@ -1,0 +1,53 @@
+/*
+ * HeroUI v3 ships its own Tailwind CSS v4 entry point. Importing "@heroui/styles"
+ * pulls in Tailwind's base layer, the HeroUI component styles, the default theme
+ * variables (light + dark) and the tw-animate-css utilities.
+ * See node_modules/@heroui/styles/README.md
+ */
+@import "@heroui/styles";
+
+/*
+ * The `@import "tailwindcss"` that powers class detection lives inside the
+ * @heroui/styles package, so point Tailwind at this app's source explicitly.
+ */
+@source "../app";
+@source "../components";
+
+/*
+ * Font tokens.
+ *
+ * `--font-sans` (the default body face) is SF Pro, pulled from the operating
+ * system — Apple ships it as the UI font, so no download is needed. Non-Apple
+ * platforms fall through to their own system UI font and finally to Poppins.
+ *
+ * `--font-display` is Poppins, self-hosted by `next/font/google` (see
+ * app/layout.tsx). Apply it with the `font-display` utility on headings.
+ */
+@theme inline {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "SF Pro", var(--font-poppins), ui-sans-serif, system-ui, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-display: var(--font-poppins), -apple-system, BlinkMacSystemFont,
+    ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
