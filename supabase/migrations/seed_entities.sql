@@ -1,12 +1,12 @@
 -- Seed data for developers table
-INSERT INTO developers (name, nit, phone, email, address, description) VALUES
-('Constructora MRD', '890123456-7', '+57 (4) 260-1234', 'contact@constructoraMrd.com', 'Carrera 50 #10-20, Medellín', 'Constructora especializada en proyectos residenciales de alta gama'),
-('Constructora Bolívar', '800234567-8', '+57 (4) 312-5678', 'info@constructorabolivar.com', 'Calle 10 #45-30, Medellín', 'Desarrolladora líder en proyectos mixtos y comerciales'),
-('Grupo Constructor Invesco', '810345678-9', '+57 (4) 266-9012', 'ventas@invesco.com.co', 'Carrera 43a #5-67, Medellín', 'Más de 20 años construyendo sueños en Medellín'),
-('Constructor Urbano', '820456789-0', '+57 (4) 285-3456', 'contacto@constructorurbano.com', 'Calle 49 #52-15, Medellín', 'Especialista en vivienda social y proyectos sostenibles'),
-('Desarrollos Empresariales', '830567890-1', '+57 (4) 540-7890', 'info@deempresas.com.co', 'Carrera 66 #20-10, Medellín', 'Expertos en urbanización y desarrollo integral'),
-('Constructor Premium', '840678901-2', '+57 (4) 294-2345', 'ventas@premiumbuild.com', 'Calle 80 #60-25, Medellín', 'Lujo y calidad en cada metro cuadrado'),
-('Constructora Colombia Plus', '850789012-3', '+57 (4) 310-1111', 'info@colombiaplus.com.co', 'Carrera 30 #8-50, Medellín', 'Construyendo futuro con responsabilidad ambiental');
+INSERT INTO developers (name, phone, address) VALUES
+('Constructora MRD', '+57 (4) 260-1234', 'Carrera 50 #10-20, Medellín'),
+('Constructora Bolívar', '+57 (4) 312-5678', 'Calle 10 #45-30, Medellín'),
+('Grupo Constructor Invesco', '+57 (4) 266-9012', 'Carrera 43a #5-67, Medellín'),
+('Constructor Urbano', '+57 (4) 285-3456', 'Calle 49 #52-15, Medellín'),
+('Desarrollos Empresariales', '+57 (4) 540-7890', 'Carrera 66 #20-10, Medellín'),
+('Constructor Premium', '+57 (4) 294-2345', 'Calle 80 #60-25, Medellín'),
+('Constructora Colombia Plus', '+57 (4) 310-1111', 'Carrera 30 #8-50, Medellín');
 
 -- Seed data for banks table
 INSERT INTO banks (name, nit, phone, email, address, description) VALUES

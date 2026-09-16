@@ -5,7 +5,6 @@ import { createClient } from "@/supabase/server";
 import type { Typology } from "@/components/dashboard/properties/typologies-editor";
 
 export type CreatePropertyInput = {
-  title: string;
   propertyType: string;
   housingType: string;
   description: string;
@@ -45,7 +44,9 @@ export type CreatePropertyInput = {
   salesRoomEmail: string;
   salesRoomHours: string;
   amenities: string[];
-  typologies: Typology[];
+  typologies: Record<string, Typology[]>;
+  /** Per-tower attributes (e.g. trash chute) keyed by `tower-${n}`. */
+  towerDetails: Record<string, { hasTrashChute: boolean }>;
   additionalImages: string[];
 };
 
@@ -57,12 +58,16 @@ const REQUIRED_FIELDS: Array<
   [
     Exclude<
       keyof CreatePropertyInput,
-      "amenities" | "typologies" | "additionalImages" | "latitude" | "longitude"
+      | "amenities"
+      | "typologies"
+      | "towerDetails"
+      | "additionalImages"
+      | "latitude"
+      | "longitude"
     >,
     string,
   ]
 > = [
-  ["title", "Título"],
   ["propertyType", "Tipo"],
   ["description", "Descripción"],
   ["image", "Imagen (URL)"],
@@ -88,7 +93,7 @@ function validateInput(input: CreatePropertyInput): string | null {
 
 function buildPropertyRow(input: CreatePropertyInput) {
   return {
-    title: input.title.trim(),
+    title: input.projectName.trim() || "Sin nombre",
     description: input.description.trim(),
     address: input.address.trim(),
     location: input.location.trim(),
@@ -114,7 +119,8 @@ function buildPropertyRow(input: CreatePropertyInput) {
     delivery_date: input.deliveryDate ? `${input.deliveryDate}-01` : null,
     study: input.study || null,
     amenities: input.amenities.length > 0 ? input.amenities : {},
-    typologies: input.typologies.length > 0 ? input.typologies : {},
+    typologies: Object.keys(input.typologies).length > 0 ? input.typologies : {},
+    tower_details: Object.keys(input.towerDetails).length > 0 ? input.towerDetails : {},
     additional_images: input.additionalImages.length > 0 ? input.additionalImages : null,
     developer_id: input.developerId ? Number(input.developerId) : null,
     project_name: input.projectName.trim() || null,

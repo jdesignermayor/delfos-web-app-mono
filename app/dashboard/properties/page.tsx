@@ -3,6 +3,7 @@ import Link from "next/link";
 import { buttonVariants, Card } from "@heroui/react";
 
 import { createClient } from "@/supabase/server";
+import { LocationCell } from "@/components/dashboard/properties/location-cell";
 
 export const metadata: Metadata = {
   title: "Properties",
@@ -50,16 +51,20 @@ export default async function PropertiesPage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-sm">
+            <table className="w-full min-w-[1100px] text-sm">
               <thead>
                 <tr className="border-b border-separator text-left text-xs uppercase tracking-wider text-muted">
                   <th className="px-5 py-3 font-medium">Título</th>
                   <th className="px-5 py-3 font-medium">Tipo</th>
                   <th className="px-5 py-3 font-medium">Constructora</th>
                   <th className="px-5 py-3 font-medium">Ubicación</th>
-                  <th className="px-5 py-3 font-medium">Hab. / Baños</th>
+                  <th className="px-5 py-3 font-medium">Estrato</th>
                   <th className="px-5 py-3 font-medium">Área</th>
+                  <th className="px-5 py-3 font-medium">Entrega</th>
                   <th className="px-5 py-3 text-right font-medium">Precio</th>
+                  <th className="px-5 py-3 text-right font-medium">
+                    <span className="sr-only">Acciones</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-separator">
@@ -70,22 +75,41 @@ export default async function PropertiesPage() {
                         href={`/dashboard/properties/${property.id}`}
                         className="hover:text-accent hover:underline"
                       >
-                        {property.title}
+                        {property.project_name || property.title}
                       </Link>
                     </td>
-                    <td className="px-5 py-3 text-muted capitalize">{property.type}</td>
+                    <td className="px-5 py-3 text-muted">
+                      <span className="capitalize">{property.property_type ?? "—"}</span>
+                      {property.housing_type ? (
+                        <span className="ml-1 text-xs text-muted">({property.housing_type})</span>
+                      ) : null}
+                    </td>
                     <td className="px-5 py-3 text-muted">
                       {property.developers?.name ?? "—"}
                     </td>
                     <td className="px-5 py-3 text-muted">
-                      {[property.neighborhood, property.city].filter(Boolean).join(", ") || "—"}
+                      <LocationCell address={property.address} location={property.location} />
                     </td>
-                    <td className="px-5 py-3 text-muted">
-                      {property.bedrooms} / {property.bathrooms}
-                    </td>
+                    <td className="px-5 py-3 text-muted">{property.stratum ?? "—"}</td>
                     <td className="px-5 py-3 text-muted">{property.area} m²</td>
+                    <td className="px-5 py-3 text-muted">
+                      {property.delivery_date
+                        ? new Date(property.delivery_date).toLocaleDateString("es-CO", {
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </td>
                     <td className="px-5 py-3 text-right font-medium">
                       {currency.format(Number(property.price))}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <Link
+                        href={`/dashboard/properties/${property.id}`}
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        Ver detalle
+                      </Link>
                     </td>
                   </tr>
                 ))}

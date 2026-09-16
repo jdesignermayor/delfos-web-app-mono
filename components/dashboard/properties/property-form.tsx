@@ -3,6 +3,8 @@
 import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Input, Label, TextArea, TextField } from "@heroui/react";
+import { Copy } from "lucide-react";
+import { useToast } from "@/components/providers/toast-provider";
 
 import {
   createProperty,
@@ -32,8 +34,10 @@ type FieldKind =
 
 type PropertyFormValues = Omit<
   CreatePropertyInput,
-  "amenities" | "typologies" | "additionalImages" | "latitude" | "longitude"
->;
+  "amenities" | "typologies" | "towerDetails" | "additionalImages" | "latitude" | "longitude"
+> & {
+  // Note: title field is not part of form values, it's auto-generated from projectName
+};
 
 type FieldConfig = {
   name: keyof PropertyFormValues;
@@ -44,6 +48,8 @@ type FieldConfig = {
   placeholder?: string;
   options?: { value: string; label: string }[];
   wide?: boolean;
+  /** Value is derived from other fields and shown read-only. */
+  readOnly?: boolean;
 };
 
 type FieldGroup = {
@@ -59,7 +65,6 @@ type StepConfig = {
 };
 
 const TEXT_FIELDS: (keyof PropertyFormValues)[] = [
-  "title",
   "propertyType",
   "housingType",
   "description",
@@ -107,7 +112,6 @@ function toInitialValues(property: PropertyRecord): PropertyFormValues {
     value === null || value === undefined ? "" : String(value);
 
   return {
-    title: property.title,
     propertyType: property.property_type ?? "apartamento",
     housingType: property.housing_type ?? "",
     description: property.description,
@@ -193,21 +197,6 @@ const CITY_OPTIONS = [
   "Bogotá",
 ];
 
-const AMENITY_OPTIONS = [
-  "Piscina",
-  "Gimnasio",
-  "Salón social",
-  "Zona BBQ",
-  "Parque infantil",
-  "Cancha múltiple",
-  "Portería 24 horas",
-  "Ascensor",
-  "Zona de lavandería",
-  "Coworking",
-  "Sauna / turco",
-  "Terraza",
-];
-
 function buildSteps(developers: { id: number; name: string }[]): StepConfig[] {
   return [
     {
@@ -218,20 +207,7 @@ function buildSteps(developers: { id: number; name: string }[]): StepConfig[] {
         {
           heading: "Identificación",
           fields: [
-            { name: "title", label: "Título", kind: "text", required: true },
-            {
-              name: "propertyType",
-              label: "Tipo",
-              kind: "select",
-              required: true,
-              options: PROPERTY_TYPE_OPTIONS,
-            },
-            {
-              name: "housingType",
-              label: "Tipo de vivienda",
-              kind: "select",
-              options: HOUSING_TYPE_OPTIONS,
-            },
+            { name: "projectName", label: "Nombre del Proyecto", kind: "text", required: true },
             {
               name: "developerId",
               label: "Constructora",
@@ -241,7 +217,6 @@ function buildSteps(developers: { id: number; name: string }[]): StepConfig[] {
                 ...developers.map((d) => ({ value: String(d.id), label: d.name })),
               ],
             },
-            { name: "projectName", label: "Proyecto", kind: "text" },
             {
               name: "description",
               label: "Descripción",
@@ -254,17 +229,13 @@ function buildSteps(developers: { id: number; name: string }[]): StepConfig[] {
         {
           heading: "Ubicación",
           fields: [
-            { name: "address", label: "Dirección", kind: "text", required: true },
             {
-              name: "location",
+              name: "address",
               label: "Ubicación (mapa)",
               kind: "location",
               required: true,
               wide: true,
             },
-            { name: "city", label: "Ciudad", kind: "text" },
-            { name: "commune", label: "Comuna", kind: "text" },
-            { name: "neighborhood", label: "Barrio", kind: "text" },
           ],
         },
         {
@@ -284,8 +255,38 @@ function buildSteps(developers: { id: number; name: string }[]): StepConfig[] {
       description: "Estructura del proyecto y entidades relacionadas.",
       groups: [
         {
+          heading: "Tipo de apartamento",
           fields: [
-            { name: "towerCount", label: "Cantidad de torres", kind: "number" },
+            {
+              name: "propertyType",
+              label: "Tipo",
+              kind: "select",
+              required: true,
+              options: PROPERTY_TYPE_OPTIONS,
+            },
+            {
+              name: "housingType",
+              label: "Tipo de vivienda",
+              kind: "select",
+              options: HOUSING_TYPE_OPTIONS,
+            },
+          ],
+        },
+        {
+          heading: "Estructura",
+          fields: [
+            {
+              name: "towerCount",
+              label: "Cantidad de torres",
+              kind: "select",
+              options: [
+                { value: "", label: "Selecciona cantidad" },
+                ...Array.from({ length: 10 }, (_, i) => ({
+                  value: String(i + 1),
+                  label: String(i + 1),
+                })),
+              ],
+            },
             { name: "towerName", label: "Torre", kind: "text" },
             { name: "deliveryDate", label: "Fecha de entrega", kind: "month" },
             { name: "constructionCompany", label: "Gerencia", kind: "text" },
@@ -323,9 +324,27 @@ function buildSteps(developers: { id: number; name: string }[]): StepConfig[] {
           fields: [
             { name: "price", label: "Precio", kind: "number", required: true },
             { name: "initialFeePercentage", label: "% cuota inicial", kind: "number" },
-            { name: "creditPercentage", label: "% crédito", kind: "number" },
-            { name: "initialFeeAmount", label: "Cuota inicial", kind: "text" },
-            { name: "creditAmount", label: "Crédito", kind: "text" },
+            {
+              name: "creditPercentage",
+              label: "% crédito",
+              kind: "number",
+              hint: "Se calcula automáticamente a partir del % de cuota inicial.",
+              readOnly: true,
+            },
+            {
+              name: "initialFeeAmount",
+              label: "Cuota inicial",
+              kind: "text",
+              hint: "Se calcula automáticamente a partir del precio y el % de cuota inicial.",
+              readOnly: true,
+            },
+            {
+              name: "creditAmount",
+              label: "Crédito",
+              kind: "text",
+              hint: "Se calcula automáticamente a partir del precio y el % de cuota inicial.",
+              readOnly: true,
+            },
             { name: "separationAmount", label: "Separación", kind: "text" },
           ],
         },
@@ -338,42 +357,6 @@ function fieldClassName() {
   return "h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30";
 }
 
-function AmenitiesPicker({
-  selected,
-  onToggle,
-}: {
-  selected: string[];
-  onToggle: (amenity: string) => void;
-}) {
-  return (
-    <fieldset>
-      <legend className="mb-1.5 text-sm font-medium">Amenidades</legend>
-      <div className="flex flex-wrap gap-2">
-        {AMENITY_OPTIONS.map((amenity) => {
-          const id = `amenity-${amenity}`;
-          const checked = selected.includes(amenity);
-          return (
-            <div key={amenity}>
-              <input
-                type="checkbox"
-                id={id}
-                className="peer sr-only"
-                checked={checked}
-                onChange={() => onToggle(amenity)}
-              />
-              <label
-                htmlFor={id}
-                className="cursor-pointer select-none rounded-full border border-separator px-3 py-1.5 text-sm text-muted transition-colors peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-accent peer-focus-visible:ring-2 peer-focus-visible:ring-focus/40"
-              >
-                {amenity}
-              </label>
-            </div>
-          );
-        })}
-      </div>
-    </fieldset>
-  );
-}
 
 export function PropertyForm({
   developers,
@@ -387,6 +370,7 @@ export function PropertyForm({
   onSaved?: () => void;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const isEditing = Boolean(property);
   const steps = buildSteps(developers);
   const formId = useId();
@@ -402,9 +386,18 @@ export function PropertyForm({
   const [amenities, setAmenities] = useState<string[]>(() =>
     Array.isArray(property?.amenities) ? (property.amenities as string[]) : [],
   );
-  const [typologies, setTypologies] = useState<Typology[]>(() =>
-    Array.isArray(property?.typologies) ? (property.typologies as Typology[]) : [],
-  );
+  const [towerTypologies, setTowerTypologies] = useState<Record<string, Typology[]>>(() => {
+    if (property?.typologies && typeof property.typologies === 'object' && !Array.isArray(property.typologies)) {
+      return property.typologies as Record<string, Typology[]>;
+    }
+    return {};
+  });
+  const [towerDetails, setTowerDetails] = useState<Record<string, { hasTrashChute: boolean }>>(() => {
+    if (property?.tower_details && typeof property.tower_details === 'object' && !Array.isArray(property.tower_details)) {
+      return property.tower_details as Record<string, { hasTrashChute: boolean }>;
+    }
+    return {};
+  });
   const [images, setImages] = useState<PickedImage[]>(() =>
     (property?.additional_images ?? []).map(existingImage),
   );
@@ -418,13 +411,30 @@ export function PropertyForm({
   const isLastStep = stepIndex === steps.length - 1;
 
   function setField(name: keyof PropertyFormValues, value: string) {
-    setValues((prev) => ({ ...prev, [name]: value }));
-  }
+    setValues((prev) => {
+      const next = { ...prev, [name]: value };
 
-  function toggleAmenity(amenity: string) {
-    setAmenities((prev) =>
-      prev.includes(amenity) ? prev.filter((a) => a !== amenity) : [...prev, amenity],
-    );
+      // The initial-fee percentage drives the rest of the financing breakdown:
+      // credit % is its complement, and both amounts scale off the price.
+      if (name === "price" || name === "initialFeePercentage") {
+        const price = Number(next.price);
+        const initialFeePercentage = Number(next.initialFeePercentage);
+        if (
+          next.price.trim() !== "" &&
+          next.initialFeePercentage.trim() !== "" &&
+          price > 0 &&
+          initialFeePercentage >= 0 &&
+          initialFeePercentage <= 100
+        ) {
+          const creditPercentage = 100 - initialFeePercentage;
+          next.creditPercentage = String(creditPercentage);
+          next.initialFeeAmount = String(Math.round(price * (initialFeePercentage / 100)));
+          next.creditAmount = String(Math.round(price * (creditPercentage / 100)));
+        }
+      }
+
+      return next;
+    });
   }
 
   function findMissingField() {
@@ -445,6 +455,20 @@ export function PropertyForm({
       setError(`${missing.label} es obligatorio.`);
       return;
     }
+
+    // Validate typologies when towers are selected
+    if (step.key === "micro" && values.towerCount && Number(values.towerCount) > 0) {
+      const towerCount = Number(values.towerCount);
+      for (let i = 1; i <= towerCount; i++) {
+        const towerKey = `tower-${i}`;
+        const typologies = towerTypologies[towerKey] || [];
+        if (typologies.length === 0) {
+          setError(`Torre ${i} requiere al menos una tipología.`);
+          return;
+        }
+      }
+    }
+
     setError(null);
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   }
@@ -465,6 +489,21 @@ export function PropertyForm({
       setError(`${missing.label} es obligatorio.`);
       return;
     }
+
+    // Validate typologies when towers are selected
+    if (values.towerCount && Number(values.towerCount) > 0) {
+      const towerCount = Number(values.towerCount);
+      for (let i = 1; i <= towerCount; i++) {
+        const towerKey = `tower-${i}`;
+        const typologies = towerTypologies[towerKey] || [];
+        if (typologies.length === 0) {
+          setError(`Torre ${i} requiere al menos una tipología.`);
+          setStepIndex(1); // Go to Micro step where typologies are edited
+          return;
+        }
+      }
+    }
+
     setError(null);
     startTransition(async () => {
       // The main image picker always holds exactly one entry at this point —
@@ -499,7 +538,8 @@ export function PropertyForm({
         latitude: coordinates?.lat ?? null,
         longitude: coordinates?.lng ?? null,
         amenities,
-        typologies,
+        typologies: towerTypologies,
+        towerDetails,
         additionalImages,
       };
 
@@ -591,16 +631,41 @@ export function PropertyForm({
                   if (field.kind === "location") {
                     return (
                       <div key={field.name} className={spanClass}>
-                        <LocationPicker
-                          label={field.label}
-                          value={value}
-                          coordinates={coordinates}
-                          onChange={(address, coords) => {
-                            setField(field.name, address);
-                            setCoordinates(coords);
-                          }}
-                          isRequired={field.required}
-                        />
+                        <label className="mb-1.5 block text-sm font-medium">
+                          {field.label}
+                          {field.required ? <span className="text-danger"> *</span> : null}
+                        </label>
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1">
+                            <LocationPicker
+                              label=""
+                              value={value}
+                              coordinates={coordinates}
+                              onChange={(address, coords, location) => {
+                                setField("address", address);
+                                if (location) {
+                                  setField("location", location);
+                                }
+                                setCoordinates(coords);
+                              }}
+                              isRequired={field.required}
+                            />
+                          </div>
+                          {value && (
+                            <Button
+                              isIconOnly
+                              variant="outline"
+                              size="lg"
+                              onPress={() => {
+                                navigator.clipboard.writeText(value);
+                                toast.success("Dirección copiada", "Se ha copiado la dirección al portapapeles");
+                              }}
+                              className="mb-0"
+                            >
+                              <Copy size={18} />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   }
@@ -670,6 +735,7 @@ export function PropertyForm({
                         value={value}
                         onChange={(v) => setField(field.name, v)}
                         isRequired={field.required}
+                        isReadOnly={field.readOnly}
                         validationBehavior="aria"
                       >
                         <Label>{field.label}</Label>
@@ -678,6 +744,7 @@ export function PropertyForm({
                         ) : (
                           <Input placeholder={field.placeholder} />
                         )}
+                        {field.hint ? <p className="mt-1 text-xs text-muted">{field.hint}</p> : null}
                       </TextField>
                     </div>
                   );
@@ -701,13 +768,51 @@ export function PropertyForm({
                 </>
               ) : null}
 
-              {step.key === "micro" && gi === step.groups.length - 1 ? (
-                <AmenitiesPicker selected={amenities} onToggle={toggleAmenity} />
+              {step.key === "micro" && gi === 1 && values.towerCount && Number(values.towerCount) > 0 ? (
+                <div className="border-t border-separator pt-5">
+                  <p className="mb-4 text-xs font-medium uppercase tracking-wider text-muted">
+                    Tipologías por torre <span className="text-danger">*</span>
+                  </p>
+                  {Array.from({ length: Number(values.towerCount) }, (_, i) => (
+                    <div key={`tower-${i + 1}`} className="mb-6 rounded-lg border border-separator p-4">
+                      <h3 className="mb-4 text-sm font-semibold">Torre {i + 1}</h3>
+                      <div className="mb-4 max-w-xs">
+                        <label
+                          htmlFor={`${formId}-tower-${i + 1}-trash-chute`}
+                          className="mb-1.5 block text-sm font-medium"
+                        >
+                          Cuenta con shut de basura
+                        </label>
+                        <select
+                          id={`${formId}-tower-${i + 1}-trash-chute`}
+                          className={fieldClassName()}
+                          value={towerDetails[`tower-${i + 1}`]?.hasTrashChute ? "Sí" : "No"}
+                          onChange={(e) => {
+                            const hasTrashChute = e.target.value === "Sí";
+                            setTowerDetails((prev) => ({
+                              ...prev,
+                              [`tower-${i + 1}`]: { hasTrashChute },
+                            }));
+                          }}
+                        >
+                          <option value="No">No</option>
+                          <option value="Sí">Sí</option>
+                        </select>
+                      </div>
+                      <TypologiesEditor
+                        typologies={towerTypologies[`tower-${i + 1}`] || []}
+                        onChange={(newTypologies) => {
+                          setTowerTypologies((prev) => ({
+                            ...prev,
+                            [`tower-${i + 1}`]: newTypologies,
+                          }));
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
               ) : null}
 
-              {step.key === "macro" && gi === step.groups.length - 1 ? (
-                <TypologiesEditor typologies={typologies} onChange={setTypologies} />
-              ) : null}
             </div>
           ))}
         </div>

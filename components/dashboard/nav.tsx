@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 
-import { BuildingIcon, GridIcon, KeyIcon, UsersIcon } from "@/components/icons";
+import { BuildingIcon, GridIcon, UsersIcon } from "@/components/icons";
 import type { RoleName } from "@/supabase/roles";
 
 export type NavItem = {
@@ -23,14 +23,12 @@ const NAV_BY_ROLE: Partial<Record<RoleName, NavSection[]>> = {
         { label: "Dashboard", href: "/dashboard", icon: GridIcon },
         { label: "Properties management", href: "/dashboard/properties", icon: BuildingIcon },
         { label: "User management", href: "/dashboard/users", icon: UsersIcon },
-        { label: "Developers", href: "/dashboard/developers", icon: KeyIcon },
       ],
     },
     {
       title: "Configuration",
       items: [
         { label: "Constructoras", href: "/dashboard/constructoras", icon: BuildingIcon },
-        { label: "Inmobiliarias", href: "/dashboard/inmobiliarias", icon: BuildingIcon },
         { label: "Fiducias", href: "/dashboard/fiducias", icon: UsersIcon },
         { label: "Bancos", href: "/dashboard/bancos", icon: GridIcon },
         { label: "Zonas comunes", href: "/dashboard/zonas-comunes", icon: BuildingIcon },

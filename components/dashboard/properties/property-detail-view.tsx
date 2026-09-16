@@ -264,6 +264,7 @@ export function PropertyDetailView({
           <h1 className="text-2xl font-semibold tracking-tight">{property.title}</h1>
           <p className="mt-1 text-sm text-muted">
             {[property.neighborhood, property.city].filter(Boolean).join(", ") ||
+              property.address ||
               "Sin ubicación"}
           </p>
         </div>

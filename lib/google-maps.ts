@@ -34,6 +34,7 @@ export function loadGoogleMaps(apiKey: string): Promise<void> {
       v: "weekly",
       callback: CALLBACK_NAME,
       loading: "async",
+      libraries: "marker",
     });
 
     const script = document.createElement("script");

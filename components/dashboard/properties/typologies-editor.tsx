@@ -9,9 +9,10 @@ export type Typology = {
   bedrooms: string;
   bathrooms: string;
   study: "Sí" | "No";
+  hasBalcony: "Sí" | "No";
 };
 
-const EMPTY_DRAFT: Typology = { name: "", area: "", bedrooms: "", bathrooms: "", study: "No" };
+const EMPTY_DRAFT: Typology = { name: "", area: "", bedrooms: "", bathrooms: "", study: "No", hasBalcony: "No" };
 
 /**
  * Repeatable "Tipologías de apartamento" registry: a table of unit models
@@ -28,6 +29,7 @@ export function TypologiesEditor({
 }) {
   const formId = useId();
   const [isAdding, setIsAdding] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [draft, setDraft] = useState<Typology>(EMPTY_DRAFT);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,16 +42,42 @@ export function TypologiesEditor({
       setError("Nombre, área, alcobas y baños son obligatorios.");
       return;
     }
-    onChange([...typologies, draft]);
+
+    if (editingIndex !== null) {
+      // Editing mode
+      const updated = [...typologies];
+      updated[editingIndex] = draft;
+      onChange(updated);
+      setEditingIndex(null);
+    } else {
+      // Adding mode
+      onChange([...typologies, draft]);
+      setIsAdding(false);
+    }
+
     setDraft(EMPTY_DRAFT);
-    setIsAdding(false);
+    setError(null);
+  }
+
+  function startEdit(index: number) {
+    setEditingIndex(index);
+    setDraft(typologies[index]);
+  }
+
+  function cancelEdit() {
+    setEditingIndex(null);
+    setDraft(EMPTY_DRAFT);
     setError(null);
   }
 
   function handleCancel() {
-    setDraft(EMPTY_DRAFT);
-    setIsAdding(false);
-    setError(null);
+    if (editingIndex !== null) {
+      cancelEdit();
+    } else {
+      setDraft(EMPTY_DRAFT);
+      setIsAdding(false);
+      setError(null);
+    }
   }
 
   return (
@@ -68,6 +96,7 @@ export function TypologiesEditor({
                 <th className="px-4 py-2.5 font-medium">Alcobas</th>
                 <th className="px-4 py-2.5 font-medium">Baños</th>
                 <th className="px-4 py-2.5 font-medium">Estudio</th>
+                <th className="px-4 py-2.5 font-medium">Balcón</th>
                 <th className="px-4 py-2.5 font-medium">Acciones</th>
               </tr>
             </thead>
@@ -79,7 +108,16 @@ export function TypologiesEditor({
                   <td className="px-4 py-2.5 text-muted">{typology.bedrooms}</td>
                   <td className="px-4 py-2.5 text-muted">{typology.bathrooms}</td>
                   <td className="px-4 py-2.5 text-muted">{typology.study}</td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-2.5 text-muted">{typology.hasBalcony}</td>
+                  <td className="px-4 py-2.5 flex gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onPress={() => startEdit(index)}
+                    >
+                      Editar
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -98,13 +136,18 @@ export function TypologiesEditor({
         <p className="text-sm text-muted">Aún no hay tipologías registradas.</p>
       )}
 
-      {!isAdding ? (
+      {editingIndex === null && !isAdding && (
         <Button type="button" variant="secondary" onPress={() => setIsAdding(true)}>
           + Añadir nuevo modelo de apartamento
         </Button>
-      ) : (
+      )}
+
+      {(editingIndex !== null || isAdding) && (
         <div className="flex flex-col gap-4 rounded-lg border border-separator p-4">
-          <div className="grid gap-4 sm:grid-cols-5">
+          <h3 className="text-sm font-semibold">
+            {editingIndex !== null ? `Editar: ${typologies[editingIndex].name}` : "Agregar nueva tipología"}
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-6">
             <TextField
               value={draft.name}
               onChange={(v) => setDraft((d) => ({ ...d, name: v }))}
@@ -160,6 +203,23 @@ export function TypologiesEditor({
                 <option value="Sí">Sí</option>
               </select>
             </div>
+
+            <div>
+              <label htmlFor={`${formId}-balcony`} className="mb-1.5 block text-sm font-medium">
+                Balcón
+              </label>
+              <select
+                id={`${formId}-balcony`}
+                value={draft.hasBalcony}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, hasBalcony: e.target.value as "Sí" | "No" }))
+                }
+                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
+              >
+                <option value="No">No</option>
+                <option value="Sí">Sí</option>
+              </select>
+            </div>
           </div>
 
           {error ? (
@@ -173,7 +233,7 @@ export function TypologiesEditor({
               Cancelar
             </Button>
             <Button type="button" variant="primary" onPress={handleSave}>
-              Guardar tipología
+              {editingIndex !== null ? "Guardar cambios" : "Guardar tipología"}
             </Button>
           </div>
         </div>

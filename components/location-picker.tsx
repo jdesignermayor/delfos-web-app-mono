@@ -4,10 +4,9 @@
    loaded at runtime and this project intentionally avoids the @types dependency. */
 
 import { useEffect, useRef, useState } from "react";
-import { Button, Input, Modal, TextField, useOverlayState } from "@heroui/react";
+import { Button, Input, Label, Modal, TextField, useOverlayState } from "@heroui/react";
 
 import { loadGoogleMaps } from "@/lib/google-maps";
-import { createPinIcon, DELFOS_MAP_STYLE } from "@/lib/google-maps-style";
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -20,6 +19,8 @@ type Status = "nokey" | "loading" | "ready" | "error";
 function geocodeAddress(geocoder: any, address: string): Promise<{
   address: string;
   coords: LatLng;
+  city?: string;
+  region?: string;
 } | null> {
   return new Promise((resolve) => {
     geocoder.geocode({ address }, (results: any[], status: string) => {
@@ -27,23 +28,63 @@ function geocodeAddress(geocoder: any, address: string): Promise<{
         resolve(null);
         return;
       }
-      const location = results[0].geometry.location;
+      const result = results[0];
+      const location = result.geometry.location;
+      let city = "";
+      let region = "";
+
+      if (result.address_components) {
+        for (const component of result.address_components) {
+          if (component.types.includes("locality")) {
+            city = component.long_name;
+          }
+          if (component.types.includes("administrative_area_level_1")) {
+            region = component.long_name;
+          }
+        }
+      }
+
       resolve({
-        address: results[0].formatted_address,
+        address: result.formatted_address,
         coords: { lat: location.lat(), lng: location.lng() },
+        city: city || undefined,
+        region: region || undefined,
       });
     });
   });
 }
 
-function reverseGeocode(geocoder: any, coords: LatLng): Promise<string | null> {
+function reverseGeocode(geocoder: any, coords: LatLng): Promise<{
+  address: string;
+  city?: string;
+  region?: string;
+} | null> {
   return new Promise((resolve) => {
     geocoder.geocode({ location: coords }, (results: any[], status: string) => {
       if (status !== "OK" || !results?.[0]) {
         resolve(null);
         return;
       }
-      resolve(results[0].formatted_address);
+      const result = results[0];
+      let city = "";
+      let region = "";
+
+      if (result.address_components) {
+        for (const component of result.address_components) {
+          if (component.types.includes("locality")) {
+            city = component.long_name;
+          }
+          if (component.types.includes("administrative_area_level_1")) {
+            region = component.long_name;
+          }
+        }
+      }
+
+      resolve({
+        address: result.formatted_address,
+        city: city || undefined,
+        region: region || undefined,
+      });
     });
   });
 }
@@ -64,7 +105,7 @@ export function LocationPicker({
 }: {
   label?: string;
   value: string;
-  onChange: (address: string, coords: LatLng) => void;
+  onChange: (address: string, coords: LatLng, location?: string) => void;
   coordinates?: LatLng | null;
   defaultCenter?: LatLng;
   placeholder?: string;
@@ -79,25 +120,45 @@ export function LocationPicker({
   const [query, setQuery] = useState("");
   const [draftAddress, setDraftAddress] = useState("");
   const [draftCoords, setDraftCoords] = useState<LatLng | null>(null);
+  const [draftCity, setDraftCity] = useState("");
+  const [draftRegion, setDraftRegion] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
   function placeMarker(maps: any, coords: LatLng) {
     if (!markerRef.current) {
-      markerRef.current = new maps.Marker({
+      const pinIcon = document.createElement("div");
+      pinIcon.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="50" viewBox="0 0 40 50">
+          <path d="M15 32 L20 42 L25 32 Z" fill="#063d65"/>
+          <circle cx="20" cy="18" r="16" fill="#063d65"/>
+          <g transform="translate(20 18)">
+            <path d="M0 -9 L-10 0 L-7 0 L-7 9 L-2 9 L-2 2 L2 2 L2 9 L7 9 L7 0 L10 0 Z" fill="#ffffff"/>
+          </g>
+        </svg>`;
+      pinIcon.style.cursor = "grab";
+      pinIcon.style.width = "40px";
+      pinIcon.style.height = "50px";
+
+      markerRef.current = new maps.marker.AdvancedMarkerElement({
         map: mapRef.current,
         position: coords,
+        content: pinIcon,
         draggable: true,
-        icon: createPinIcon(maps),
       });
+
       markerRef.current.addListener("dragend", async () => {
-        const pos = markerRef.current.getPosition();
-        const coords = { lat: pos.lat(), lng: pos.lng() };
-        setDraftCoords(coords);
-        const address = await reverseGeocode(geocoderRef.current, coords);
-        if (address) setDraftAddress(address);
+        const pos = markerRef.current.position;
+        const newCoords = { lat: pos.lat, lng: pos.lng };
+        setDraftCoords(newCoords);
+        const result = await reverseGeocode(geocoderRef.current, newCoords);
+        if (result) {
+          setDraftAddress(result.address);
+          setDraftCity(result.city || "");
+          setDraftRegion(result.region || "");
+        }
       });
     } else {
-      markerRef.current.setPosition(coords);
+      markerRef.current.position = coords;
     }
     setDraftCoords(coords);
   }
@@ -113,62 +174,104 @@ export function LocationPicker({
 
     (async () => {
       await loadGoogleMaps(API_KEY);
-      if (cancelled || !containerRef.current) return;
+      if (cancelled || !containerRef.current) {
+        console.warn("Map init cancelled or container unavailable");
+        return;
+      }
+
+      // Ensure container has dimensions
+      const container = containerRef.current;
+      if (!container.offsetHeight || !container.offsetWidth) {
+        console.warn("Container has no dimensions", { height: container.offsetHeight, width: container.offsetWidth });
+        return;
+      }
+
       const maps = window.google!.maps as any;
 
-      geocoderRef.current = new maps.Geocoder();
-      const center = coordinates ?? defaultCenter;
-      mapRef.current = new maps.Map(containerRef.current, {
-        center,
-        zoom: coordinates ? 16 : 12,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        draggable: true,
-        gestureHandling: "greedy",
-        styles: DELFOS_MAP_STYLE,
-      });
+      try {
+        geocoderRef.current = new maps.Geocoder();
+        const center = coordinates ?? defaultCenter;
 
-      if (coordinates) placeMarker(maps, coordinates);
+        if (mapRef.current) {
+          mapRef.current = null;
+        }
 
-      mapRef.current.addListener("click", async (event: any) => {
-        const coords = { lat: event.latLng.lat(), lng: event.latLng.lng() };
-        placeMarker(maps, coords);
-        const address = await reverseGeocode(geocoderRef.current, coords);
-        if (address) setDraftAddress(address);
-      });
+        mapRef.current = new maps.Map(container, {
+          center,
+          zoom: coordinates ? 16 : 12,
+          mapId: "DEMO_MAP_ID",
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          draggable: true,
+          gestureHandling: "greedy",
+        });
 
-      setStatus("ready");
-    })().catch((error) => {
-      console.error("Google Maps failed to initialise:", error);
-      if (!cancelled) setStatus("error");
-    });
+        if (coordinates) placeMarker(maps, coordinates);
+
+        mapRef.current.addListener("click", async (event: any) => {
+          const coords = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+          placeMarker(maps, coords);
+          const result = await reverseGeocode(geocoderRef.current, coords);
+          if (result) {
+            setDraftAddress(result.address);
+            setDraftCity(result.city || "");
+            setDraftRegion(result.region || "");
+          }
+        });
+
+        setStatus("ready");
+      } catch (error) {
+        console.error("Google Maps initialization error:", error);
+        if (!cancelled) setStatus("error");
+      }
+    })();
 
     return () => {
       cancelled = true;
       markerRef.current = null;
-      mapRef.current = null;
+      if (mapRef.current) {
+        mapRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when the popup opens.
   }, [overlay.isOpen]);
 
   async function handleSearch() {
-    if (!query.trim() || !geocoderRef.current) return;
+    if (!query.trim() || !geocoderRef.current) {
+      console.warn("Search failed: query or geocoder not ready", { query: query.trim(), geocoder: !!geocoderRef.current });
+      return;
+    }
     setIsSearching(true);
-    const result = await geocodeAddress(geocoderRef.current, query.trim());
-    setIsSearching(false);
-    if (!result) return;
+    try {
+      const result = await geocodeAddress(geocoderRef.current, query.trim());
+      if (!result) {
+        console.warn("Geocoding returned no result for query:", query.trim());
+        setIsSearching(false);
+        return;
+      }
 
-    const maps = window.google!.maps as any;
-    placeMarker(maps, result.coords);
-    mapRef.current.panTo(result.coords);
-    mapRef.current.setZoom(16);
-    setDraftAddress(result.address);
+      const maps = window.google!.maps as any;
+      placeMarker(maps, result.coords);
+      if (mapRef.current) {
+        mapRef.current.panTo(result.coords);
+        mapRef.current.setZoom(16);
+      }
+      setDraftAddress(result.address);
+      setDraftCoords(result.coords);
+      setDraftCity(result.city || "");
+      setDraftRegion(result.region || "");
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setIsSearching(false);
+    }
   }
 
   function handleConfirm() {
     if (!draftAddress || !draftCoords) return;
-    onChange(draftAddress, draftCoords);
+    const location = [draftCity, draftRegion].filter(Boolean).join(", ");
+    onChange(draftAddress, draftCoords, location || undefined);
     overlay.close();
   }
 
@@ -210,6 +313,7 @@ export function LocationPicker({
                       fullWidth
                       validationBehavior="aria"
                     >
+                      <Label className="sr-only">Busca una dirección</Label>
                       <Input placeholder="Busca una dirección…" />
                     </TextField>
                     <Button
