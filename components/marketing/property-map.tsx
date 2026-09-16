@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { loadGoogleMaps } from "@/lib/google-maps";
+import { DELFOS_MAP_STYLE } from "@/lib/google-maps-style";
 import {
   MEDELLIN_CENTER,
   formatPrice,
@@ -15,19 +16,13 @@ import {
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-const MAP_STYLE = [
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-];
-
 type Status = "nokey" | "loading" | "ready" | "error";
 
 function priceMarkerIcon(maps: any, label: string, active: boolean) {
   const width = Math.max(48, Math.round(18 + label.length * 8));
-  const bg = active ? "#2563eb" : "#ffffff";
-  const fg = active ? "#ffffff" : "#18181b";
-  const stroke = active ? "#2563eb" : "#d4d4d8";
+  const bg = active ? "#2db1fc" : "#ffffff";
+  const fg = active ? "#ffffff" : "#063d65";
+  const stroke = active ? "#2db1fc" : "#063d65";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="40" viewBox="0 0 ${width} 40">
     <rect x="1.5" y="1.5" width="${width - 3}" height="25" rx="12.5" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/>
     <path d="M${width / 2 - 6} 26 L${width / 2} 35 L${width / 2 + 6} 26 Z" fill="${bg}"/>
@@ -45,10 +40,10 @@ function buildInfoContent(property: Property) {
   el.style.maxWidth = "220px";
   el.style.fontFamily = "-apple-system, system-ui, sans-serif";
   el.innerHTML = `
-    <div style="font-weight:600;font-size:14px;color:#18181b">${formatPrice(property)}</div>
-    <div style="font-size:13px;color:#18181b;margin-top:2px">${property.title}</div>
-    <div style="font-size:12px;color:#71717a;margin-top:2px">${property.neighborhood}, ${property.city}</div>
-    <div style="font-size:12px;color:#71717a;margin-top:4px">${property.beds} hab · ${property.baths} baños · ${property.area} m²</div>`;
+    <div style="font-weight:600;font-size:14px;color:#000000">${formatPrice(property)}</div>
+    <div style="font-size:13px;color:#000000;margin-top:2px">${property.title}</div>
+    <div style="font-size:12px;color:#063d65;margin-top:2px">${property.neighborhood}, ${property.city}</div>
+    <div style="font-size:12px;color:#063d65;margin-top:4px">${property.beds} hab · ${property.baths} baños · ${property.area} m²</div>`;
   return el;
 }
 
@@ -91,7 +86,9 @@ export function PropertyMap({
         streetViewControl: false,
         fullscreenControl: false,
         clickableIcons: false,
-        styles: MAP_STYLE,
+        draggable: true,
+        gestureHandling: "greedy",
+        styles: DELFOS_MAP_STYLE,
       });
       infoRef.current = new maps.InfoWindow();
       infoRef.current.addListener("closeclick", () => activateRef.current(null));
@@ -133,6 +130,7 @@ export function PropertyMap({
 
     const bounds = new maps.LatLngBounds();
     results.forEach((property) => {
+      if (property.lat == null || property.lng == null) return;
       const marker = new maps.Marker({
         map,
         position: { lat: property.lat, lng: property.lng },

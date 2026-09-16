@@ -38,7 +38,7 @@ export function AffordabilityCalculator({ property }: { property: Property }) {
   }, [monthlyIncome, property]);
 
   return (
-    <div className="rounded-2xl border border-separator bg-surface p-5">
+    <div>
       <h3 className="text-sm font-semibold text-foreground">¿Puedo pagar esta propiedad?</h3>
       <p className="mt-1 text-xs text-muted">
         Un estimado según tu ingreso mensual — no es una pre-aprobación de crédito.

@@ -96,6 +96,15 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
 
       <Card className="p-5">
         <h2 className="text-base font-semibold">Ubicación</h2>
+        {property.address ? (
+          <p className="mt-3 font-medium text-foreground">
+            {property.address}
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-muted italic">
+            Dirección no especificada
+          </p>
+        )}
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Field label="Dirección" value={property.address} />
           <Field label="Ubicación" value={property.location} />

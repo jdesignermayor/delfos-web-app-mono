@@ -12,7 +12,7 @@ export default function NewFiduciaPage() {
       </div>
 
       <EntityForm
-        type="fiducias"
+        type="trust_companies"
         backHref="/dashboard/fiducias"
         fields={[
           { name: "name", label: "Nombre", required: true },

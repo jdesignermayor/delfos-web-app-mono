@@ -12,7 +12,7 @@ export default function NewZonaComúnPage() {
       </div>
 
       <EntityForm
-        type="zonas_comunes"
+        type="common_areas"
         backHref="/dashboard/zonas-comunes"
         fields={[
           { name: "name", label: "Nombre", required: true },

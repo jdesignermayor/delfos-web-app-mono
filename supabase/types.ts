@@ -151,7 +151,9 @@ export type Database = {
           initial_fee_amount: string | null
           initial_fee_percentage: number | null
           is_favorite: boolean | null
+          latitude: number | null
           location: string
+          longitude: number | null
           meters: string | null
           meters2: string | null
           neighborhood: string | null
@@ -174,6 +176,7 @@ export type Database = {
           type: string
           typologies: Json
           updated_at: string | null
+          uuid: string
           year_built: number
         }
         Insert: {
@@ -199,7 +202,9 @@ export type Database = {
           initial_fee_amount?: string | null
           initial_fee_percentage?: number | null
           is_favorite?: boolean | null
+          latitude?: number | null
           location: string
+          longitude?: number | null
           meters?: string | null
           meters2?: string | null
           neighborhood?: string | null
@@ -222,6 +227,7 @@ export type Database = {
           type: string
           typologies?: Json
           updated_at?: string | null
+          uuid?: string
           year_built: number
         }
         Update: {
@@ -247,7 +253,9 @@ export type Database = {
           initial_fee_amount?: string | null
           initial_fee_percentage?: number | null
           is_favorite?: boolean | null
+          latitude?: number | null
           location?: string
+          longitude?: number | null
           meters?: string | null
           meters2?: string | null
           neighborhood?: string | null
@@ -270,6 +278,7 @@ export type Database = {
           type?: string
           typologies?: Json
           updated_at?: string | null
+          uuid?: string
           year_built?: number
         }
         Relationships: [

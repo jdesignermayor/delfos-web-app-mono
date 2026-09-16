@@ -8,7 +8,7 @@ import { getEntities } from "@/app/actions/entities";
 export const metadata: Metadata = { title: "Inmobiliarias" };
 
 export default async function InmobiliariasPage() {
-  const result = await getEntities("inmobiliarias");
+  const result = await getEntities("real_estate_agencies");
   const inmobiliarias = result.success ? (result.data as any[]) : [];
 
   return (

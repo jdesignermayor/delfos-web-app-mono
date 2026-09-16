@@ -8,7 +8,7 @@ import { getEntities } from "@/app/actions/entities";
 export const metadata: Metadata = { title: "Zonas comunes" };
 
 export default async function ZonasConunesPage() {
-  const result = await getEntities("zonas_comunes");
+  const result = await getEntities("common_areas");
   const zonas = result.success ? (result.data as any[]) : [];
 
   return (

@@ -35,15 +35,23 @@ function Tile({
 }
 
 /**
- * Photo collage: one large image on the right, four smaller square tiles on
- * the left. Falls back to tinted placeholders when the listing has no real
+ * Photo collage: one large image on the left, four smaller square tiles on
+ * the right. Falls back to tinted placeholders when the listing has no real
  * photos yet — this mock catalogue never does.
  */
 export function PhotoCollage({ property }: { property: Property }) {
   const images = property.images ?? [];
 
   return (
-    <div className="grid grid-cols-1 gap-1 overflow-hidden rounded-2xl border border-separator sm:aspect-[16/9] sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-1 overflow-hidden rounded-2xl border border-separator sm:h-[28rem] sm:grid-cols-2">
+      <Tile
+        property={property}
+        src={images[0] ?? property.image}
+        hueOffset={0}
+        className="aspect-video sm:aspect-auto"
+        iconClassName="absolute -bottom-10 -right-6 size-56 text-white/25"
+      />
+
       <div className="grid grid-cols-2 grid-rows-2 gap-1">
         {[0, 1, 2, 3].map((i) => (
           <Tile
@@ -56,14 +64,6 @@ export function PhotoCollage({ property }: { property: Property }) {
           />
         ))}
       </div>
-
-      <Tile
-        property={property}
-        src={images[0] ?? property.image}
-        hueOffset={0}
-        className="aspect-video sm:aspect-auto"
-        iconClassName="absolute -bottom-10 -right-6 size-56 text-white/25"
-      />
     </div>
   );
 }

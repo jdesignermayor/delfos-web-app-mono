@@ -8,7 +8,7 @@ import { getEntities } from "@/app/actions/entities";
 export const metadata: Metadata = { title: "Bancos" };
 
 export default async function BancosPage() {
-  const result = await getEntities("bancos");
+  const result = await getEntities("banks");
   const bancos = result.success ? (result.data as any[]) : [];
 
   return (

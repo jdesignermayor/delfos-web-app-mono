@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Input, Modal, TextField, useOverlayState } from "@heroui/react";
 
 import { loadGoogleMaps } from "@/lib/google-maps";
+import { createPinIcon, DELFOS_MAP_STYLE } from "@/lib/google-maps-style";
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -86,6 +87,7 @@ export function LocationPicker({
         map: mapRef.current,
         position: coords,
         draggable: true,
+        icon: createPinIcon(maps),
       });
       markerRef.current.addListener("dragend", async () => {
         const pos = markerRef.current.getPosition();
@@ -122,6 +124,9 @@ export function LocationPicker({
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
+        draggable: true,
+        gestureHandling: "greedy",
+        styles: DELFOS_MAP_STYLE,
       });
 
       if (coordinates) placeMarker(maps, coordinates);

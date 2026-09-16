@@ -32,7 +32,7 @@ type FieldKind =
 
 type PropertyFormValues = Omit<
   CreatePropertyInput,
-  "amenities" | "typologies" | "additionalImages"
+  "amenities" | "typologies" | "additionalImages" | "latitude" | "longitude"
 >;
 
 type FieldConfig = {
@@ -394,6 +394,11 @@ export function PropertyForm({
   const [values, setValues] = useState<PropertyFormValues>(() =>
     property ? toInitialValues(property) : EMPTY_STATE,
   );
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(() =>
+    property?.latitude != null && property?.longitude != null
+      ? { lat: property.latitude, lng: property.longitude }
+      : null,
+  );
   const [amenities, setAmenities] = useState<string[]>(() =>
     Array.isArray(property?.amenities) ? (property.amenities as string[]) : [],
   );
@@ -491,6 +496,8 @@ export function PropertyForm({
       const payload: CreatePropertyInput = {
         ...values,
         image: imageUrl,
+        latitude: coordinates?.lat ?? null,
+        longitude: coordinates?.lng ?? null,
         amenities,
         typologies,
         additionalImages,
@@ -587,7 +594,11 @@ export function PropertyForm({
                         <LocationPicker
                           label={field.label}
                           value={value}
-                          onChange={(address) => setField(field.name, address)}
+                          coordinates={coordinates}
+                          onChange={(address, coords) => {
+                            setField(field.name, address);
+                            setCoordinates(coords);
+                          }}
                           isRequired={field.required}
                         />
                       </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button, buttonVariants, useOverlayState } from "@heroui/react";
 
@@ -10,6 +11,7 @@ import { HomeIcon } from "@/components/icons/animated/home";
 import { KeyIcon } from "@/components/icons/animated/key";
 import { MapPinHouseIcon } from "@/components/icons/animated/map-pin-house";
 import { AuthModal } from "@/components/marketing/auth-modal";
+import { MiniSearchTrigger } from "@/components/marketing/mini-search-trigger";
 import { MobileLocationButton } from "@/components/marketing/mobile-location-button";
 import { PropertySearch } from "@/components/marketing/property-search";
 import { SEARCH_MODES, useSearchMode } from "@/components/marketing/search-mode-context";
@@ -20,13 +22,17 @@ const TAB_ICONS = {
   proyecto: MapPinHouseIcon,
 } as const;
 
-export function SiteNavbar() {
+export function SiteNavbar({ alwaysShowSearch = false }: { alwaysShowSearch?: boolean }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchPanelSettled, setSearchPanelSettled] = useState(false);
+  const [mounted] = useState(() => typeof document !== "undefined");
   const { mode, setMode, heroSearchRef, navbarRef } = useSearchMode();
   const authModal = useOverlayState();
 
   useEffect(() => {
+    if (alwaysShowSearch) return;
     const heroSearch = heroSearchRef.current;
     if (!heroSearch) return;
 
@@ -36,10 +42,54 @@ export function SiteNavbar() {
     );
     observer.observe(heroSearch);
     return () => observer.disconnect();
-  }, [heroSearchRef, navbarRef]);
+  }, [alwaysShowSearch, heroSearchRef, navbarRef]);
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setSearchPanelSettled(false);
+  }
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeSearch();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [searchOpen]);
+
+  const tabs = (
+    <>
+      {SEARCH_MODES.map((tab) => {
+        const Icon = TAB_ICONS[tab.value];
+        const active = tab.value === mode;
+        return (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => setMode(tab.value)}
+            aria-current={active ? "true" : undefined}
+            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
+              active
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted hover:border-separator hover:text-foreground"
+            }`}
+          >
+            <Icon size={22} />
+            {tab.label}
+          </button>
+        );
+      })}
+    </>
+  );
 
   return (
-    <header ref={navbarRef} className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl">
+    <header ref={navbarRef} className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl">
       <div className="mx-auto grid h-18 w-full max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-4 px-4 sm:px-6">
         <Link
           href="/"
@@ -51,50 +101,44 @@ export function SiteNavbar() {
         </Link>
 
         <div className="hidden min-w-0 items-center justify-center md:flex">
-          <AnimatePresence mode="wait" initial={false}>
-            {scrolled ? (
-              <motion.div
-                key="search"
-                initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="flex w-full justify-center"
-              >
-                <PropertySearch compact />
-              </motion.div>
+          {alwaysShowSearch ? (
+            searchOpen ? (
+              <nav className="flex items-center gap-1">{tabs}</nav>
             ) : (
-              <motion.nav
-                key="tabs"
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="flex items-center gap-1"
-              >
-                {SEARCH_MODES.map((tab) => {
-                  const Icon = TAB_ICONS[tab.value];
-                  const active = tab.value === mode;
-                  return (
-                    <button
-                      key={tab.value}
-                      type="button"
-                      onClick={() => setMode(tab.value)}
-                      aria-current={active ? "true" : undefined}
-                      className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
-                        active
-                          ? "border-foreground text-foreground"
-                          : "border-transparent text-muted hover:border-separator hover:text-foreground"
-                      }`}
-                    >
-                      <Icon size={22} />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </motion.nav>
-            )}
-          </AnimatePresence>
+              <MiniSearchTrigger
+                onOpenAction={() => {
+                  setSearchPanelSettled(false);
+                  setSearchOpen(true);
+                }}
+              />
+            )
+          ) : (
+            <AnimatePresence mode="wait" initial={false}>
+              {scrolled ? (
+                <motion.div
+                  key="search"
+                  initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="flex w-full justify-center"
+                >
+                  <PropertySearch compact />
+                </motion.div>
+              ) : (
+                <motion.nav
+                  key="tabs"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="flex items-center gap-1"
+                >
+                  {tabs}
+                </motion.nav>
+              )}
+            </AnimatePresence>
+          )}
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -116,6 +160,29 @@ export function SiteNavbar() {
           </Button>
         </div>
       </div>
+
+      {/* Search takeover: shares this header's background, so it reads as one continuous panel. */}
+      <AnimatePresence>
+        {alwaysShowSearch && searchOpen ? (
+          <motion.div
+            key="search-takeover"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            onAnimationComplete={() => setSearchPanelSettled(true)}
+            className={`hidden border-t border-separator md:block ${
+              searchPanelSettled ? "" : "overflow-hidden"
+            }`}
+          >
+            <div className="mx-auto flex w-full max-w-6xl justify-center px-4 py-6 sm:px-6">
+              <div className="w-full max-w-3xl">
+                <PropertySearch onSearchAction={() => closeSearch()} />
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <div className="border-t border-separator px-4 py-2 md:hidden">
         <nav className="flex items-center justify-center gap-1">
@@ -174,6 +241,25 @@ export function SiteNavbar() {
           </div>
         </div>
       ) : null}
+
+      {mounted && alwaysShowSearch
+        ? createPortal(
+            <AnimatePresence>
+              {searchOpen ? (
+                <motion.div
+                  key="search-backdrop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => closeSearch()}
+                  className="fixed inset-0 z-40 bg-white/70 backdrop-blur-md"
+                />
+              ) : null}
+            </AnimatePresence>,
+            document.body
+          )
+        : null}
 
       <AuthModal state={authModal} />
     </header>

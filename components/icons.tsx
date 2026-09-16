@@ -258,6 +258,24 @@ export const MessageCircleIcon = (props: IconProps) => (
   </Base>
 );
 
+export const ExpandIcon = (props: IconProps) => (
+  <Base {...props}>
+    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+  </Base>
+);
+
+export const MaximizeIcon = (props: IconProps) => (
+  <Base {...props}>
+    <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" />
+  </Base>
+);
+
+export const MinimizeIcon = (props: IconProps) => (
+  <Base {...props}>
+    <path d="M9 3v3a2 2 0 0 1-2 2H4M15 3v3a2 2 0 0 0 2 2h3M9 21v-3a2 2 0 0 0-2-2H4M15 21v-3a2 2 0 0 1 2-2h3" />
+  </Base>
+);
+
 export const GoogleIcon = (props: IconProps) => (
   <svg viewBox="0 0 48 48" width={20} height={20} aria-hidden="true" {...props}>
     <path

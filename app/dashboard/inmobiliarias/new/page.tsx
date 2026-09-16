@@ -12,7 +12,7 @@ export default function NewInmobiliariaPage() {
       </div>
 
       <EntityForm
-        type="inmobiliarias"
+        type="real_estate_agencies"
         backHref="/dashboard/inmobiliarias"
         fields={[
           { name: "name", label: "Nombre", required: true },

@@ -12,6 +12,9 @@ export type CreatePropertyInput = {
   image: string;
   address: string;
   location: string;
+  /** Google Maps marker set via `LocationPicker` — `null` until a pin is placed. */
+  latitude: number | null;
+  longitude: number | null;
   city: string;
   commune: string;
   neighborhood: string;
@@ -51,7 +54,13 @@ export type CreatePropertyResult =
   | { success: false; error: string };
 
 const REQUIRED_FIELDS: Array<
-  [Exclude<keyof CreatePropertyInput, "amenities" | "typologies" | "additionalImages">, string]
+  [
+    Exclude<
+      keyof CreatePropertyInput,
+      "amenities" | "typologies" | "additionalImages" | "latitude" | "longitude"
+    >,
+    string,
+  ]
 > = [
   ["title", "Título"],
   ["propertyType", "Tipo"],
@@ -83,6 +92,8 @@ function buildPropertyRow(input: CreatePropertyInput) {
     description: input.description.trim(),
     address: input.address.trim(),
     location: input.location.trim(),
+    latitude: input.latitude,
+    longitude: input.longitude,
     city: input.city.trim() || null,
     commune: input.commune.trim() || null,
     neighborhood: input.neighborhood.trim() || null,

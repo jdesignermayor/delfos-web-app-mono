@@ -8,7 +8,7 @@ import { getEntities } from "@/app/actions/entities";
 export const metadata: Metadata = { title: "Fiducias" };
 
 export default async function FidiciasPage() {
-  const result = await getEntities("fiducias");
+  const result = await getEntities("trust_companies");
   const fiducias = result.success ? (result.data as any[]) : [];
 
   return (

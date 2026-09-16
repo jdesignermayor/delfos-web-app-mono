@@ -45,7 +45,7 @@ export function LocationFields({
         value={value}
         onChange={(event) => onValueChangeAction(event.target.value)}
         placeholder="Barrio, proyecto o ciudad"
-        className="w-full rounded-xl border border-separator bg-surface px-4 py-2.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+        className="w-full rounded-xl border border-separator bg-white px-4 py-2.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
       <div className="flex flex-wrap gap-2">
         {MEDELLIN_AREAS.map((area) => {
@@ -71,7 +71,14 @@ const LABELS = {
   compact: { ubicacion: "Ubic.", tipo: "Tipo", habitaciones: "Hab.", presupuesto: "Presup." },
 } as const;
 
-export function PropertySearch({ compact = false }: { compact?: boolean }) {
+export function PropertySearch({
+  compact = false,
+  onSearchAction,
+}: {
+  compact?: boolean;
+  /** Called right before navigating to the results — lets a caller (e.g. a search overlay) close itself. */
+  onSearchAction?: () => void;
+}) {
   const router = useRouter();
   const { mode } = useSearchMode();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,6 +113,7 @@ export function PropertySearch({ compact = false }: { compact?: boolean }) {
     : "";
 
   function runSearch(overrideLocation?: string) {
+    onSearchAction?.();
     const params = new URLSearchParams();
     params.set("operacion", mode === "arrendar" ? "arrendar" : "comprar");
     if (mode === "proyecto") params.set("tipo", "proyecto");
@@ -142,7 +150,7 @@ export function PropertySearch({ compact = false }: { compact?: boolean }) {
         }}
       >
         <div
-          className={`overflow-hidden rounded-3xl border border-separator bg-surface ${
+          className={`overflow-hidden rounded-3xl border border-separator bg-white ${
             compact ? "shadow-sm" : "shadow-[0_18px_50px_-28px_rgba(15,23,42,0.28)]"
           }`}
         >
@@ -226,7 +234,7 @@ export function PropertySearch({ compact = false }: { compact?: boolean }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="absolute inset-x-0 top-full z-20 mt-2 origin-top rounded-3xl border border-separator bg-surface p-5 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)]"
+              className="absolute inset-x-0 top-full z-20 mt-2 origin-top rounded-3xl border border-separator bg-white p-5 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)]"
             >
               {activeField === "ubicacion" ? (
                 <LocationFields

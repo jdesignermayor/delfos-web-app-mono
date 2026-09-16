@@ -26,9 +26,9 @@ export type Property = {
   status: "Sobre planos" | "Listo para estrenar" | "Usado";
   /** Hue used to tint the placeholder thumbnail. */
   hue: number;
-  /** Approximate location, used to place the property on the map. */
-  lat: number;
-  lng: number;
+  /** Approximate location, used to place the property on the map. Absent until a pin is set. */
+  lat?: number;
+  lng?: number;
   /** Photo URL. When absent, cards fall back to the tinted placeholder. */
   image?: string;
   /** Gallery photo URLs for the property detail page. Falls back to tinted placeholders when absent. */
@@ -37,6 +37,8 @@ export type Property = {
   description?: string;
   /** Building/unit amenities shown in the "Servicios" section of the detail page. */
   amenities?: string[];
+  /** Complete address of the property. */
+  address?: string;
 };
 
 /** Default map view — roughly the centre of the Aburrá Valley. */
@@ -85,6 +87,7 @@ export const PROPERTIES: Property[] = [
     affordable: false,
     status: "Sobre planos",
     hue: 210,
+    address: "Carrera 43A # 12-56, El Poblado, Medellín, Antioquia",
   },
   {
     slug: "nogal-living",
@@ -103,6 +106,7 @@ export const PROPERTIES: Property[] = [
     affordable: false,
     status: "Listo para estrenar",
     hue: 160,
+    address: "Calle 75 # 52-123, Laureles, Medellín, Antioquia",
   },
   {
     slug: "parques-de-sabaneta",
@@ -121,6 +125,7 @@ export const PROPERTIES: Property[] = [
     affordable: true,
     status: "Sobre planos",
     hue: 32,
+    address: "Avenida Bolívar # 88-45, Sabaneta, Medellín, Antioquia",
   },
   {
     slug: "altos-de-belen",
@@ -139,6 +144,7 @@ export const PROPERTIES: Property[] = [
     affordable: true,
     status: "Listo para estrenar",
     hue: 280,
+    address: "Calle 35 # 65-89, Belén, Medellín, Antioquia",
   },
   {
     slug: "casa-jardin-envigado",

@@ -12,7 +12,7 @@ export default function NewBancoPage() {
       </div>
 
       <EntityForm
-        type="bancos"
+        type="banks"
         backHref="/dashboard/bancos"
         fields={[
           { name: "name", label: "Nombre", required: true },

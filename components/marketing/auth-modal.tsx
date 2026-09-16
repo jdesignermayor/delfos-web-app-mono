@@ -56,6 +56,10 @@ export function AuthModal({ state }: { state: UseOverlayStateReturn }) {
         setErrorField("password");
         return;
       }
+      // Store email in localStorage for future sessions
+      if (typeof window !== "undefined") {
+        localStorage.setItem("last_email", email);
+      }
       state.close();
       if (result.role === "superadmin") {
         router.push("/dashboard");
@@ -76,6 +80,10 @@ export function AuthModal({ state }: { state: UseOverlayStateReturn }) {
         setFormError(result.error);
         setErrorField(result.field ?? null);
         return;
+      }
+      // Store email in localStorage for future sessions
+      if (typeof window !== "undefined") {
+        localStorage.setItem("last_email", email);
       }
       if (result.needsEmailConfirmation) {
         setSuccessMessage("Cuenta creada. Revisa tu correo para confirmarla.");
