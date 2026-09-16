@@ -26,6 +26,16 @@ const NAV_BY_ROLE: Partial<Record<RoleName, NavSection[]>> = {
         { label: "Developers", href: "/dashboard/developers", icon: KeyIcon },
       ],
     },
+    {
+      title: "Configuration",
+      items: [
+        { label: "Constructoras", href: "/dashboard/constructoras", icon: BuildingIcon },
+        { label: "Inmobiliarias", href: "/dashboard/inmobiliarias", icon: BuildingIcon },
+        { label: "Fiducias", href: "/dashboard/fiducias", icon: UsersIcon },
+        { label: "Bancos", href: "/dashboard/bancos", icon: GridIcon },
+        { label: "Zonas comunes", href: "/dashboard/zonas-comunes", icon: BuildingIcon },
+      ],
+    },
   ],
 };
 
