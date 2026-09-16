@@ -4,10 +4,10 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Label, TextArea, TextField } from "@heroui/react";
 
-import { updateEntity, createEntity, type Entity } from "@/app/actions/entities";
+import { updateEntity, createEntity, type Entity, type EntityType } from "@/app/actions/entities";
 
 type EntityFormProps = {
-  type: string;
+  type: EntityType;
   entity?: Entity;
   isEdit?: boolean;
   backHref: string;

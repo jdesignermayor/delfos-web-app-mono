@@ -2,6 +2,13 @@
 
 import { createAdminClient } from "@/supabase/admin";
 
+export type EntityType =
+  | "developers"
+  | "real_estate_agencies"
+  | "trust_companies"
+  | "banks"
+  | "common_areas";
+
 export type Entity = {
   id?: string;
   name: string;
@@ -14,7 +21,7 @@ export type Entity = {
   updated_at?: string;
 };
 
-export async function createEntity(type: string, data: Entity) {
+export async function createEntity(type: EntityType, data: Entity) {
   try {
     const supabase = createAdminClient();
     const insertData: Record<string, unknown> = {
@@ -29,7 +36,7 @@ export async function createEntity(type: string, data: Entity) {
 
     const { data: result, error } = await supabase
       .from(type)
-      .insert([insertData])
+      .insert([insertData] as never)
       .select();
 
     if (error) throw error;
@@ -39,7 +46,7 @@ export async function createEntity(type: string, data: Entity) {
   }
 }
 
-export async function getEntities(type: string) {
+export async function getEntities(type: EntityType) {
   try {
     const supabase = createAdminClient();
     const { data, error } = await supabase
@@ -53,7 +60,7 @@ export async function getEntities(type: string) {
   }
 }
 
-export async function getEntity(type: string, id: string) {
+export async function getEntity(type: EntityType, id: string) {
   try {
     const supabase = createAdminClient();
     const { data, error } = await supabase
@@ -68,7 +75,7 @@ export async function getEntity(type: string, id: string) {
   }
 }
 
-export async function updateEntity(type: string, id: string, data: Partial<Entity>) {
+export async function updateEntity(type: EntityType, id: string, data: Partial<Entity>) {
   try {
     const supabase = createAdminClient();
     const updateData: Record<string, unknown> = {
@@ -84,7 +91,7 @@ export async function updateEntity(type: string, id: string, data: Partial<Entit
 
     const { data: result, error } = await supabase
       .from(type)
-      .update(updateData)
+      .update(updateData as never)
       .eq("id", id)
       .select();
 
@@ -95,7 +102,7 @@ export async function updateEntity(type: string, id: string, data: Partial<Entit
   }
 }
 
-export async function deleteEntity(type: string, id: string) {
+export async function deleteEntity(type: EntityType, id: string) {
   try {
     const supabase = createAdminClient();
     const { error } = await supabase.from(type).delete().eq("id", id);

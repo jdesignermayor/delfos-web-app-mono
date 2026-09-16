@@ -38,6 +38,75 @@ export type Database = {
         }
         Relationships: []
       }
+      banks: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          description: string | null
+          email: string | null
+          id: string
+          name: string
+          nit: string | null
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          nit?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          nit?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      common_areas: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          description: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       developers: {
         Row: {
           address: string
@@ -291,6 +360,42 @@ export type Database = {
           },
         ]
       }
+      real_estate_agencies: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          description: string | null
+          email: string | null
+          id: string
+          name: string
+          nit: string | null
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          nit?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          nit?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       roles: {
         Row: {
           created_at: string | null
@@ -318,54 +423,41 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
+      trust_companies: {
         Row: {
-          assigned_at: string | null
-          assigned_by: string | null
-          expires_at: string | null
+          address: string | null
+          created_at: string | null
+          description: string | null
+          email: string | null
           id: string
-          role_id: string | null
-          user_id: string | null
+          name: string
+          nit: string | null
+          phone: string | null
+          updated_at: string | null
         }
         Insert: {
-          assigned_at?: string | null
-          assigned_by?: string | null
-          expires_at?: string | null
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
           id?: string
-          role_id?: string | null
-          user_id?: string | null
+          name: string
+          nit?: string | null
+          phone?: string | null
+          updated_at?: string | null
         }
         Update: {
-          assigned_at?: string | null
-          assigned_by?: string | null
-          expires_at?: string | null
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
           id?: string
-          role_id?: string | null
-          user_id?: string | null
+          name?: string
+          nit?: string | null
+          phone?: string | null
+          updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_assigned_by_fkey"
-            columns: ["assigned_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_roles_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "roles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_roles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       users: {
         Row: {
@@ -415,6 +507,10 @@ export type Database = {
         Returns: boolean
       }
       get_user_role: { Args: { user_uuid: string }; Returns: string }
+      migrate_typologies_to_tower_format: {
+        Args: { old_typologies: Json; tower_count: number }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
