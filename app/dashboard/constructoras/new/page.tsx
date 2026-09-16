@@ -12,7 +12,7 @@ export default function NewConstructoraPage() {
       </div>
 
       <EntityForm
-        type="builders"
+        type="developers"
         backHref="/dashboard/constructoras"
         fields={[
           { name: "name", label: "Nombre", required: true },

@@ -8,7 +8,7 @@ import { getEntities } from "@/app/actions/entities";
 export const metadata: Metadata = { title: "Constructoras" };
 
 export default async function ConstructorasPage() {
-  const result = await getEntities("builders");
+  const result = await getEntities("developers");
   const constructoras = result.success ? (result.data as any[]) : [];
 
   return (

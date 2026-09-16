@@ -1,5 +1,6 @@
--- Create builders table (constructoras)
-CREATE TABLE IF NOT EXISTS builders (
+-- Note: developers table may already exist. If so, skip this section.
+-- Create developers table (constructoras)
+CREATE TABLE IF NOT EXISTS developers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   nit TEXT UNIQUE,
@@ -63,8 +64,8 @@ CREATE TABLE IF NOT EXISTS common_areas (
 );
 
 -- Create indexes for better query performance
-CREATE INDEX idx_builders_name ON builders(name);
-CREATE INDEX idx_builders_created_at ON builders(created_at);
+CREATE INDEX IF NOT EXISTS idx_developers_name ON developers(name);
+CREATE INDEX IF NOT EXISTS idx_developers_created_at ON developers(created_at);
 
 CREATE INDEX idx_real_estate_agencies_name ON real_estate_agencies(name);
 CREATE INDEX idx_real_estate_agencies_created_at ON real_estate_agencies(created_at);
@@ -79,14 +80,14 @@ CREATE INDEX idx_common_areas_name ON common_areas(name);
 CREATE INDEX idx_common_areas_created_at ON common_areas(created_at);
 
 -- Enable RLS (Row Level Security)
-ALTER TABLE builders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS developers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE real_estate_agencies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trust_companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE banks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE common_areas ENABLE ROW LEVEL SECURITY;
 
 -- Create policies to allow superadmin to manage these tables
-CREATE POLICY "Allow superadmin full access to builders" ON builders
+CREATE POLICY "Allow superadmin full access to developers" ON developers
   USING (true)
   WITH CHECK (true);
 
