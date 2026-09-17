@@ -169,21 +169,6 @@ const BOOLEAN_OPTIONS = [
   { value: "No", label: "No" },
 ];
 
-const BANK_OPTIONS = [
-  { value: "", label: "Selecciona un banco" },
-  { value: "Bancolombia", label: "Bancolombia" },
-  { value: "Davivienda", label: "Davivienda" },
-  { value: "BBVA", label: "BBVA" },
-  { value: "Banco de Bogotá", label: "Banco de Bogotá" },
-  { value: "Banco Popular", label: "Banco Popular" },
-  { value: "Banco Caja Social", label: "Banco Caja Social" },
-  { value: "Scotiabank Colpatria", label: "Scotiabank Colpatria" },
-  { value: "Banco AV Villas", label: "Banco AV Villas" },
-  { value: "Itaú", label: "Itaú" },
-  { value: "Banco Agrario", label: "Banco Agrario" },
-  { value: "Otro", label: "Otro" },
-];
-
 const CITY_OPTIONS = [
   "Medellín",
   "Envigado",
@@ -197,7 +182,12 @@ const CITY_OPTIONS = [
   "Bogotá",
 ];
 
-function buildSteps(developers: { id: number; name: string }[]): StepConfig[] {
+function buildSteps(
+  developers: { id: number; name: string }[],
+  realEstateAgencies: { id: string; name: string }[],
+  banks: { id: string; name: string }[],
+  trustCompanies: { id: string; name: string }[],
+): StepConfig[] {
   return [
     {
       key: "macro",
@@ -289,14 +279,33 @@ function buildSteps(developers: { id: number; name: string }[]): StepConfig[] {
             },
             { name: "towerName", label: "Torre", kind: "text" },
             { name: "deliveryDate", label: "Fecha de entrega", kind: "month" },
-            { name: "constructionCompany", label: "Gerencia", kind: "text" },
+            {
+              name: "constructionCompany",
+              label: "Gerencia",
+              kind: "select",
+              options: [
+                { value: "", label: "Selecciona una inmobiliaria" },
+                ...realEstateAgencies.map((a) => ({ value: a.name, label: a.name })),
+              ],
+            },
             {
               name: "constructionBank",
               label: "Banco constructor",
               kind: "select",
-              options: BANK_OPTIONS,
+              options: [
+                { value: "", label: "Selecciona un banco" },
+                ...banks.map((b) => ({ value: b.name, label: b.name })),
+              ],
             },
-            { name: "trustCompany", label: "Fiducia", kind: "text" },
+            {
+              name: "trustCompany",
+              label: "Fiducia",
+              kind: "select",
+              options: [
+                { value: "", label: "Selecciona una fiducia" },
+                ...trustCompanies.map((t) => ({ value: t.name, label: t.name })),
+              ],
+            },
           ],
         },
       ],
@@ -360,10 +369,16 @@ function fieldClassName() {
 
 export function PropertyForm({
   developers,
+  realEstateAgencies,
+  banks,
+  trustCompanies,
   property,
   onSaved,
 }: {
   developers: { id: number; name: string }[];
+  realEstateAgencies: { id: string; name: string }[];
+  banks: { id: string; name: string }[];
+  trustCompanies: { id: string; name: string }[];
   /** When provided, the form edits this property instead of creating a new one. */
   property?: PropertyRecord;
   /** Called after a successful edit, instead of the default create-mode redirect. */
@@ -372,7 +387,7 @@ export function PropertyForm({
   const router = useRouter();
   const toast = useToast();
   const isEditing = Boolean(property);
-  const steps = buildSteps(developers);
+  const steps = buildSteps(developers, realEstateAgencies, banks, trustCompanies);
   const formId = useId();
   const [stepIndex, setStepIndex] = useState(0);
   const [values, setValues] = useState<PropertyFormValues>(() =>

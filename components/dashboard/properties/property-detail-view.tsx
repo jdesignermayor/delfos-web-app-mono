@@ -232,9 +232,15 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
 export function PropertyDetailView({
   property,
   developers,
+  realEstateAgencies,
+  banks,
+  trustCompanies,
 }: {
   property: PropertyRecord;
   developers: { id: number; name: string }[];
+  realEstateAgencies: { id: string; name: string }[];
+  banks: { id: string; name: string }[];
+  trustCompanies: { id: string; name: string }[];
 }) {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -273,6 +279,9 @@ export function PropertyDetailView({
       {isEditing ? (
         <PropertyForm
           developers={developers}
+          realEstateAgencies={realEstateAgencies}
+          banks={banks}
+          trustCompanies={trustCompanies}
           property={property}
           onSaved={() => setIsEditing(false)}
         />

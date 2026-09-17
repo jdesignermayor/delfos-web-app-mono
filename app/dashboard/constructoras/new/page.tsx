@@ -17,9 +17,9 @@ export default function NewConstructoraPage() {
         fields={[
           { name: "name", label: "Nombre", required: true },
           { name: "nit", label: "NIT", required: false },
-          { name: "phone", label: "Teléfono", type: "phone", required: false },
+          { name: "phone", label: "Teléfono", type: "phone", required: true },
           { name: "email", label: "Email", type: "email", required: false },
-          { name: "address", label: "Dirección", required: false },
+          { name: "address", label: "Dirección", required: true },
           { name: "description", label: "Descripción", type: "textarea", required: false },
         ]}
       />
