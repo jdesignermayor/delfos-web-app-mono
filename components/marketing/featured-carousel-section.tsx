@@ -1,10 +1,10 @@
 import { PropertyCarousel } from "@/components/marketing/property-carousel";
 import { toProperty } from "@/components/marketing/property-adapter";
 import { PROPERTIES, type Property } from "@/components/marketing/properties";
-import { createClient } from "@/supabase/server";
+import { createPublicClient } from "@/supabase/public";
 
 async function getFeaturedProperties(): Promise<Property[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("properties")
     .select("*")

@@ -1,5 +1,5 @@
 import type { Property, PropertyType } from "@/components/marketing/properties";
-import { createClient } from "@/supabase/server";
+import { createPublicClient } from "@/supabase/public";
 import type { Tables } from "@/supabase/types";
 
 const TYPE_BY_PROPERTY_TYPE: Record<string, PropertyType> = {
@@ -44,7 +44,7 @@ export function toProperty(row: Tables<"properties">): Property {
 
 /** Looks up a single real property by its public UUID (used in `/propiedades/[slug]` URLs). */
 export async function getDbPropertyByUuid(uuid: string): Promise<Property | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("properties")
     .select("*")
