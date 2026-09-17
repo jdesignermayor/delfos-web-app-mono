@@ -15,6 +15,7 @@ import {
 import { existingImage, MultiImagePicker, type PickedImage } from "@/components/multi-image-picker";
 import { LocationPicker } from "@/components/location-picker";
 import { TypologiesEditor, type Typology } from "@/components/dashboard/properties/typologies-editor";
+import { TagMultiSelect } from "@/components/dashboard/tag-multi-select";
 import type { Tables } from "@/supabase/types";
 
 export type PropertyRecord = Tables<"properties"> & {
@@ -88,6 +89,8 @@ const TEXT_FIELDS: (keyof PropertyFormValues)[] = [
   "towerName",
   "towerCount",
   "constructionCompany",
+  "builderId",
+  "sellerId",
   "constructionBank",
   "trustCompany",
   "price",
@@ -135,6 +138,8 @@ function toInitialValues(property: PropertyRecord): PropertyFormValues {
     towerName: property.tower_name ?? "",
     towerCount: str(property.tower_count),
     constructionCompany: property.construction_company ?? "",
+    builderId: str(property.builder_id),
+    sellerId: str(property.seller_id),
     constructionBank: property.construction_bank ?? "",
     trustCompany: property.trust_company ?? "",
     price: property.price,
@@ -185,7 +190,6 @@ const CITY_OPTIONS = [
 function buildSteps(
   developers: { id: number; name: string }[],
   realEstateAgencies: { id: string; name: string }[],
-  banks: { id: string; name: string }[],
   trustCompanies: { id: string; name: string }[],
 ): StepConfig[] {
   return [
@@ -284,17 +288,27 @@ function buildSteps(
               label: "Gerencia",
               kind: "select",
               options: [
-                { value: "", label: "Selecciona una inmobiliaria" },
+                { value: "", label: "Selecciona una inmobiliaria o constructora" },
                 ...realEstateAgencies.map((a) => ({ value: a.name, label: a.name })),
+                ...developers.map((d) => ({ value: d.name, label: d.name })),
               ],
             },
             {
-              name: "constructionBank",
-              label: "Banco constructor",
+              name: "builderId",
+              label: "Quién construye",
               kind: "select",
               options: [
-                { value: "", label: "Selecciona un banco" },
-                ...banks.map((b) => ({ value: b.name, label: b.name })),
+                { value: "", label: "Selecciona una constructora" },
+                ...developers.map((d) => ({ value: String(d.id), label: d.name })),
+              ],
+            },
+            {
+              name: "sellerId",
+              label: "Quién vende",
+              kind: "select",
+              options: [
+                { value: "", label: "Selecciona una constructora" },
+                ...developers.map((d) => ({ value: String(d.id), label: d.name })),
               ],
             },
             {
@@ -370,15 +384,15 @@ function fieldClassName() {
 export function PropertyForm({
   developers,
   realEstateAgencies,
-  banks,
   trustCompanies,
+  commonAreas,
   property,
   onSaved,
 }: {
   developers: { id: number; name: string }[];
   realEstateAgencies: { id: string; name: string }[];
-  banks: { id: string; name: string }[];
   trustCompanies: { id: string; name: string }[];
+  commonAreas: { id: string; name: string }[];
   /** When provided, the form edits this property instead of creating a new one. */
   property?: PropertyRecord;
   /** Called after a successful edit, instead of the default create-mode redirect. */
@@ -387,7 +401,7 @@ export function PropertyForm({
   const router = useRouter();
   const toast = useToast();
   const isEditing = Boolean(property);
-  const steps = buildSteps(developers, realEstateAgencies, banks, trustCompanies);
+  const steps = buildSteps(developers, realEstateAgencies, trustCompanies);
   const formId = useId();
   const [stepIndex, setStepIndex] = useState(0);
   const [values, setValues] = useState<PropertyFormValues>(() =>
@@ -830,6 +844,19 @@ export function PropertyForm({
 
             </div>
           ))}
+
+          {step.key === "micro" ? (
+            <div className="flex flex-col gap-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted">
+                Zonas comunes
+              </p>
+              <TagMultiSelect
+                options={commonAreas.map((c) => ({ id: c.id, name: c.name }))}
+                selected={amenities}
+                onChange={setAmenities}
+              />
+            </div>
+          ) : null}
         </div>
       </Card>
 

@@ -213,6 +213,7 @@ export type Database = {
           area: string
           bathrooms: number
           bedrooms: number
+          builder_id: number | null
           city: string | null
           commune: string | null
           construction_bank: string | null
@@ -243,6 +244,7 @@ export type Database = {
           sales_room_email: string | null
           sales_room_hours: string | null
           sales_room_phone: string | null
+          seller_id: number | null
           separation_amount: string | null
           stratum: number
           study: string | null
@@ -264,6 +266,7 @@ export type Database = {
           area: string
           bathrooms: number
           bedrooms: number
+          builder_id?: number | null
           city?: string | null
           commune?: string | null
           construction_bank?: string | null
@@ -294,6 +297,7 @@ export type Database = {
           sales_room_email?: string | null
           sales_room_hours?: string | null
           sales_room_phone?: string | null
+          seller_id?: number | null
           separation_amount?: string | null
           stratum: number
           study?: string | null
@@ -315,6 +319,7 @@ export type Database = {
           area?: string
           bathrooms?: number
           bedrooms?: number
+          builder_id?: number | null
           city?: string | null
           commune?: string | null
           construction_bank?: string | null
@@ -345,6 +350,7 @@ export type Database = {
           sales_room_email?: string | null
           sales_room_hours?: string | null
           sales_room_phone?: string | null
+          seller_id?: number | null
           separation_amount?: string | null
           stratum?: number
           study?: string | null
@@ -361,8 +367,22 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "properties_builder_id_fkey"
+            columns: ["builder_id"]
+            isOneToOne: false
+            referencedRelation: "developers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "properties_developer_id_fkey"
             columns: ["developer_id"]
+            isOneToOne: false
+            referencedRelation: "developers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_seller_id_fkey"
+            columns: ["seller_id"]
             isOneToOne: false
             referencedRelation: "developers"
             referencedColumns: ["id"]

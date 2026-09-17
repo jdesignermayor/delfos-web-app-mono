@@ -31,6 +31,8 @@ export type CreatePropertyInput = {
   towerName: string;
   towerCount: string;
   constructionCompany: string;
+  builderId: string;
+  sellerId: string;
   constructionBank: string;
   trustCompany: string;
   price: string;
@@ -127,6 +129,8 @@ function buildPropertyRow(input: CreatePropertyInput) {
     tower_name: input.towerName.trim() || null,
     tower_count: input.towerCount ? Number(input.towerCount) : null,
     construction_company: input.constructionCompany.trim() || null,
+    builder_id: input.builderId ? Number(input.builderId) : null,
+    seller_id: input.sellerId ? Number(input.sellerId) : null,
     construction_bank: input.constructionBank.trim() || null,
     trust_company: input.trustCompany.trim() || null,
     credit_amount: input.creditAmount.trim() || null,
@@ -185,7 +189,7 @@ export async function getPropertyById(id: number) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("properties")
-    .select("*, developers(id, name, address, phone)")
+    .select("*, developers!developer_id(id, name, address, phone)")
     .eq("id", id)
     .maybeSingle();
 

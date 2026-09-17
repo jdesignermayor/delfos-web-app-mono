@@ -9,13 +9,17 @@ export const metadata: Metadata = {
 
 export default async function NewPropertyPage() {
   const supabase = await createClient();
-  const [{ data: developers }, { data: realEstateAgencies }, { data: banks }, { data: trustCompanies }] =
-    await Promise.all([
-      supabase.from("developers").select("id, name").order("name"),
-      supabase.from("real_estate_agencies").select("id, name").order("name"),
-      supabase.from("banks").select("id, name").order("name"),
-      supabase.from("trust_companies").select("id, name").order("name"),
-    ]);
+  const [
+    { data: developers },
+    { data: realEstateAgencies },
+    { data: trustCompanies },
+    { data: commonAreas },
+  ] = await Promise.all([
+    supabase.from("developers").select("id, name").order("name"),
+    supabase.from("real_estate_agencies").select("id, name").order("name"),
+    supabase.from("trust_companies").select("id, name").order("name"),
+    supabase.from("common_areas").select("id, name").order("name"),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -29,8 +33,8 @@ export default async function NewPropertyPage() {
       <PropertyForm
         developers={developers ?? []}
         realEstateAgencies={realEstateAgencies ?? []}
-        banks={banks ?? []}
         trustCompanies={trustCompanies ?? []}
+        commonAreas={commonAreas ?? []}
       />
     </div>
   );

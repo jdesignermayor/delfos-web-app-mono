@@ -233,14 +233,14 @@ export function PropertyDetailView({
   property,
   developers,
   realEstateAgencies,
-  banks,
   trustCompanies,
+  commonAreas,
 }: {
   property: PropertyRecord;
   developers: { id: number; name: string }[];
   realEstateAgencies: { id: string; name: string }[];
-  banks: { id: string; name: string }[];
   trustCompanies: { id: string; name: string }[];
+  commonAreas: { id: string; name: string }[];
 }) {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -280,8 +280,8 @@ export function PropertyDetailView({
         <PropertyForm
           developers={developers}
           realEstateAgencies={realEstateAgencies}
-          banks={banks}
           trustCompanies={trustCompanies}
+          commonAreas={commonAreas}
           property={property}
           onSaved={() => setIsEditing(false)}
         />

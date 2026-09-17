@@ -20,7 +20,7 @@ export default async function PropertiesPage() {
   const supabase = await createClient();
   const { data: properties, error } = await supabase
     .from("properties")
-    .select("*, developers(id, name)")
+    .select("*, developers!developer_id(id, name)")
     .order("created_at", { ascending: false });
 
   return (

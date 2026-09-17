@@ -22,14 +22,19 @@ export default async function PropertyDetailPage({
   if (!Number.isInteger(numericId)) notFound();
 
   const supabase = await createClient();
-  const [property, developersResult, realEstateAgenciesResult, banksResult, trustCompaniesResult] =
-    await Promise.all([
-      getPropertyById(numericId),
-      supabase.from("developers").select("id, name").order("name"),
-      supabase.from("real_estate_agencies").select("id, name").order("name"),
-      supabase.from("banks").select("id, name").order("name"),
-      supabase.from("trust_companies").select("id, name").order("name"),
-    ]);
+  const [
+    property,
+    developersResult,
+    realEstateAgenciesResult,
+    trustCompaniesResult,
+    commonAreasResult,
+  ] = await Promise.all([
+    getPropertyById(numericId),
+    supabase.from("developers").select("id, name").order("name"),
+    supabase.from("real_estate_agencies").select("id, name").order("name"),
+    supabase.from("trust_companies").select("id, name").order("name"),
+    supabase.from("common_areas").select("id, name").order("name"),
+  ]);
 
   if (!property) notFound();
 
@@ -38,8 +43,8 @@ export default async function PropertyDetailPage({
       property={property}
       developers={developersResult.data ?? []}
       realEstateAgencies={realEstateAgenciesResult.data ?? []}
-      banks={banksResult.data ?? []}
       trustCompanies={trustCompaniesResult.data ?? []}
+      commonAreas={commonAreasResult.data ?? []}
     />
   );
 }
