@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonVariants, Card } from "@heroui/react";
+import { Plus } from "lucide-react";
 
 import { createClient } from "@/supabase/server";
+import { ExportPropertiesButton } from "@/components/dashboard/properties/export-properties-button";
 import { LocationCell } from "@/components/dashboard/properties/location-cell";
 
 export const metadata: Metadata = {
@@ -27,17 +29,21 @@ export default async function PropertiesPage() {
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Properties</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Propiedades</h1>
           <p className="mt-1 text-sm text-muted">
             {properties?.length ?? 0} propiedades en el sistema.
           </p>
         </div>
-        <Link
-          href="/dashboard/properties/new"
-          className={buttonVariants({ variant: "primary", size: "sm" })}
-        >
-          Nueva propiedad
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExportPropertiesButton />
+          <Link
+            href="/dashboard/properties/new"
+            className={buttonVariants({ variant: "primary", size: "sm" })}
+          >
+            <Plus className="size-4" />
+            Nueva propiedad
+          </Link>
+        </div>
       </div>
 
       <Card className="p-0">

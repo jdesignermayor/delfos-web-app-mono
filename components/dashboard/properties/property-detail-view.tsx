@@ -6,6 +6,7 @@ import { Button, Card, Chip } from "@heroui/react";
 
 import { ArrowRightIcon } from "@/components/icons";
 import { PropertyForm, type PropertyRecord } from "@/components/dashboard/properties/property-form";
+import { parseAmenities } from "@/lib/amenities";
 
 const currency = new Intl.NumberFormat("es-CO", {
   style: "currency",
@@ -24,7 +25,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function PropertyReadView({ property }: { property: PropertyRecord }) {
-  const amenities = Array.isArray(property.amenities) ? (property.amenities as string[]) : [];
+  const amenities = parseAmenities(property.amenities);
   const typologies = Array.isArray(property.typologies)
     ? (property.typologies as {
         name: string;
@@ -187,8 +188,8 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
           <h2 className="text-base font-semibold">Amenidades</h2>
           <div className="mt-4 flex flex-wrap gap-2">
             {amenities.map((amenity) => (
-              <Chip key={amenity} variant="soft" size="sm">
-                {amenity}
+              <Chip key={amenity.id || amenity.name} variant="soft" size="sm">
+                {amenity.name}
               </Chip>
             ))}
           </div>

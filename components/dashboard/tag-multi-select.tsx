@@ -8,24 +8,31 @@ export function TagMultiSelect({
   onChange,
 }: {
   options: Option[];
-  selected: string[];
-  onChange: (next: string[]) => void;
+  selected: Option[];
+  onChange: (next: Option[]) => void;
 }) {
-  function toggle(name: string) {
+  function isSelected(option: Option) {
+    // Legacy selections may lack an id, so fall back to matching by name.
+    return selected.some((s) => (s.id ? s.id === option.id : s.name === option.name));
+  }
+
+  function toggle(option: Option) {
     onChange(
-      selected.includes(name) ? selected.filter((s) => s !== name) : [...selected, name],
+      isSelected(option)
+        ? selected.filter((s) => (s.id ? s.id !== option.id : s.name !== option.name))
+        : [...selected, { id: option.id, name: option.name }],
     );
   }
 
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((o) => {
-        const active = selected.includes(o.name);
+        const active = isSelected(o);
         return (
           <button
             key={o.id}
             type="button"
-            onClick={() => toggle(o.name)}
+            onClick={() => toggle(o)}
             aria-pressed={active}
             className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
               active

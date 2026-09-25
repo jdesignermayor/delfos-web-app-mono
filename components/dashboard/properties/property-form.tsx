@@ -16,6 +16,7 @@ import { existingImage, MultiImagePicker, type PickedImage } from "@/components/
 import { LocationPicker } from "@/components/location-picker";
 import { TypologiesEditor, type Typology } from "@/components/dashboard/properties/typologies-editor";
 import { TagMultiSelect } from "@/components/dashboard/tag-multi-select";
+import { type Amenity, parseAmenities } from "@/lib/amenities";
 import type { Tables } from "@/supabase/types";
 
 export type PropertyRecord = Tables<"properties"> & {
@@ -412,9 +413,11 @@ export function PropertyForm({
       ? { lat: property.latitude, lng: property.longitude }
       : null,
   );
-  const [amenities, setAmenities] = useState<string[]>(() =>
-    Array.isArray(property?.amenities) ? (property.amenities as string[]) : [],
-  );
+  const [amenities, setAmenities] = useState<Amenity[]>(() => {
+    const parsed = parseAmenities(property?.amenities);
+    // Resolve ids for legacy name-only entries so they get saved in the new shape.
+    return parsed.map((a) => (a.id ? a : (commonAreas.find((c) => c.name === a.name) ?? a)));
+  });
   const [towerTypologies, setTowerTypologies] = useState<Record<string, Typology[]>>(() => {
     if (property?.typologies && typeof property.typologies === 'object' && !Array.isArray(property.typologies)) {
       return property.typologies as Record<string, Typology[]>;
@@ -579,8 +582,19 @@ export function PropertyForm({
 
       if (!result.success) {
         setError(result.error);
+        toast.error(
+          isEditing ? "No se pudo actualizar la propiedad" : "No se pudo crear la propiedad",
+          result.error,
+        );
         return;
       }
+
+      toast.success(
+        isEditing ? "Propiedad actualizada" : "Propiedad creada",
+        isEditing
+          ? "Los cambios se han guardado correctamente"
+          : "La propiedad se ha agregado correctamente",
+      );
 
       if (isEditing && property) {
         router.refresh();

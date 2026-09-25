@@ -20,9 +20,9 @@ const NAV_BY_ROLE: Partial<Record<RoleName, NavSection[]>> = {
     {
       title: "Overview",
       items: [
-        { label: "Dashboard", href: "/dashboard", icon: GridIcon },
-        { label: "Properties management", href: "/dashboard/properties", icon: BuildingIcon },
-        { label: "User management", href: "/dashboard/users", icon: UsersIcon },
+        { label: "Inicio", href: "/dashboard", icon: GridIcon },
+        { label: "Administrar propiedades", href: "/dashboard/properties", icon: BuildingIcon },
+        { label: "Administrar usuarios", href: "/dashboard/users", icon: UsersIcon },
       ],
     },
     {
