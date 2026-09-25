@@ -23,8 +23,14 @@ type SearchModeContextValue = {
 
 const SearchModeContext = createContext<SearchModeContextValue | null>(null);
 
-export function SearchModeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<SearchMode>("comprar");
+export function SearchModeProvider({
+  children,
+  initialMode = "comprar",
+}: {
+  children: ReactNode;
+  initialMode?: SearchMode;
+}) {
+  const [mode, setMode] = useState<SearchMode>(initialMode);
   const heroSearchRef = useRef<HTMLDivElement | null>(null);
   const navbarRef = useRef<HTMLElement | null>(null);
   return (

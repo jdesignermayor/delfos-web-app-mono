@@ -1,4 +1,5 @@
 import { SiteNavbar } from "@/components/marketing/site-navbar";
+import { getCurrentUser } from "@/supabase/roles";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SearchModeProvider } from "@/components/marketing/search-mode-context";
 import { HeroSection } from "@/components/marketing/hero-section";
@@ -16,7 +17,7 @@ export default function LandingPage() {
       style={{ colorScheme: "light" }}
     >
       <SearchModeProvider>
-        <SiteNavbar />
+        <SiteNavbar userPromise={getCurrentUser()} />
 
         <main className="flex-1">
           <HeroSection />

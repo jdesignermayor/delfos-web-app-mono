@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, use, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button, buttonVariants, useOverlayState } from "@heroui/react";
+
+import { signOutAccount } from "@/app/actions/auth";
 
 import { CloseIcon, LogoMark, MenuIcon } from "@/components/icons";
 import { HomeIcon } from "@/components/icons/animated/home";
@@ -15,6 +17,7 @@ import { MiniSearchTrigger } from "@/components/marketing/mini-search-trigger";
 import { MobileLocationButton } from "@/components/marketing/mobile-location-button";
 import { PropertySearch } from "@/components/marketing/property-search";
 import { SEARCH_MODES, useSearchMode } from "@/components/marketing/search-mode-context";
+import type { CurrentUser } from "@/supabase/roles";
 
 const TAB_ICONS = {
   comprar: HomeIcon,
@@ -22,7 +25,69 @@ const TAB_ICONS = {
   proyecto: MapPinHouseIcon,
 } as const;
 
-export function SiteNavbar({ alwaysShowSearch = false }: { alwaysShowSearch?: boolean }) {
+function AccountSkeleton({ fullWidth = false }: { fullWidth?: boolean }) {
+  return (
+    <div
+      aria-hidden
+      className={`h-8 animate-pulse rounded-lg bg-surface-secondary ${fullWidth ? "w-full" : "w-20"}`}
+    />
+  );
+}
+
+/** Resolves the session promise streamed from the server; suspends until it settles. */
+function AccountActions({
+  userPromise,
+  fullWidth = false,
+  onLogin,
+  onNavigate,
+}: {
+  userPromise: Promise<CurrentUser | null>;
+  fullWidth?: boolean;
+  onLogin: () => void;
+  onNavigate?: () => void;
+}) {
+  const user = use(userPromise);
+  const [isPending, startTransition] = useTransition();
+
+  if (!user) {
+    return (
+      <Button variant="ghost" size="sm" fullWidth={fullWidth} onPress={onLogin}>
+        Ingresar
+      </Button>
+    );
+  }
+
+  return (
+    <>
+      {user.role === "superadmin" ? (
+        <Link
+          href="/dashboard"
+          onClick={onNavigate}
+          className={buttonVariants({ variant: "ghost", size: "sm", fullWidth })}
+        >
+          Dashboard
+        </Link>
+      ) : null}
+      <Button
+        variant="outline"
+        size="sm"
+        fullWidth={fullWidth}
+        isDisabled={isPending}
+        onPress={() => startTransition(async () => { await signOutAccount(); })}
+      >
+        {isPending ? "Saliendo…" : "Cerrar sesión"}
+      </Button>
+    </>
+  );
+}
+
+export function SiteNavbar({
+  alwaysShowSearch = false,
+  userPromise,
+}: {
+  alwaysShowSearch?: boolean;
+  userPromise: Promise<CurrentUser | null>;
+}) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -142,9 +207,9 @@ export function SiteNavbar({ alwaysShowSearch = false }: { alwaysShowSearch?: bo
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="sm" onPress={authModal.open}>
-            Ingresar
-          </Button>
+          <Suspense fallback={<AccountSkeleton />}>
+            <AccountActions userPromise={userPromise} onLogin={authModal.open} />
+          </Suspense>
         </div>
 
         <div className="col-start-3 flex items-center gap-2 md:hidden">
@@ -216,17 +281,17 @@ export function SiteNavbar({ alwaysShowSearch = false }: { alwaysShowSearch?: bo
       {open ? (
         <div className="border-t border-separator bg-background px-4 py-4 md:hidden">
           <div className="flex flex-col gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              fullWidth
-              onPress={() => {
-                setOpen(false);
-                authModal.open();
-              }}
-            >
-              Ingresar
-            </Button>
+            <Suspense fallback={<AccountSkeleton fullWidth />}>
+              <AccountActions
+                userPromise={userPromise}
+                fullWidth
+                onLogin={() => {
+                  setOpen(false);
+                  authModal.open();
+                }}
+                onNavigate={() => setOpen(false)}
+              />
+            </Suspense>
             <Link
               href="/dashboard"
               onClick={() => setOpen(false)}

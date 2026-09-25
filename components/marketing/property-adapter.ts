@@ -20,6 +20,7 @@ export function toProperty(row: Tables<"properties">): Property {
   return {
     slug: row.uuid,
     title: row.title,
+    projectName: row.project_name ?? undefined,
     neighborhood: row.neighborhood ?? row.commune ?? row.city ?? "",
     city: row.city ?? "",
     operation: "comprar",
@@ -38,7 +39,21 @@ export function toProperty(row: Tables<"properties">): Property {
     images,
     description: row.description || undefined,
     amenities: amenities.length ? amenities : undefined,
+    address: row.address || undefined,
+    stratum: row.stratum || undefined,
   };
+}
+
+/** Fetches every real property from Supabase, newest first. */
+export async function getDbProperties(): Promise<Property[]> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+  return data.map(toProperty);
 }
 
 /** Looks up a single real property by its public UUID (used in `/propiedades/[slug]` URLs). */

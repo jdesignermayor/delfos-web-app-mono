@@ -5,7 +5,7 @@ import Link from "next/link";
 import { buttonVariants } from "@heroui/react";
 
 import { PropertyMap } from "@/components/marketing/property-map";
-import { PropertyCard } from "@/components/marketing/property-card";
+import { PropertyListingCard } from "@/components/marketing/map-property-popup";
 import { ArrowRightIcon, SearchIcon } from "@/components/icons";
 import type { Property } from "@/components/marketing/properties";
 
@@ -13,12 +13,7 @@ export function SearchResults({ results }: { results: Property[] }) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
 
   return (
-    <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[1.3fr_1fr] lg:overflow-hidden">
-      {/* Map */}
-      <div className="hidden lg:block lg:h-full">
-        <PropertyMap results={results} activeSlug={activeSlug} onActivate={setActiveSlug} />
-      </div>
-
+    <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr_1fr] xl:grid-cols-[1.1fr_1fr] lg:overflow-hidden">
       {/* List */}
       <div className="lg:h-full lg:min-h-0 lg:overflow-y-auto">
         <div className="px-4 py-5 sm:px-5">
@@ -29,11 +24,12 @@ export function SearchResults({ results }: { results: Property[] }) {
           </p>
 
           {results.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3">
               {results.map((property) => (
-                <PropertyCard
+                <PropertyListingCard
                   key={property.slug}
                   property={property}
+                  variant="list"
                   active={property.slug === activeSlug}
                   onActivate={() => setActiveSlug(property.slug)}
                   onDeactivate={() => setActiveSlug(null)}
@@ -61,6 +57,11 @@ export function SearchResults({ results }: { results: Property[] }) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Map */}
+      <div className="hidden lg:block lg:h-full">
+        <PropertyMap results={results} activeSlug={activeSlug} onActivate={setActiveSlug} />
       </div>
     </div>
   );

@@ -10,6 +10,8 @@ export type PropertyType = "apartamento" | "casa" | "apartaestudio" | "proyecto"
 export type Property = {
   slug: string;
   title: string;
+  /** Development / project name, when the listing belongs to one. */
+  projectName?: string;
   neighborhood: string;
   city: string;
   operation: Operation;
@@ -39,6 +41,8 @@ export type Property = {
   amenities?: string[];
   /** Complete address of the property. */
   address?: string;
+  /** Socioeconomic stratum (estrato 1–6). */
+  stratum?: number;
 };
 
 /** Default map view — roughly the centre of the Aburrá Valley. */
@@ -311,12 +315,15 @@ export function getPropertyBySlug(slug: string): Property | undefined {
   return PROPERTIES.find((property) => property.slug === slug);
 }
 
-export function filterProperties(filters: PropertyFilters): Property[] {
+export function filterProperties(
+  filters: PropertyFilters,
+  source: Property[] = PROPERTIES,
+): Property[] {
   const query = filters.ubicacion?.trim().toLowerCase();
   const minBeds = filters.habitaciones ? Number.parseInt(filters.habitaciones, 10) : 0;
   const budgetCap = filters.presupuesto ? BUDGET_MAX[filters.presupuesto] : undefined;
 
-  return PROPERTIES.filter((property) => {
+  return source.filter((property) => {
     if (filters.operacion && property.operation !== filters.operacion) return false;
     if (filters.tipo && property.type !== filters.tipo) return false;
     if (filters.asequible === "si" && !property.affordable) return false;

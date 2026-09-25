@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 
-import { SearchTopbar } from "@/components/marketing/search-topbar";
+import { SiteNavbar } from "@/components/marketing/site-navbar";
+import { SearchModeProvider } from "@/components/marketing/search-mode-context";
 import { SearchFilters } from "@/components/marketing/search-filters";
 import { SearchResults } from "@/components/marketing/search-results";
 import {
   filterProperties,
   type PropertyFilters,
 } from "@/components/marketing/properties";
+import { getDbProperties } from "@/components/marketing/property-adapter";
+import { getCurrentUser } from "@/supabase/roles";
 
 export const metadata: Metadata = {
   title: "Buscar propiedades",
@@ -33,16 +36,18 @@ export default async function SearchPage({
     asequible: first(params.asequible),
   };
 
-  const results = filterProperties(filters);
+  const results = filterProperties(filters, await getDbProperties());
 
   return (
     <div
       className="light flex min-h-[100dvh] flex-col bg-background text-foreground lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden"
       style={{ colorScheme: "light" }}
     >
-      <SearchTopbar />
-      <SearchFilters filters={filters} />
-      <SearchResults results={results} />
+      <SearchModeProvider initialMode={filters.operacion === "arrendar" ? "arrendar" : "comprar"}>
+        <SiteNavbar alwaysShowSearch userPromise={getCurrentUser()} />
+        <SearchFilters filters={filters} />
+        <SearchResults results={results} />
+      </SearchModeProvider>
     </div>
   );
 }

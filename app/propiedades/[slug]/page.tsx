@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { BathIcon, BedIcon, CarIcon, RulerIcon } from "@/components/icons";
 import { SiteNavbar } from "@/components/marketing/site-navbar";
+import { getCurrentUser } from "@/supabase/roles";
 import { SearchModeProvider } from "@/components/marketing/search-mode-context";
 import { getDbPropertyByUuid } from "@/components/marketing/property-adapter";
 import {
@@ -79,7 +80,7 @@ export default async function PropertyDetailPage({
 
   return (
     <SearchModeProvider>
-      <SiteNavbar alwaysShowSearch />
+      <SiteNavbar alwaysShowSearch userPromise={getCurrentUser()} />
 
       <main className="w-full bg-white">
         <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
