@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/supabase/admin";
 import { createClient } from "@/supabase/server";
+import type { Amenity } from "@/lib/amenities";
 import type { Typology } from "@/components/dashboard/properties/typologies-editor";
 
 export type CreatePropertyInput = {
@@ -45,7 +46,7 @@ export type CreatePropertyInput = {
   salesRoomPhone: string;
   salesRoomEmail: string;
   salesRoomHours: string;
-  amenities: string[];
+  amenities: Amenity[];
   typologies: Record<string, Typology[]>;
   /** Per-tower attributes (e.g. trash chute) keyed by `tower-${n}`. */
   towerDetails: Record<string, { hasTrashChute: boolean }>;
@@ -120,7 +121,7 @@ function buildPropertyRow(input: CreatePropertyInput) {
     year_built: Number(input.yearBuilt) || new Date().getFullYear(),
     delivery_date: input.deliveryDate ? `${input.deliveryDate}-01` : null,
     study: input.study || null,
-    amenities: input.amenities.length > 0 ? input.amenities : {},
+    amenities: input.amenities.map(({ id, name }) => ({ id, name })),
     typologies: Object.keys(input.typologies).length > 0 ? input.typologies : {},
     tower_details: Object.keys(input.towerDetails).length > 0 ? input.towerDetails : {},
     additional_images: input.additionalImages.length > 0 ? input.additionalImages : null,

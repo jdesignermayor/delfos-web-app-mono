@@ -1,6 +1,7 @@
 import type { Property, PropertyType } from "@/components/marketing/properties";
 import { createPublicClient } from "@/supabase/public";
 import type { Tables } from "@/supabase/types";
+import { parseAmenities } from "@/lib/amenities";
 
 const TYPE_BY_PROPERTY_TYPE: Record<string, PropertyType> = {
   apartamento: "apartamento",
@@ -14,9 +15,7 @@ export function toProperty(row: Tables<"properties">): Property {
   const images = row.additional_images?.length
     ? [row.image, ...row.additional_images]
     : undefined;
-  const amenities = Array.isArray(row.amenities)
-    ? row.amenities.filter((item): item is string => typeof item === "string")
-    : undefined;
+  const amenities = parseAmenities(row.amenities).map((a) => a.name);
 
   return {
     slug: row.uuid,
@@ -38,7 +37,7 @@ export function toProperty(row: Tables<"properties">): Property {
     image: row.image,
     images,
     description: row.description || undefined,
-    amenities: amenities?.length ? amenities : undefined,
+    amenities: amenities.length ? amenities : undefined,
   };
 }
 
