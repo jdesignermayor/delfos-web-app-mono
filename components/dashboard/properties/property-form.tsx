@@ -11,11 +11,13 @@ import {
   updateProperty,
   uploadPropertyImages,
   type CreatePropertyInput,
+  type TowerDetail,
 } from "@/app/actions/properties";
 import { existingImage, MultiImagePicker, type PickedImage } from "@/components/multi-image-picker";
 import { LocationPicker } from "@/components/location-picker";
 import { TypologiesEditor, type Typology } from "@/components/dashboard/properties/typologies-editor";
 import { TagMultiSelect } from "@/components/dashboard/tag-multi-select";
+import { EMPTY_SEO, SeoEditor, type SeoValues } from "@/components/dashboard/properties/seo-editor";
 import { type Amenity, parseAmenities } from "@/lib/amenities";
 import type { Tables } from "@/supabase/types";
 
@@ -64,6 +66,8 @@ type StepConfig = {
   title: string;
   description: string;
   groups: FieldGroup[];
+  /** Optional steps can be skipped; the form can be submitted from the step before. */
+  optional?: boolean;
 };
 
 const TEXT_FIELDS: (keyof PropertyFormValues)[] = [
@@ -374,7 +378,27 @@ function buildSteps(
         },
       ],
     },
+    {
+      key: "seo",
+      title: "SEO",
+      description: "Variables de SEO y publicidad por plataforma. Este paso es opcional.",
+      groups: [],
+      optional: true,
+    },
   ];
+}
+
+const EMPTY_TOWER_DETAIL: TowerDetail = { hasTrashChute: false, deliveryDate: null, elevatorCount: 0 };
+
+/** Fills in defaults for towers saved before `deliveryDate`/`elevatorCount` existed. */
+function parseTowerDetails(raw: unknown): Record<string, TowerDetail> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, Partial<TowerDetail>>).map(([key, detail]) => [
+      key,
+      { ...EMPTY_TOWER_DETAIL, ...detail },
+    ]),
+  );
 }
 
 function fieldClassName() {
@@ -424,23 +448,23 @@ export function PropertyForm({
     }
     return {};
   });
-  const [towerDetails, setTowerDetails] = useState<Record<string, { hasTrashChute: boolean }>>(() => {
-    if (property?.tower_details && typeof property.tower_details === 'object' && !Array.isArray(property.tower_details)) {
-      return property.tower_details as Record<string, { hasTrashChute: boolean }>;
-    }
-    return {};
-  });
+  const [towerDetails, setTowerDetails] = useState<Record<string, TowerDetail>>(() =>
+    parseTowerDetails(property?.tower_details),
+  );
   const [images, setImages] = useState<PickedImage[]>(() =>
     (property?.additional_images ?? []).map(existingImage),
   );
   const [mainImage, setMainImage] = useState<PickedImage[]>(() =>
     property?.image ? [existingImage(property.image)] : [],
   );
+  // SEO values are UI-only for now; they are not sent to the backend yet.
+  const [seo, setSeo] = useState<SeoValues>(EMPTY_SEO);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const step = steps[stepIndex];
   const isLastStep = stepIndex === steps.length - 1;
+  const nextStepIsOptional = steps[stepIndex + 1]?.optional ?? false;
 
   function setField(name: keyof PropertyFormValues, value: string) {
     setValues((prev) => {
@@ -503,6 +527,13 @@ export function PropertyForm({
 
     setError(null);
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+  }
+
+  function setTowerDetail(towerKey: string, patch: Partial<TowerDetail>) {
+    setTowerDetails((prev) => ({
+      ...prev,
+      [towerKey]: { ...EMPTY_TOWER_DETAIL, ...prev[towerKey], ...patch },
+    }));
   }
 
   function goBack() {
@@ -571,7 +602,16 @@ export function PropertyForm({
         longitude: coordinates?.lng ?? null,
         amenities,
         typologies: towerTypologies,
-        towerDetails,
+        // Every visible tower is saved with defaults, even if its fields were never touched.
+        towerDetails: {
+          ...towerDetails,
+          ...Object.fromEntries(
+            Array.from({ length: Number(values.towerCount) || 0 }, (_, i) => {
+              const key = `tower-${i + 1}`;
+              return [key, { ...EMPTY_TOWER_DETAIL, ...towerDetails[key] }];
+            }),
+          ),
+        },
         additionalImages,
       };
 
@@ -606,6 +646,14 @@ export function PropertyForm({
     });
   }
 
+  const submitLabel = isPending
+    ? isEditing
+      ? "Guardando…"
+      : "Creando…"
+    : isEditing
+      ? "Guardar cambios"
+      : "Crear propiedad";
+
   return (
     <div className="flex flex-col gap-6">
       <ol className="flex items-center" aria-label="Pasos del formulario">
@@ -636,6 +684,7 @@ export function PropertyForm({
                   }`}
                 >
                   {s.title}
+                  {s.optional ? <span className="ml-1 font-normal text-muted">(opcional)</span> : null}
                 </span>
               </button>
               {i < steps.length - 1 ? (
@@ -819,28 +868,64 @@ export function PropertyForm({
                   {Array.from({ length: Number(values.towerCount) }, (_, i) => (
                     <div key={`tower-${i + 1}`} className="mb-6 rounded-lg border border-separator p-4">
                       <h3 className="mb-4 text-sm font-semibold">Torre {i + 1}</h3>
-                      <div className="mb-4 max-w-xs">
-                        <label
-                          htmlFor={`${formId}-tower-${i + 1}-trash-chute`}
-                          className="mb-1.5 block text-sm font-medium"
-                        >
-                          Cuenta con shut de basura
-                        </label>
-                        <select
-                          id={`${formId}-tower-${i + 1}-trash-chute`}
-                          className={fieldClassName()}
-                          value={towerDetails[`tower-${i + 1}`]?.hasTrashChute ? "Sí" : "No"}
-                          onChange={(e) => {
-                            const hasTrashChute = e.target.value === "Sí";
-                            setTowerDetails((prev) => ({
-                              ...prev,
-                              [`tower-${i + 1}`]: { hasTrashChute },
-                            }));
-                          }}
-                        >
-                          <option value="No">No</option>
-                          <option value="Sí">Sí</option>
-                        </select>
+                      <div className="mb-4 grid gap-4 sm:grid-cols-3">
+                        <div>
+                          <label
+                            htmlFor={`${formId}-tower-${i + 1}-trash-chute`}
+                            className="mb-1.5 block text-sm font-medium"
+                          >
+                            Cuenta con shut de basura
+                          </label>
+                          <select
+                            id={`${formId}-tower-${i + 1}-trash-chute`}
+                            className={fieldClassName()}
+                            value={towerDetails[`tower-${i + 1}`]?.hasTrashChute ? "Sí" : "No"}
+                            onChange={(e) =>
+                              setTowerDetail(`tower-${i + 1}`, { hasTrashChute: e.target.value === "Sí" })
+                            }
+                          >
+                            <option value="No">No</option>
+                            <option value="Sí">Sí</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label
+                            htmlFor={`${formId}-tower-${i + 1}-delivery-date`}
+                            className="mb-1.5 block text-sm font-medium"
+                          >
+                            Fecha de entrega
+                          </label>
+                          <input
+                            id={`${formId}-tower-${i + 1}-delivery-date`}
+                            type="date"
+                            className={fieldClassName()}
+                            value={towerDetails[`tower-${i + 1}`]?.deliveryDate ?? ""}
+                            onChange={(e) =>
+                              setTowerDetail(`tower-${i + 1}`, { deliveryDate: e.target.value || null })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor={`${formId}-tower-${i + 1}-elevators`}
+                            className="mb-1.5 block text-sm font-medium"
+                          >
+                            Cantidad de ascensores
+                          </label>
+                          <input
+                            id={`${formId}-tower-${i + 1}-elevators`}
+                            type="number"
+                            min={0}
+                            step={1}
+                            className={fieldClassName()}
+                            value={towerDetails[`tower-${i + 1}`]?.elevatorCount ?? 0}
+                            onChange={(e) =>
+                              setTowerDetail(`tower-${i + 1}`, {
+                                elevatorCount: Math.max(0, Math.trunc(Number(e.target.value) || 0)),
+                              })
+                            }
+                          />
+                        </div>
                       </div>
                       <TypologiesEditor
                         typologies={towerTypologies[`tower-${i + 1}`] || []}
@@ -858,6 +943,8 @@ export function PropertyForm({
 
             </div>
           ))}
+
+          {step.key === "seo" ? <SeoEditor values={seo} onChange={setSeo} /> : null}
 
           {step.key === "micro" ? (
             <div className="flex flex-col gap-4">
@@ -887,14 +974,17 @@ export function PropertyForm({
 
         {isLastStep ? (
           <Button type="button" variant="primary" onPress={handleSubmit} isDisabled={isPending}>
-            {isPending
-              ? isEditing
-                ? "Guardando…"
-                : "Creando…"
-              : isEditing
-                ? "Guardar cambios"
-                : "Crear propiedad"}
+            {submitLabel}
           </Button>
+        ) : nextStepIsOptional ? (
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" onPress={goNext}>
+              Configurar SEO
+            </Button>
+            <Button type="button" variant="primary" onPress={handleSubmit} isDisabled={isPending}>
+              {submitLabel}
+            </Button>
+          </div>
         ) : (
           <Button type="button" variant="primary" onPress={goNext}>
             Siguiente
