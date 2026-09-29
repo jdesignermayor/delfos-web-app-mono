@@ -3,7 +3,17 @@
 import { createAdminClient } from "@/supabase/admin";
 import { createClient } from "@/supabase/server";
 import type { Amenity } from "@/lib/amenities";
+import { imageToWebp } from "@/lib/image-to-webp";
 import type { Typology } from "@/components/dashboard/properties/typologies-editor";
+
+/** Per-tower attributes stored in `properties.tower_details`. */
+export type TowerDetail = {
+  hasTrashChute: boolean;
+  /** "Fecha de entrega" as an ISO date (YYYY-MM-DD), or null when unknown. */
+  deliveryDate: string | null;
+  /** "Cantidad de ascensores" — starts at 0. */
+  elevatorCount: number;
+};
 
 export type CreatePropertyInput = {
   propertyType: string;
@@ -19,17 +29,9 @@ export type CreatePropertyInput = {
   commune: string;
   neighborhood: string;
   stratum: string;
-  bedrooms: string;
-  bathrooms: string;
-  parking: string;
-  area: string;
-  meters: string;
-  yearBuilt: string;
   deliveryDate: string;
-  study: string;
   developerId: string;
   projectName: string;
-  towerName: string;
   towerCount: string;
   constructionCompany: string;
   builderId: string;
@@ -48,8 +50,8 @@ export type CreatePropertyInput = {
   salesRoomHours: string;
   amenities: Amenity[];
   typologies: Record<string, Typology[]>;
-  /** Per-tower attributes (e.g. trash chute) keyed by `tower-${n}`. */
-  towerDetails: Record<string, { hasTrashChute: boolean }>;
+  /** Per-tower attributes (trash chute, delivery date, elevators) keyed by `tower-${n}`. */
+  towerDetails: Record<string, TowerDetail>;
   additionalImages: string[];
 };
 
@@ -77,11 +79,6 @@ const REQUIRED_FIELDS: Array<
   ["address", "Dirección"],
   ["location", "Ubicación"],
   ["stratum", "Estrato"],
-  ["bedrooms", "Habitaciones"],
-  ["bathrooms", "Baños"],
-  ["parking", "Parqueaderos"],
-  ["area", "Área"],
-  ["yearBuilt", "Año de construcción"],
   ["price", "Precio"],
 ];
 
@@ -112,22 +109,14 @@ function buildPropertyRow(input: CreatePropertyInput) {
     property_type: input.propertyType.trim() || null,
     housing_type: input.housingType || null,
     price: input.price.trim(),
-    area: input.area.trim(),
-    meters: input.meters.trim() || null,
-    bedrooms: Number(input.bedrooms) || 0,
-    bathrooms: Number(input.bathrooms) || 0,
-    parking: Number(input.parking) || 0,
     stratum: Number(input.stratum) || 0,
-    year_built: Number(input.yearBuilt) || new Date().getFullYear(),
     delivery_date: input.deliveryDate ? `${input.deliveryDate}-01` : null,
-    study: input.study || null,
     amenities: input.amenities.map(({ id, name }) => ({ id, name })),
     typologies: Object.keys(input.typologies).length > 0 ? input.typologies : {},
     tower_details: Object.keys(input.towerDetails).length > 0 ? input.towerDetails : {},
     additional_images: input.additionalImages.length > 0 ? input.additionalImages : null,
     developer_id: input.developerId ? Number(input.developerId) : null,
     project_name: input.projectName.trim() || null,
-    tower_name: input.towerName.trim() || null,
     tower_count: input.towerCount ? Number(input.towerCount) : null,
     construction_company: input.constructionCompany.trim() || null,
     builder_id: input.builderId ? Number(input.builderId) : null,
@@ -197,25 +186,52 @@ export async function getPropertyById(id: number) {
   return data;
 }
 
-export type UploadPropertyImagesResult = { urls: string[] } | { error: string };
+export type PropertyImageKind = "main" | "secondary";
 
-/** Uploads photos picked in-memory by `MultiImagePicker` to the `properties` storage bucket. */
-export async function uploadPropertyImages(files: File[]): Promise<UploadPropertyImagesResult> {
-  const admin = createAdminClient();
-  const urls: string[] = [];
+export type UploadPropertyImageResult = { url: string } | { error: string };
 
-  for (const file of files) {
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `properties/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await admin.storage.from("properties").upload(path, file, {
-      contentType: file.type || undefined,
-    });
-    if (error) {
-      return { error: `No se pudo subir ${file.name}: ${error.message}` };
-    }
-    const { data } = admin.storage.from("properties").getPublicUrl(path);
-    urls.push(data.publicUrl);
+/** Upper bound for a single original photo; keep in sync with `serverActions.bodySizeLimit`. */
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
+/** "20260929-143012" (UTC) — sortable timestamp for storage file names. */
+function fileTimestamp(date = new Date()) {
+  return date.toISOString().slice(0, 19).replace(/-/g, "").replace("T", "-").replace(/:/g, "");
+}
+
+/**
+ * Converts one photo picked in `MultiImagePicker` to WebP and uploads it to the
+ * `properties` storage bucket. The stored name is generated server-side
+ * (`main-picture-<date>-<uuid>.webp` / `secondary-picture-<date>-<uuid>.webp`)
+ * so the user's original file name — spaces, accents, duplicates — never
+ * reaches storage. Called once per photo to keep each request small.
+ */
+export async function uploadPropertyImage(
+  formData: FormData,
+): Promise<UploadPropertyImageResult> {
+  const file = formData.get("file");
+  const kind: PropertyImageKind = formData.get("kind") === "main" ? "main" : "secondary";
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "No se recibió ninguna imagen." };
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return { error: `${file.name} supera el tamaño máximo de 20 MB.` };
   }
 
-  return { urls };
+  let webp: Buffer;
+  try {
+    webp = await imageToWebp(file);
+  } catch {
+    return { error: `No se pudo procesar ${file.name}. Usa JPG, JPEG, PNG o HEIC.` };
+  }
+
+  const path = `properties/${kind}-picture-${fileTimestamp()}-${crypto.randomUUID()}.webp`;
+  const admin = createAdminClient();
+  const { error } = await admin.storage.from("properties").upload(path, webp, {
+    contentType: "image/webp",
+  });
+  if (error) {
+    return { error: `No se pudo subir ${file.name}: ${error.message}` };
+  }
+  const { data } = admin.storage.from("properties").getPublicUrl(path);
+  return { url: data.publicUrl };
 }

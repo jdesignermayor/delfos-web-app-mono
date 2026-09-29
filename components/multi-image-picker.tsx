@@ -12,10 +12,11 @@ export type PickedImage = {
   previewFailed: boolean;
 };
 
-const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".heic", ".heif"];
+const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".jpe", ".jfif", ".png", ".heic", ".heif"];
 const ACCEPTED_MIME = [
   "image/jpeg",
   "image/jpg",
+  "image/pjpeg",
   "image/png",
   "image/heic",
   "image/heif",
@@ -32,6 +33,26 @@ function isAcceptedFile(file: File) {
 function isHeic(file: File) {
   const type = file.type.toLowerCase();
   return type === "image/heic" || type === "image/heif" || /\.hei[cf]$/i.test(file.name);
+}
+
+/**
+ * Revokes the blob preview URLs of `images` when the owning component unmounts.
+ * Call it from the component that holds the images in state — not from the
+ * picker itself, which unmounts on every wizard step change while the picked
+ * files must stay previewable.
+ */
+export function useRevokePreviewsOnUnmount(...lists: PickedImage[][]) {
+  const ref = useRef(lists);
+  useEffect(() => {
+    ref.current = lists;
+  });
+  useEffect(
+    () => () =>
+      ref.current.flat().forEach((img) => {
+        if (img.previewUrl.startsWith("blob:")) URL.revokeObjectURL(img.previewUrl);
+      }),
+    [],
+  );
 }
 
 /** Wraps an already-uploaded URL (e.g. from an existing property) as a picked image. */
@@ -58,7 +79,7 @@ export function MultiImagePicker({
   images,
   onChange,
   label = "Fotos",
-  hint = "JPG, PNG o HEIC (fotos de iPhone). Puedes seleccionar varias a la vez.",
+  hint = "JPG, JPEG, PNG o HEIC (fotos de iPhone). Puedes seleccionar varias a la vez.",
   maxFiles,
   required,
 }: {
@@ -73,20 +94,6 @@ export function MultiImagePicker({
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const imagesRef = useRef(images);
-
-  useEffect(() => {
-    imagesRef.current = images;
-  }, [images]);
-
-  // Revoke every object URL still held when the picker unmounts.
-  useEffect(() => {
-    return () => {
-      imagesRef.current.forEach((img) => {
-        if (img.previewUrl.startsWith("blob:")) URL.revokeObjectURL(img.previewUrl);
-      });
-    };
-  }, []);
 
   const atLimit = typeof maxFiles === "number" && images.length >= maxFiles;
 
@@ -115,7 +122,7 @@ export function MultiImagePicker({
 
     setError(
       rejected.length > 0
-        ? `Formato no admitido (usa JPG, PNG o HEIC): ${rejected.join(", ")}`
+        ? `Formato no admitido (usa JPG, JPEG, PNG o HEIC): ${rejected.join(", ")}`
         : null,
     );
     if (accepted.length > 0) onChange([...images, ...accepted]);
@@ -142,7 +149,7 @@ export function MultiImagePicker({
             id={inputId}
             type="file"
             multiple={maxFiles !== 1}
-            accept=".jpg,.jpeg,.png,.heic,.heif,image/jpeg,image/png,image/heic,image/heif"
+            accept=".jpg,.jpeg,.jpe,.jfif,.png,.heic,.heif,image/jpeg,image/pjpeg,image/png,image/heic,image/heif"
             onChange={(e) => handleFiles(e.target.files)}
             className="sr-only"
           />

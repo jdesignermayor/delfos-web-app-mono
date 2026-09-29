@@ -1,3 +1,5 @@
+import type { NumberRange } from "@/lib/typology-ranges";
+
 /**
  * Mock catalogue of listings used by the marketing site and the /search
  * results page. There is no backend yet — this is deterministic sample data
@@ -18,11 +20,11 @@ export type Property = {
   type: PropertyType;
   /** Price in Colombian pesos. For arriendo it is the monthly value. */
   price: number;
-  beds: number;
-  baths: number;
-  parking: number;
-  /** Built area in m². */
-  area: number;
+  /** Bedroom / bathroom / built-area (m²) ranges across the project's typologies. Absent when unknown. */
+  beds?: NumberRange;
+  baths?: NumberRange;
+  parking?: number;
+  area?: NumberRange;
   /** Vivienda de Interés Social / Prioritario — the "affordable" filter. */
   affordable: boolean;
   status: "Sobre planos" | "Listo para estrenar" | "Usado";
@@ -84,10 +86,10 @@ export const PROPERTIES: Property[] = [
     operation: "comprar",
     type: "proyecto",
     price: 890_000_000,
-    beds: 3,
-    baths: 3,
+    beds: { min: 3, max: 3 },
+    baths: { min: 3, max: 3 },
     parking: 2,
-    area: 98,
+    area: { min: 98, max: 98 },
     affordable: false,
     status: "Sobre planos",
     hue: 210,
@@ -103,10 +105,10 @@ export const PROPERTIES: Property[] = [
     operation: "comprar",
     type: "apartamento",
     price: 640_000_000,
-    beds: 2,
-    baths: 2,
+    beds: { min: 2, max: 2 },
+    baths: { min: 2, max: 2 },
     parking: 1,
-    area: 74,
+    area: { min: 74, max: 74 },
     affordable: false,
     status: "Listo para estrenar",
     hue: 160,
@@ -122,10 +124,10 @@ export const PROPERTIES: Property[] = [
     operation: "comprar",
     type: "proyecto",
     price: 335_000_000,
-    beds: 3,
-    baths: 2,
+    beds: { min: 3, max: 3 },
+    baths: { min: 2, max: 2 },
     parking: 1,
-    area: 62,
+    area: { min: 62, max: 62 },
     affordable: true,
     status: "Sobre planos",
     hue: 32,
@@ -141,10 +143,10 @@ export const PROPERTIES: Property[] = [
     operation: "comprar",
     type: "apartamento",
     price: 268_000_000,
-    beds: 2,
-    baths: 1,
+    beds: { min: 2, max: 2 },
+    baths: { min: 1, max: 1 },
     parking: 1,
-    area: 54,
+    area: { min: 54, max: 54 },
     affordable: true,
     status: "Listo para estrenar",
     hue: 280,
@@ -160,10 +162,10 @@ export const PROPERTIES: Property[] = [
     operation: "comprar",
     type: "casa",
     price: 1_250_000_000,
-    beds: 4,
-    baths: 4,
+    beds: { min: 4, max: 4 },
+    baths: { min: 4, max: 4 },
     parking: 3,
-    area: 210,
+    area: { min: 210, max: 210 },
     affordable: false,
     status: "Usado",
     hue: 12,
@@ -178,10 +180,10 @@ export const PROPERTIES: Property[] = [
     operation: "arrendar",
     type: "apartaestudio",
     price: 2_450_000,
-    beds: 1,
-    baths: 1,
+    beds: { min: 1, max: 1 },
+    baths: { min: 1, max: 1 },
     parking: 1,
-    area: 38,
+    area: { min: 38, max: 38 },
     affordable: false,
     status: "Listo para estrenar",
     hue: 190,
@@ -196,10 +198,10 @@ export const PROPERTIES: Property[] = [
     operation: "arrendar",
     type: "apartamento",
     price: 1_650_000,
-    beds: 3,
-    baths: 2,
+    beds: { min: 3, max: 3 },
+    baths: { min: 2, max: 2 },
     parking: 1,
-    area: 68,
+    area: { min: 68, max: 68 },
     affordable: false,
     status: "Usado",
     hue: 130,
@@ -214,10 +216,10 @@ export const PROPERTIES: Property[] = [
     operation: "arrendar",
     type: "apartaestudio",
     price: 1_180_000,
-    beds: 1,
-    baths: 1,
+    beds: { min: 1, max: 1 },
+    baths: { min: 1, max: 1 },
     parking: 0,
-    area: 32,
+    area: { min: 32, max: 32 },
     affordable: true,
     status: "Usado",
     hue: 48,
@@ -232,10 +234,10 @@ export const PROPERTIES: Property[] = [
     operation: "comprar",
     type: "proyecto",
     price: 312_000_000,
-    beds: 3,
-    baths: 2,
+    beds: { min: 3, max: 3 },
+    baths: { min: 2, max: 2 },
     parking: 1,
-    area: 60,
+    area: { min: 60, max: 60 },
     affordable: true,
     status: "Sobre planos",
     hue: 258,
@@ -250,10 +252,10 @@ export const PROPERTIES: Property[] = [
     operation: "arrendar",
     type: "apartamento",
     price: 2_100_000,
-    beds: 2,
-    baths: 2,
+    beds: { min: 2, max: 2 },
+    baths: { min: 2, max: 2 },
     parking: 1,
-    area: 58,
+    area: { min: 58, max: 58 },
     affordable: false,
     status: "Listo para estrenar",
     hue: 96,
@@ -327,7 +329,8 @@ export function filterProperties(
     if (filters.operacion && property.operation !== filters.operacion) return false;
     if (filters.tipo && property.type !== filters.tipo) return false;
     if (filters.asequible === "si" && !property.affordable) return false;
-    if (minBeds && property.beds < minBeds) return false;
+    // A project matches when at least one of its typologies has enough bedrooms.
+    if (minBeds && (!property.beds || property.beds.max < minBeds)) return false;
     if (budgetCap && property.price > budgetCap) return false;
     if (query) {
       const haystack = `${property.title} ${property.neighborhood} ${property.city}`.toLowerCase();

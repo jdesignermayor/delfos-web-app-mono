@@ -80,14 +80,7 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Field label="Alcobas" value={property.bedrooms} />
-          <Field label="Baños" value={property.bathrooms} />
-          <Field label="Parqueaderos" value={property.parking} />
-          <Field label="Área" value={`${property.area} m²`} />
           <Field label="Estrato" value={property.stratum} />
-          <Field label="Año de construcción" value={property.year_built} />
-          <Field label="Estudio" value={property.study} />
-          <Field label="Área alterna" value={property.meters ? `${property.meters} m²` : null} />
         </div>
 
         {property.description ? (
@@ -120,7 +113,6 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Field label="Constructora" value={property.developers?.name} />
           <Field label="Proyecto" value={property.project_name} />
-          <Field label="Torre" value={property.tower_name} />
           <Field label="Cantidad de torres" value={property.tower_count} />
           <Field label="Gerencia" value={property.construction_company} />
           <Field label="Banco constructor" value={property.construction_bank} />
@@ -284,7 +276,6 @@ export function PropertyDetailView({
           trustCompanies={trustCompanies}
           commonAreas={commonAreas}
           property={property}
-          onSaved={() => setIsEditing(false)}
         />
       ) : (
         <PropertyReadView property={property} />

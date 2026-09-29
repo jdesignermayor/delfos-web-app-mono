@@ -9,11 +9,17 @@ import { useToast } from "@/components/providers/toast-provider";
 import {
   createProperty,
   updateProperty,
-  uploadPropertyImages,
+  uploadPropertyImage,
+  type PropertyImageKind,
   type CreatePropertyInput,
   type TowerDetail,
 } from "@/app/actions/properties";
-import { existingImage, MultiImagePicker, type PickedImage } from "@/components/multi-image-picker";
+import {
+  existingImage,
+  MultiImagePicker,
+  type PickedImage,
+  useRevokePreviewsOnUnmount,
+} from "@/components/multi-image-picker";
 import { LocationPicker } from "@/components/location-picker";
 import { TypologiesEditor, type Typology } from "@/components/dashboard/properties/typologies-editor";
 import { TagMultiSelect } from "@/components/dashboard/tag-multi-select";
@@ -81,17 +87,9 @@ const TEXT_FIELDS: (keyof PropertyFormValues)[] = [
   "commune",
   "neighborhood",
   "stratum",
-  "bedrooms",
-  "bathrooms",
-  "parking",
-  "area",
-  "meters",
-  "yearBuilt",
   "deliveryDate",
-  "study",
   "developerId",
   "projectName",
-  "towerName",
   "towerCount",
   "constructionCompany",
   "builderId",
@@ -130,17 +128,9 @@ function toInitialValues(property: PropertyRecord): PropertyFormValues {
     commune: property.commune ?? "",
     neighborhood: property.neighborhood ?? "",
     stratum: str(property.stratum),
-    bedrooms: str(property.bedrooms),
-    bathrooms: str(property.bathrooms),
-    parking: str(property.parking),
-    area: property.area,
-    meters: property.meters ?? "",
-    yearBuilt: str(property.year_built),
     deliveryDate: property.delivery_date ? property.delivery_date.slice(0, 7) : "",
-    study: property.study ?? "",
     developerId: str(property.developer_id),
     projectName: property.project_name ?? "",
-    towerName: property.tower_name ?? "",
     towerCount: str(property.tower_count),
     constructionCompany: property.construction_company ?? "",
     builderId: str(property.builder_id),
@@ -286,7 +276,6 @@ function buildSteps(
                 })),
               ],
             },
-            { name: "towerName", label: "Torre", kind: "text" },
             { name: "deliveryDate", label: "Fecha de entrega", kind: "month" },
             {
               name: "constructionCompany",
@@ -337,14 +326,7 @@ function buildSteps(
         {
           heading: "Características",
           fields: [
-            { name: "area", label: "Área (m²)", kind: "number", required: true },
-            { name: "meters", label: "Área alterna (opcional)", kind: "text" },
-            { name: "bedrooms", label: "Alcobas", kind: "number", required: true },
-            { name: "bathrooms", label: "Baños", kind: "number", required: true },
-            { name: "parking", label: "Parqueadero", kind: "number", required: true },
-            { name: "study", label: "Estudio", kind: "boolean" },
             { name: "stratum", label: "Estrato", kind: "number", required: true },
-            { name: "yearBuilt", label: "Año de construcción", kind: "number", required: true },
           ],
         },
         {
@@ -461,6 +443,7 @@ export function PropertyForm({
   const [seo, setSeo] = useState<SeoValues>(EMPTY_SEO);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  useRevokePreviewsOnUnmount(mainImage, images);
 
   const step = steps[stepIndex];
   const isLastStep = stepIndex === steps.length - 1;
@@ -493,8 +476,8 @@ export function PropertyForm({
     });
   }
 
-  function findMissingField() {
-    for (const group of step.groups) {
+  function findMissingField(target = step) {
+    for (const group of target.groups) {
       const missing = group.fields.find((f) => f.required && !values[f.name].trim());
       if (missing) return missing;
     }
@@ -536,6 +519,13 @@ export function PropertyForm({
     }));
   }
 
+  function uploadImage(file: File, kind: PropertyImageKind) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("kind", kind);
+    return uploadPropertyImage(formData);
+  }
+
   function goBack() {
     setError(null);
     setStepIndex((i) => Math.max(i - 1, 0));
@@ -547,10 +537,15 @@ export function PropertyForm({
       setStepIndex(0);
       return;
     }
-    const missing = findMissingField();
-    if (missing) {
-      setError(`${missing.label} es obligatorio.`);
-      return;
+    // Validate every step, not just the current one: when editing, the form
+    // can be saved from any step.
+    for (const [i, s] of steps.entries()) {
+      const missing = findMissingField(s);
+      if (missing) {
+        setError(`${missing.label} es obligatorio.`);
+        setStepIndex(i);
+        return;
+      }
     }
 
     // Validate typologies when towers are selected
@@ -572,28 +567,52 @@ export function PropertyForm({
       // The main image picker always holds exactly one entry at this point —
       // either a newly picked file (needs uploading) or an existing URL
       // carried over unchanged from the property being edited.
+      // Swap every uploaded file for its stored URL as soon as it lands, so a
+      // retry after a failure (or saving again while editing) doesn't upload
+      // the same photo twice.
+      const uploaded = new Map<string, string>();
+      const swapUploaded = (list: PickedImage[]) =>
+        list.map((img) => {
+          const url = uploaded.get(img.id);
+          if (!url) return img;
+          if (img.previewUrl.startsWith("blob:")) URL.revokeObjectURL(img.previewUrl);
+          return existingImage(url);
+        });
+      const commitUploads = () => {
+        if (uploaded.size === 0) return;
+        setMainImage(swapUploaded);
+        setImages(swapUploaded);
+      };
+
       let imageUrl = mainImage[0].previewUrl;
       if (mainImage[0].file) {
-        const mainUpload = await uploadPropertyImages([mainImage[0].file]);
+        const mainUpload = await uploadImage(mainImage[0].file, "main");
         if ("error" in mainUpload) {
           setError(mainUpload.error);
           return;
         }
-        imageUrl = mainUpload.urls[0];
+        imageUrl = mainUpload.url;
+        uploaded.set(mainImage[0].id, imageUrl);
       }
 
-      const newFiles = images.flatMap((img) => (img.file ? [img.file] : []));
-      let uploadedUrls: string[] = [];
-      if (newFiles.length > 0) {
-        const uploadResult = await uploadPropertyImages(newFiles);
-        if ("error" in uploadResult) {
-          setError(uploadResult.error);
+      // Existing URLs are kept as-is; new files are uploaded one request each,
+      // in their on-screen order.
+      const additionalImages: string[] = [];
+      for (const img of images) {
+        if (!img.file) {
+          additionalImages.push(img.previewUrl);
+          continue;
+        }
+        const upload = await uploadImage(img.file, "secondary");
+        if ("error" in upload) {
+          commitUploads();
+          setError(upload.error);
           return;
         }
-        uploadedUrls = uploadResult.urls;
+        additionalImages.push(upload.url);
+        uploaded.set(img.id, upload.url);
       }
-      const keptExistingUrls = images.filter((img) => !img.file).map((img) => img.previewUrl);
-      const additionalImages = [...keptExistingUrls, ...uploadedUrls];
+      commitUploads();
 
       const payload: CreatePropertyInput = {
         ...values,
@@ -983,6 +1002,15 @@ export function PropertyForm({
             </Button>
             <Button type="button" variant="primary" onPress={handleSubmit} isDisabled={isPending}>
               {submitLabel}
+            </Button>
+          </div>
+        ) : isEditing ? (
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" onPress={handleSubmit} isDisabled={isPending}>
+              {isPending ? "Actualizando…" : "Actualizar propiedad"}
+            </Button>
+            <Button type="button" variant="primary" onPress={goNext}>
+              Siguiente
             </Button>
           </div>
         ) : (

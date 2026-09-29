@@ -210,9 +210,6 @@ export type Database = {
           additional_images: string[] | null
           address: string
           amenities: Json
-          area: string
-          bathrooms: number
-          bedrooms: number
           builder_id: number | null
           city: string | null
           commune: string | null
@@ -233,10 +230,8 @@ export type Database = {
           latitude: number | null
           location: string
           longitude: number | null
-          meters: string | null
           meters2: string | null
           neighborhood: string | null
-          parking: number
           price: string
           project_name: string | null
           property_type: string | null
@@ -247,25 +242,19 @@ export type Database = {
           seller_id: number | null
           separation_amount: string | null
           stratum: number
-          study: string | null
           title: string
           tower_count: number | null
           tower_details: Json
-          tower_name: string | null
           trust_company: string | null
           type: string
           typologies: Json
           updated_at: string | null
           uuid: string
-          year_built: number
         }
         Insert: {
           additional_images?: string[] | null
           address: string
           amenities?: Json
-          area: string
-          bathrooms: number
-          bedrooms: number
           builder_id?: number | null
           city?: string | null
           commune?: string | null
@@ -286,10 +275,8 @@ export type Database = {
           latitude?: number | null
           location: string
           longitude?: number | null
-          meters?: string | null
           meters2?: string | null
           neighborhood?: string | null
-          parking: number
           price: string
           project_name?: string | null
           property_type?: string | null
@@ -300,25 +287,19 @@ export type Database = {
           seller_id?: number | null
           separation_amount?: string | null
           stratum: number
-          study?: string | null
           title: string
           tower_count?: number | null
           tower_details?: Json
-          tower_name?: string | null
           trust_company?: string | null
           type: string
           typologies?: Json
           updated_at?: string | null
           uuid?: string
-          year_built: number
         }
         Update: {
           additional_images?: string[] | null
           address?: string
           amenities?: Json
-          area?: string
-          bathrooms?: number
-          bedrooms?: number
           builder_id?: number | null
           city?: string | null
           commune?: string | null
@@ -339,10 +320,8 @@ export type Database = {
           latitude?: number | null
           location?: string
           longitude?: number | null
-          meters?: string | null
           meters2?: string | null
           neighborhood?: string | null
-          parking?: number
           price?: string
           project_name?: string | null
           property_type?: string | null
@@ -353,17 +332,14 @@ export type Database = {
           seller_id?: number | null
           separation_amount?: string | null
           stratum?: number
-          study?: string | null
           title?: string
           tower_count?: number | null
           tower_details?: Json
-          tower_name?: string | null
           trust_company?: string | null
           type?: string
           typologies?: Json
           updated_at?: string | null
           uuid?: string
-          year_built?: number
         }
         Relationships: [
           {

@@ -2,6 +2,7 @@ import type { Property, PropertyType } from "@/components/marketing/properties";
 import { createPublicClient } from "@/supabase/public";
 import type { Tables } from "@/supabase/types";
 import { parseAmenities } from "@/lib/amenities";
+import { typologyRanges } from "@/lib/typology-ranges";
 
 const TYPE_BY_PROPERTY_TYPE: Record<string, PropertyType> = {
   apartamento: "apartamento",
@@ -16,6 +17,7 @@ export function toProperty(row: Tables<"properties">): Property {
     ? [row.image, ...row.additional_images]
     : undefined;
   const amenities = parseAmenities(row.amenities).map((a) => a.name);
+  const ranges = typologyRanges(row.typologies);
 
   return {
     slug: row.uuid,
@@ -26,10 +28,9 @@ export function toProperty(row: Tables<"properties">): Property {
     operation: "comprar",
     type: TYPE_BY_PROPERTY_TYPE[row.property_type ?? ""] ?? "apartamento",
     price: Number(row.price),
-    beds: row.bedrooms,
-    baths: row.bathrooms,
-    parking: row.parking,
-    area: Number(row.area),
+    beds: ranges.bedrooms,
+    baths: ranges.bathrooms,
+    area: ranges.area,
     affordable: false,
     status: "Listo para estrenar",
     hue: (row.id * 47) % 360,

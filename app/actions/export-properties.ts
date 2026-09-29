@@ -27,15 +27,8 @@ const COLUMNS: [key: string, header: string][] = [
   ["construction_bank", "Banco constructor"],
   ["trust_company", "Fiduciaria"],
   ["price", "Precio"],
-  ["area", "Área"],
-  ["meters", "Metros"],
   ["meters2", "Metros 2"],
-  ["bedrooms", "Habitaciones"],
-  ["bathrooms", "Baños"],
-  ["parking", "Parqueaderos"],
-  ["study", "Estudio"],
   ["stratum", "Estrato"],
-  ["year_built", "Año de construcción"],
   ["delivery_date", "Fecha de entrega"],
   ["address", "Dirección"],
   ["location", "Ubicación"],
@@ -45,7 +38,6 @@ const COLUMNS: [key: string, header: string][] = [
   ["latitude", "Latitud"],
   ["longitude", "Longitud"],
   ["tower_count", "Número de torres"],
-  ["tower_name", "Nombre de torre"],
   ["separation_amount", "Valor separación"],
   ["initial_fee_amount", "Valor cuota inicial"],
   ["initial_fee_percentage", "Porcentaje cuota inicial"],
@@ -98,15 +90,22 @@ function formatCell(value: Cell | Json | undefined): string {
   return String(value);
 }
 
-/** "Torre 1 · Shut de basuras: Sí" — one option per tower. */
+const TOWER_FIELDS = [
+  ["hasTrashChute", "Shut de basuras"],
+  ["deliveryDate", "Fecha de entrega"],
+  ["elevatorCount", "Ascensores"],
+] as const;
+
+/** "Torre 1 · Shut de basuras: Sí · Fecha de entrega: 2027-06-30 · Ascensores: 2" — one option per tower. */
 function towerOptions(details: Record<string, Json | undefined>) {
   return Object.keys(details)
     .sort(byTower)
     .map((tower) => {
-      const chute = asRecord(details[tower]).hasTrashChute;
-      return chute === undefined
-        ? towerLabel(tower)
-        : `${towerLabel(tower)} · Shut de basuras: ${formatCell(chute)}`;
+      const detail = asRecord(details[tower]);
+      const parts = TOWER_FIELDS.filter(([key]) => detail[key] != null).map(
+        ([key, label]) => `${label}: ${formatCell(detail[key])}`,
+      );
+      return [towerLabel(tower), ...parts].join(" · ");
     });
 }
 

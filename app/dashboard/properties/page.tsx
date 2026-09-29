@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { createClient } from "@/supabase/server";
 import { ExportPropertiesButton } from "@/components/dashboard/properties/export-properties-button";
 import { LocationCell } from "@/components/dashboard/properties/location-cell";
+import { formatRange, typologyRanges } from "@/lib/typology-ranges";
 
 export const metadata: Metadata = {
   title: "Properties",
@@ -97,7 +98,12 @@ export default async function PropertiesPage() {
                       <LocationCell address={property.address} location={property.location} />
                     </td>
                     <td className="px-5 py-3 text-muted">{property.stratum ?? "—"}</td>
-                    <td className="px-5 py-3 text-muted">{property.area} m²</td>
+                    <td className="px-5 py-3 text-muted">
+                      {(() => {
+                        const { area } = typologyRanges(property.typologies);
+                        return area ? `${formatRange(area)} m²` : "—";
+                      })()}
+                    </td>
                     <td className="px-5 py-3 text-muted">
                       {property.delivery_date
                         ? new Date(property.delivery_date).toLocaleDateString("es-CO", {

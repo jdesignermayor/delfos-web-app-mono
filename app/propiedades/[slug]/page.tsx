@@ -21,6 +21,7 @@ import { PhotoCollage } from "@/components/property-detail/photo-collage";
 import { TalkToAgentButton } from "@/components/property-detail/talk-to-agent-button";
 import { AmenityItem } from "@/components/property-detail/amenity-item";
 import { SiteFooter } from "@/components/marketing/site-footer";
+import { formatRange } from "@/lib/typology-ranges";
 
 const DEFAULT_AMENITIES = [
   "Portería 24 horas",
@@ -33,6 +34,16 @@ const DEFAULT_AMENITIES = [
 
 export function generateStaticParams() {
   return PROPERTIES.map((property) => ({ slug: property.slug }));
+}
+
+/** "2–3 habitaciones, 2 baños y 54–98 m² construidos" — only the parts that are known. */
+function specs(property: Property) {
+  const parts = [
+    property.beds && `${formatRange(property.beds)} habitaciones`,
+    property.baths && `${formatRange(property.baths)} baños`,
+    property.area && `${formatRange(property.area)} m² construidos`,
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} y ${parts.at(-1)}` : (parts[0] ?? "");
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -53,7 +64,13 @@ export async function generateMetadata({
   const property = await resolveProperty(slug);
   if (!property) return { title: "Propiedad no encontrada" };
 
-  const description = `${property.title} en ${property.neighborhood}, ${property.city}. ${property.beds} habitaciones, ${property.baths} baños, ${property.area} m². ${formatPrice(property)}.`;
+  const description = [
+    `${property.title} en ${property.neighborhood}, ${property.city}.`,
+    specs(property) && `${specs(property)}.`,
+    `${formatPrice(property)}.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return {
     title: property.title,
@@ -76,7 +93,7 @@ export default async function PropertyDetailPage({
   const amenities = property.amenities ?? DEFAULT_AMENITIES;
   const description =
     property.description ??
-    `${property.title} es una propiedad ${OPERATION_LABELS[property.operation].toLowerCase()} en ${property.neighborhood}, ${property.city}. Cuenta con ${property.beds} habitaciones, ${property.baths} baños y ${property.area} m² construidos, ideal para quienes buscan calidad de vida cerca de los principales servicios de la zona.`;
+    `${property.title} es una propiedad ${OPERATION_LABELS[property.operation].toLowerCase()} en ${property.neighborhood}, ${property.city}. ${specs(property) ? `Cuenta con ${specs(property)}, ideal` : "Ideal"} para quienes buscan calidad de vida cerca de los principales servicios de la zona.`;
 
   return (
     <SearchModeProvider>
@@ -103,22 +120,30 @@ export default async function PropertyDetailPage({
                 </p>
 
                 <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-y border-separator py-4 text-sm text-foreground">
-                  <span className="flex items-center gap-2">
-                    <BedIcon className="size-4 text-muted" />
-                    {property.beds} habitaciones
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <BathIcon className="size-4 text-muted" />
-                    {property.baths} baños
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <RulerIcon className="size-4 text-muted" />
-                    {property.area} m²
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <CarIcon className="size-4 text-muted" />
-                    {property.parking} parqueaderos
-                  </span>
+                  {property.beds ? (
+                    <span className="flex items-center gap-2">
+                      <BedIcon className="size-4 text-muted" />
+                      {formatRange(property.beds)} habitaciones
+                    </span>
+                  ) : null}
+                  {property.baths ? (
+                    <span className="flex items-center gap-2">
+                      <BathIcon className="size-4 text-muted" />
+                      {formatRange(property.baths)} baños
+                    </span>
+                  ) : null}
+                  {property.area ? (
+                    <span className="flex items-center gap-2">
+                      <RulerIcon className="size-4 text-muted" />
+                      {formatRange(property.area)} m²
+                    </span>
+                  ) : null}
+                  {property.parking != null ? (
+                    <span className="flex items-center gap-2">
+                      <CarIcon className="size-4 text-muted" />
+                      {property.parking} parqueaderos
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="mt-5 flex items-center gap-4 rounded-lg border border-separator bg-surface p-4">

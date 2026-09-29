@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
 
 import { formatPrice, TYPE_LABELS, type Property } from "@/components/marketing/properties";
+import { formatRange } from "@/lib/typology-ranges";
 
 /** Max pagination dots shown under the photo, like the listing cards on Airbnb. */
 const MAX_DOTS = 5;
@@ -55,11 +56,13 @@ export function PropertyListingCard({
   const dots = images.slice(dotStart, dotStart + MAX_DOTS).map((_, i) => dotStart + i);
 
   const details = [
-    `${property.beds} hab`,
-    `${property.baths} baños`,
-    `${property.area} m²`,
-    ...(isPopup ? [] : [`${property.parking} parq.`]),
-  ].join(" · ");
+    property.beds && `${formatRange(property.beds)} hab`,
+    property.baths && `${formatRange(property.baths)} baños`,
+    property.area && `${formatRange(property.area)} m²`,
+    !isPopup && property.parking != null && `${property.parking} parq.`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div
