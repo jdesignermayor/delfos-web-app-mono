@@ -3,13 +3,15 @@
 import { useState, type ComponentType, type SVGProps } from "react";
 import { Input, Label, TextArea, TextField } from "@heroui/react";
 import { GoogleIcon, LinkedInIcon, MetaIcon, YouTubeIcon } from "@/components/icons";
+import { MultiImagePicker, type PickedImage } from "@/components/multi-image-picker";
 
 export type SeoPlatform = "meta" | "google" | "youtube" | "linkedin";
 
 type SeoField = {
   name: string;
   label: string;
-  kind: "text" | "textarea" | "url";
+  /** "image" is picked from the computer and uploaded when the property is saved. */
+  kind: "text" | "textarea" | "url" | "image";
   placeholder?: string;
   hint?: string;
   /** Recommended max length; shows a character counter. */
@@ -25,10 +27,17 @@ type SeoPlatformConfig = {
   fields: SeoField[];
 };
 
-/** Values keyed by platform, then by field name. Not persisted yet. */
+/** Values keyed by platform, then by field name; saved in `properties.seo`. */
 export type SeoValues = Record<SeoPlatform, Record<string, string>>;
 
 export const EMPTY_SEO: SeoValues = { meta: {}, google: {}, youtube: {}, linkedin: {} };
+
+/** Share-image fields, as `platform.field`. Their value is the uploaded image URL. */
+export const SEO_IMAGE_FIELDS = ["meta.ogImage", "linkedin.image"] as const;
+export type SeoImageField = (typeof SEO_IMAGE_FIELDS)[number];
+
+/** Picked share images per field (at most one each), kept by the form until it saves. */
+export type SeoImages = Record<SeoImageField, PickedImage[]>;
 
 const PLATFORMS: SeoPlatformConfig[] = [
   {
@@ -48,9 +57,8 @@ const PLATFORMS: SeoPlatformConfig[] = [
       {
         name: "ogImage",
         label: "Imagen para compartir (og:image)",
-        kind: "url",
-        placeholder: "https://…",
-        hint: "Recomendado 1200 × 630 px. Si se deja vacío se usa la imagen principal.",
+        kind: "image",
+        hint: "Recomendado 1200 × 630 px (JPG, PNG o HEIC). Si se deja vacío se usa la imagen principal.",
         wide: true,
       },
       { name: "pixelId", label: "Meta Pixel ID", kind: "text", placeholder: "123456789012345" },
@@ -120,9 +128,8 @@ const PLATFORMS: SeoPlatformConfig[] = [
       {
         name: "image",
         label: "Imagen para compartir",
-        kind: "url",
-        placeholder: "https://…",
-        hint: "Recomendado 1200 × 627 px. Si se deja vacío se usa la imagen principal.",
+        kind: "image",
+        hint: "Recomendado 1200 × 627 px (JPG, PNG o HEIC). Si se deja vacío se usa la imagen principal.",
         wide: true,
       },
     ],
@@ -132,9 +139,13 @@ const PLATFORMS: SeoPlatformConfig[] = [
 export function SeoEditor({
   values,
   onChange,
+  images,
+  onImagesChange,
 }: {
   values: SeoValues;
   onChange: (values: SeoValues) => void;
+  images: SeoImages;
+  onImagesChange: (images: SeoImages) => void;
 }) {
   const [active, setActive] = useState<SeoPlatform>("meta");
   const platform = PLATFORMS.find((p) => p.key === active)!;
@@ -145,7 +156,11 @@ export function SeoEditor({
   }
 
   function filledCount(key: SeoPlatform) {
-    return Object.values(values[key]).filter((v) => v.trim()).length;
+    const texts = Object.entries(values[key]).filter(
+      ([name, v]) => v.trim() && !SEO_IMAGE_FIELDS.includes(`${key}.${name}` as SeoImageField),
+    ).length;
+    const pictures = SEO_IMAGE_FIELDS.filter((field) => field.startsWith(`${key}.`) && images[field].length).length;
+    return texts + pictures;
   }
 
   return (
@@ -196,6 +211,20 @@ export function SeoEditor({
           {platform.fields.map((field) => {
             const value = platformValues[field.name] ?? "";
             const overLimit = field.maxLength !== undefined && value.length > field.maxLength;
+            if (field.kind === "image") {
+              const key = `${active}.${field.name}` as SeoImageField;
+              return (
+                <div key={key} className={field.wide ? "sm:col-span-2" : undefined}>
+                  <MultiImagePicker
+                    images={images[key]}
+                    onChange={(next) => onImagesChange({ ...images, [key]: next })}
+                    label={field.label}
+                    hint={field.hint}
+                    maxFiles={1}
+                  />
+                </div>
+              );
+            }
             return (
               <div key={`${active}-${field.name}`} className={field.wide ? "sm:col-span-2" : undefined}>
                 <TextField

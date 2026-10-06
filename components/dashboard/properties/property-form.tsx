@@ -23,7 +23,14 @@ import {
 import { LocationPicker } from "@/components/location-picker";
 import { TypologiesEditor, type Typology } from "@/components/dashboard/properties/typologies-editor";
 import { TagMultiSelect } from "@/components/dashboard/tag-multi-select";
-import { EMPTY_SEO, SeoEditor, type SeoValues } from "@/components/dashboard/properties/seo-editor";
+import {
+  EMPTY_SEO,
+  SEO_IMAGE_FIELDS,
+  SeoEditor,
+  type SeoImageField,
+  type SeoImages,
+  type SeoValues,
+} from "@/components/dashboard/properties/seo-editor";
 import { type Amenity, parseAmenities } from "@/lib/amenities";
 import type { Tables } from "@/supabase/types";
 
@@ -44,7 +51,7 @@ type FieldKind =
 
 type PropertyFormValues = Omit<
   CreatePropertyInput,
-  "amenities" | "typologies" | "towerDetails" | "additionalImages" | "latitude" | "longitude"
+  "amenities" | "typologies" | "towerDetails" | "additionalImages" | "latitude" | "longitude" | "seo"
 > & {
   // Note: title field is not part of form values, it's auto-generated from projectName
 };
@@ -373,6 +380,19 @@ function buildSteps(
 const EMPTY_TOWER_DETAIL: TowerDetail = { hasTrashChute: false, deliveryDate: null, elevatorCount: 0 };
 
 /** Fills in defaults for towers saved before `deliveryDate`/`elevatorCount` existed. */
+/** Reads `properties.seo` into the editor's shape, keeping only string values. */
+function parseSeo(value: unknown): SeoValues {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  const platform = (key: keyof SeoValues) => {
+    const fields = source[key];
+    if (!fields || typeof fields !== "object" || Array.isArray(fields)) return {};
+    return Object.fromEntries(
+      Object.entries(fields as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+    );
+  };
+  return { ...EMPTY_SEO, meta: platform("meta"), google: platform("google"), youtube: platform("youtube"), linkedin: platform("linkedin") };
+}
+
 function parseTowerDetails(raw: unknown): Record<string, TowerDetail> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return Object.fromEntries(
@@ -439,11 +459,21 @@ export function PropertyForm({
   const [mainImage, setMainImage] = useState<PickedImage[]>(() =>
     property?.image ? [existingImage(property.image)] : [],
   );
-  // SEO values are UI-only for now; they are not sent to the backend yet.
-  const [seo, setSeo] = useState<SeoValues>(EMPTY_SEO);
+  const [seo, setSeo] = useState<SeoValues>(() => parseSeo(property?.seo));
+  // Share images live as picked files until save; existing ones come back as their URLs.
+  const [seoImages, setSeoImages] = useState<SeoImages>(() => {
+    const saved = parseSeo(property?.seo);
+    return Object.fromEntries(
+      SEO_IMAGE_FIELDS.map((field) => {
+        const [platform, name] = field.split(".") as [keyof SeoValues, string];
+        const url = saved[platform][name];
+        return [field, url ? [existingImage(url)] : []];
+      }),
+    ) as SeoImages;
+  });
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  useRevokePreviewsOnUnmount(mainImage, images);
+  useRevokePreviewsOnUnmount(mainImage, images, ...Object.values(seoImages));
 
   const step = steps[stepIndex];
   const isLastStep = stepIndex === steps.length - 1;
@@ -582,6 +612,9 @@ export function PropertyForm({
         if (uploaded.size === 0) return;
         setMainImage(swapUploaded);
         setImages(swapUploaded);
+        setSeoImages((prev) =>
+          Object.fromEntries(Object.entries(prev).map(([field, list]) => [field, swapUploaded(list)])) as SeoImages,
+        );
       };
 
       let imageUrl = mainImage[0].previewUrl;
@@ -612,6 +645,34 @@ export function PropertyForm({
         additionalImages.push(upload.url);
         uploaded.set(img.id, upload.url);
       }
+
+      // Share images: upload new picks, keep existing URLs, clear removed ones.
+      const seoPayload: SeoValues = {
+        meta: { ...seo.meta },
+        google: { ...seo.google },
+        youtube: { ...seo.youtube },
+        linkedin: { ...seo.linkedin },
+      };
+      for (const field of SEO_IMAGE_FIELDS) {
+        const [platform, name] = field.split(".") as [keyof SeoValues, string];
+        const picked = seoImages[field as SeoImageField][0];
+        if (!picked) {
+          delete seoPayload[platform][name];
+          continue;
+        }
+        if (!picked.file) {
+          seoPayload[platform][name] = picked.previewUrl;
+          continue;
+        }
+        const upload = await uploadImage(picked.file, "seo");
+        if ("error" in upload) {
+          commitUploads();
+          setError(upload.error);
+          return;
+        }
+        seoPayload[platform][name] = upload.url;
+        uploaded.set(picked.id, upload.url);
+      }
       commitUploads();
 
       const payload: CreatePropertyInput = {
@@ -632,6 +693,7 @@ export function PropertyForm({
           ),
         },
         additionalImages,
+        seo: seoPayload,
       };
 
       const result =
@@ -963,7 +1025,9 @@ export function PropertyForm({
             </div>
           ))}
 
-          {step.key === "seo" ? <SeoEditor values={seo} onChange={setSeo} /> : null}
+          {step.key === "seo" ? (
+            <SeoEditor values={seo} onChange={setSeo} images={seoImages} onImagesChange={setSeoImages} />
+          ) : null}
 
           {step.key === "micro" ? (
             <div className="flex flex-col gap-4">

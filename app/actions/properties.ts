@@ -56,7 +56,25 @@ export type CreatePropertyInput = {
   /** Per-tower attributes (trash chute, delivery date, elevators) keyed by `tower-${n}`. */
   towerDetails: Record<string, TowerDetail>;
   additionalImages: string[];
+  /** Per-platform SEO/ads fields (`{ meta: { ogTitle, … }, google: {…}, … }`); empty values are dropped. */
+  seo: Record<string, Record<string, string>>;
 };
+
+/** Trims every SEO value and drops empty fields and platforms, so `seo` only holds what was filled in. */
+function cleanSeo(seo: CreatePropertyInput["seo"]) {
+  return Object.fromEntries(
+    Object.entries(seo ?? {})
+      .map(([platform, fields]) => [
+        platform,
+        Object.fromEntries(
+          Object.entries(fields ?? {})
+            .map(([name, value]) => [name, typeof value === "string" ? value.trim() : ""])
+            .filter(([, value]) => value),
+        ),
+      ])
+      .filter(([, fields]) => Object.keys(fields).length > 0),
+  );
+}
 
 export type CreatePropertyResult =
   | { success: true; id: number }
@@ -72,6 +90,7 @@ const REQUIRED_FIELDS: Array<
       | "additionalImages"
       | "latitude"
       | "longitude"
+      | "seo"
     >,
     string,
   ]
@@ -137,6 +156,7 @@ function buildPropertyRow(input: CreatePropertyInput) {
     sales_room_phone: input.salesRoomPhone.trim() || null,
     sales_room_email: input.salesRoomEmail.trim() || null,
     sales_room_hours: input.salesRoomHours.trim() || null,
+    seo: cleanSeo(input.seo),
   };
 }
 
@@ -191,7 +211,8 @@ export async function getPropertyById(id: number) {
   return data;
 }
 
-export type PropertyImageKind = "main" | "secondary";
+/** "seo" is a share image (og:image / LinkedIn) picked in the SEO step. */
+export type PropertyImageKind = "main" | "secondary" | "seo";
 
 export type UploadPropertyImageResult = { url: string } | { error: string };
 
@@ -214,7 +235,8 @@ export async function uploadPropertyImage(
   formData: FormData,
 ): Promise<UploadPropertyImageResult> {
   const file = formData.get("file");
-  const kind: PropertyImageKind = formData.get("kind") === "main" ? "main" : "secondary";
+  const rawKind = formData.get("kind");
+  const kind: PropertyImageKind = rawKind === "main" || rawKind === "seo" ? rawKind : "secondary";
   if (!(file instanceof File) || file.size === 0) {
     return { error: "No se recibió ninguna imagen." };
   }

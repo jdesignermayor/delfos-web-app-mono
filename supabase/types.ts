@@ -241,6 +241,7 @@ export type Database = {
           sales_room_phone: string | null
           seller_id: number | null
           separation_amount: string | null
+          seo: Json
           stratum: number
           title: string
           tower_count: number | null
@@ -286,6 +287,7 @@ export type Database = {
           sales_room_phone?: string | null
           seller_id?: number | null
           separation_amount?: string | null
+          seo?: Json
           stratum: number
           title: string
           tower_count?: number | null
@@ -331,6 +333,7 @@ export type Database = {
           sales_room_phone?: string | null
           seller_id?: number | null
           separation_amount?: string | null
+          seo?: Json
           stratum?: number
           title?: string
           tower_count?: number | null
