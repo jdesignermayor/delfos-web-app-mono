@@ -112,11 +112,10 @@ export const OPERATION_LABELS: Record<Operation, string> = {
   arrendar: "En arriendo",
 };
 
+/** Neighbourhoods inside Medellín, searched as "<barrio>, Medellín". */
 export const MEDELLIN_AREAS = [
   "El Poblado",
   "Laureles",
-  "Envigado",
-  "Sabaneta",
   "Belén",
   "La América",
   "Estadio",
@@ -124,6 +123,9 @@ export const MEDELLIN_AREAS = [
   "Calasanz",
   "Robledo",
 ];
+
+/** Municipalities of the Aburrá Valley, searched by name alone (they aren't part of Medellín). */
+export const NEARBY_MUNICIPALITIES = ["Envigado", "Sabaneta", "Itagüí", "La Estrella", "Bello"];
 
 export const PROPERTIES: Property[] = [
   {
