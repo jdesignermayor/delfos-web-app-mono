@@ -8,6 +8,7 @@ import { useToast } from "@/components/providers/toast-provider";
 
 import {
   createProperty,
+  createSeoShareImage,
   updateProperty,
   uploadPropertyImage,
   type PropertyImageKind,
@@ -32,6 +33,7 @@ import {
   type SeoValues,
 } from "@/components/dashboard/properties/seo-editor";
 import { type Amenity, parseAmenities } from "@/lib/amenities";
+import { buildSeoTexts } from "@/lib/seo-autofill";
 import type { Tables } from "@/supabase/types";
 
 export type PropertyRecord = Tables<"properties"> & {
@@ -415,6 +417,7 @@ export function PropertyForm({
   commonAreas,
   property,
   onSaved,
+  openSeo = false,
 }: {
   developers: { id: number; name: string }[];
   realEstateAgencies: { id: string; name: string }[];
@@ -424,13 +427,17 @@ export function PropertyForm({
   property?: PropertyRecord;
   /** Called after a successful edit, instead of the default create-mode redirect. */
   onSaved?: () => void;
+  /** Open straight on the SEO step, where the "Autorrellenar" button is (the detail view's shortcut). */
+  openSeo?: boolean;
 }) {
   const router = useRouter();
   const toast = useToast();
   const isEditing = Boolean(property);
   const steps = buildSteps(developers, realEstateAgencies, trustCompanies);
   const formId = useId();
-  const [stepIndex, setStepIndex] = useState(0);
+  const [stepIndex, setStepIndex] = useState(() =>
+    openSeo ? Math.max(0, steps.findIndex((s) => s.key === "seo")) : 0,
+  );
   const [values, setValues] = useState<PropertyFormValues>(() =>
     property ? toInitialValues(property) : EMPTY_STATE,
   );
@@ -473,6 +480,7 @@ export function PropertyForm({
   });
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isAutofilling, startAutofill] = useTransition();
   useRevokePreviewsOnUnmount(mainImage, images, ...Object.values(seoImages));
 
   const step = steps[stepIndex];
@@ -554,6 +562,63 @@ export function PropertyForm({
     formData.append("file", file);
     formData.append("kind", kind);
     return uploadPropertyImage(formData);
+  }
+
+  /**
+   * SEO autofill: suggested copy for every platform from the form's data, put
+   * only into empty fields; plus one share image made from the main photo
+   * (cropped to 1200 × 630 on the server) for whichever of Meta / LinkedIn has
+   * no image yet. Nothing the user already wrote or picked is replaced.
+   */
+  function autofillSeo() {
+    const texts = buildSeoTexts({
+      ...values,
+      developerName: developers.find((d) => String(d.id) === values.developerId)?.name,
+      amenities: amenities.map((a) => a.name),
+      typologies: Object.values(towerTypologies).flat(),
+    });
+
+    let filled = 0;
+    const next: SeoValues = { meta: { ...seo.meta }, google: { ...seo.google }, youtube: { ...seo.youtube }, linkedin: { ...seo.linkedin } };
+    for (const [platform, fields] of Object.entries(texts) as [keyof SeoValues, Record<string, string>][]) {
+      for (const [name, value] of Object.entries(fields)) {
+        if (value && !next[platform][name]?.trim()) {
+          next[platform][name] = value;
+          filled += 1;
+        }
+      }
+    }
+    setSeo(next);
+
+    const missingImages = SEO_IMAGE_FIELDS.filter((field) => seoImages[field].length === 0);
+    const main = mainImage[0];
+    if (missingImages.length === 0 || !main) {
+      if (!main && missingImages.length > 0) {
+        toast.error("Falta la imagen principal", "Agrégala en el primer paso para generar la imagen para compartir.");
+      }
+      toast.success("SEO autorrellenado", filled ? `${filled} campos completados.` : "Todos los campos ya tenían contenido.");
+      return;
+    }
+
+    startAutofill(async () => {
+      const formData = new FormData();
+      if (main.file) formData.append("file", main.file);
+      else formData.append("url", main.previewUrl);
+      const result = await createSeoShareImage(formData);
+      if ("error" in result) {
+        toast.error("No se pudo crear la imagen para compartir", result.error);
+        return;
+      }
+      setSeoImages((prev) => {
+        const updated = { ...prev };
+        for (const field of missingImages) if (updated[field].length === 0) updated[field] = [existingImage(result.url)];
+        return updated;
+      });
+      toast.success(
+        "SEO autorrellenado",
+        `${filled} campos completados y la imagen para compartir creada (1200 × 630) para ${missingImages.length === 2 ? "Meta y LinkedIn" : missingImages[0].startsWith("meta") ? "Meta" : "LinkedIn"}.`,
+      );
+    });
   }
 
   function goBack() {
@@ -1026,7 +1091,14 @@ export function PropertyForm({
           ))}
 
           {step.key === "seo" ? (
-            <SeoEditor values={seo} onChange={setSeo} images={seoImages} onImagesChange={setSeoImages} />
+            <SeoEditor
+              values={seo}
+              onChange={setSeo}
+              images={seoImages}
+              onImagesChange={setSeoImages}
+              onAutofill={autofillSeo}
+              autofilling={isAutofilling}
+            />
           ) : null}
 
           {step.key === "micro" ? (

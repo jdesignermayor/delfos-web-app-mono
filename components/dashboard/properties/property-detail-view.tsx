@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button, Card, Chip } from "@heroui/react";
+import { Sparkles } from "lucide-react";
 
 import { ArrowRightIcon } from "@/components/icons";
 import { PropertyForm, type PropertyRecord } from "@/components/dashboard/properties/property-form";
@@ -236,6 +237,8 @@ export function PropertyDetailView({
   commonAreas: { id: string; name: string }[];
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  // Set when editing was opened from "Autorrellenar SEO", so the form lands on the SEO step.
+  const [openSeo, setOpenSeo] = useState(false);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -248,14 +251,33 @@ export function PropertyDetailView({
           Volver a propiedades
         </Link>
 
-        <Button
-          type="button"
-          variant={isEditing ? "outline" : "primary"}
-          size="sm"
-          onPress={() => setIsEditing((v) => !v)}
-        >
-          {isEditing ? "Cancelar" : "Editar"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {!isEditing ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onPress={() => {
+                setOpenSeo(true);
+                setIsEditing(true);
+              }}
+            >
+              <Sparkles className="size-4" />
+              Autorrellenar SEO
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant={isEditing ? "outline" : "primary"}
+            size="sm"
+            onPress={() => {
+              setOpenSeo(false);
+              setIsEditing((v) => !v);
+            }}
+          >
+            {isEditing ? "Cancelar" : "Editar"}
+          </Button>
+        </div>
       </div>
 
       {!isEditing ? (
@@ -276,6 +298,7 @@ export function PropertyDetailView({
           trustCompanies={trustCompanies}
           commonAreas={commonAreas}
           property={property}
+          openSeo={openSeo}
         />
       ) : (
         <PropertyReadView property={property} />

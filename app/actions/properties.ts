@@ -6,7 +6,8 @@ import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
 import { createAdminClient } from "@/supabase/admin";
 import { createClient } from "@/supabase/server";
 import type { Amenity } from "@/lib/amenities";
-import { imageToWebp } from "@/lib/image-to-webp";
+import { imageToShareCard, imageToWebp } from "@/lib/image-to-webp";
+import { getCurrentUser } from "@/supabase/roles";
 import type { Typology } from "@/components/dashboard/properties/typologies-editor";
 
 /** Per-tower attributes stored in `properties.tower_details`. */
@@ -261,4 +262,52 @@ export async function uploadPropertyImage(
   }
   const { data } = admin.storage.from("properties").getPublicUrl(path);
   return { url: data.publicUrl };
+}
+
+/**
+ * Builds the social share image for the SEO autofill: the property's main
+ * photo cropped to 1200 × 630 and compressed to WebP, uploaded once and used
+ * for both Meta (og:image) and LinkedIn. Accepts the main photo either as a
+ * newly picked `file` or, for a saved property, as its `url` in our own
+ * `properties` bucket — any other URL is refused so the server never fetches
+ * arbitrary addresses.
+ */
+export async function createSeoShareImage(formData: FormData): Promise<UploadPropertyImageResult> {
+  const user = await getCurrentUser();
+  if (user?.role !== "superadmin") {
+    return { error: "No tienes permiso para generar imágenes." };
+  }
+
+  let file = formData.get("file");
+  const url = formData.get("url");
+  if (!(file instanceof File) || file.size === 0) {
+    const bucketPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/properties/`;
+    if (typeof url !== "string" || !url.startsWith(bucketPrefix)) {
+      return { error: "La imagen principal no es válida." };
+    }
+    const response = await fetch(url);
+    if (!response.ok) {
+      return { error: "No se pudo leer la imagen principal." };
+    }
+    const blob = await response.blob();
+    file = new File([blob], url.split("/").pop() ?? "main.webp", { type: blob.type });
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return { error: "La imagen principal supera el tamaño máximo de 20 MB." };
+  }
+
+  let card: Buffer;
+  try {
+    card = await imageToShareCard(file);
+  } catch {
+    return { error: "No se pudo procesar la imagen principal." };
+  }
+
+  const path = `properties/seo-picture-${fileTimestamp()}-${crypto.randomUUID()}.webp`;
+  const admin = createAdminClient();
+  const { error } = await admin.storage.from("properties").upload(path, card, { contentType: "image/webp" });
+  if (error) {
+    return { error: `No se pudo subir la imagen para compartir: ${error.message}` };
+  }
+  return { url: admin.storage.from("properties").getPublicUrl(path).data.publicUrl };
 }

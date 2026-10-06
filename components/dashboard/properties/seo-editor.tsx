@@ -2,6 +2,8 @@
 
 import { useState, type ComponentType, type SVGProps } from "react";
 import { Input, Label, TextArea, TextField } from "@heroui/react";
+import { Sparkles } from "lucide-react";
+
 import { GoogleIcon, LinkedInIcon, MetaIcon, YouTubeIcon } from "@/components/icons";
 import { MultiImagePicker, type PickedImage } from "@/components/multi-image-picker";
 
@@ -141,11 +143,16 @@ export function SeoEditor({
   onChange,
   images,
   onImagesChange,
+  onAutofill,
+  autofilling = false,
 }: {
   values: SeoValues;
   onChange: (values: SeoValues) => void;
   images: SeoImages;
   onImagesChange: (images: SeoImages) => void;
+  /** Fills empty fields on every platform from the property's own data. */
+  onAutofill?: () => void;
+  autofilling?: boolean;
 }) {
   const [active, setActive] = useState<SeoPlatform>("meta");
   const platform = PLATFORMS.find((p) => p.key === active)!;
@@ -165,6 +172,28 @@ export function SeoEditor({
 
   return (
     <div className="flex flex-col gap-5">
+      {onAutofill ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-accent/20 bg-accent-soft/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Autorrellenar SEO</p>
+            <p className="mt-0.5 text-xs text-muted">
+              Completa los campos vacíos de Meta, Google, YouTube y LinkedIn con los datos de la propiedad, y crea la
+              imagen para compartir desde la imagen principal. No cambia lo que ya escribiste.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onAutofill}
+            disabled={autofilling}
+            aria-busy={autofilling}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-70"
+          >
+            <Sparkles className={`size-4 ${autofilling ? "animate-pulse" : ""}`} />
+            {autofilling ? "Generando…" : "Autorrellenar"}
+          </button>
+        </div>
+      ) : null}
+
       <div
         role="tablist"
         aria-label="Plataformas"
