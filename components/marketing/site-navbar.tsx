@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button, buttonVariants, useOverlayState } from "@heroui/react";
+import { CircleUserRound } from "lucide-react";
 
 import { signOutAccount } from "@/app/actions/auth";
 
@@ -54,7 +55,8 @@ function AccountActions({
 
   if (!user) {
     return (
-      <Button variant="ghost" size="sm" fullWidth={fullWidth} onPress={onLogin}>
+      <Button variant="ghost" size="sm" fullWidth={fullWidth} onPress={onLogin} className="gap-2 font-semibold">
+        <CircleUserRound className="size-6" strokeWidth={1.75} />
         Ingresar
       </Button>
     );
