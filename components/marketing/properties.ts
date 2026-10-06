@@ -45,6 +45,56 @@ export type Property = {
   address?: string;
   /** Socioeconomic stratum (estrato 1–6). */
   stratum?: number;
+  /** Project, financing and sales-room data. Only real (DB) listings have it. */
+  details?: PropertyDetails;
+};
+
+/** A unit layout offered in one tower of the project. */
+export type Typology = {
+  name: string;
+  area?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  hasStudy?: boolean;
+  hasBalcony?: boolean;
+};
+
+export type Tower = {
+  /** 1-based tower number, from the `tower-N` key. */
+  number: number;
+  /** ISO date (YYYY-MM-DD). */
+  deliveryDate?: string;
+  elevatorCount?: number;
+  hasTrashChute?: boolean;
+  typologies: Typology[];
+};
+
+export type PropertyDetails = {
+  /** Constructora (`developer_id`) and the phone used for the WhatsApp contact button. */
+  developer?: { name: string; phone?: string };
+  /** "VIS" / "No VIS". */
+  housingType?: string;
+  /** Gerencia. */
+  constructionCompany?: string;
+  trustCompany?: string;
+  constructionBank?: string;
+  /** ISO date (YYYY-MM-DD). */
+  deliveryDate?: string;
+  towerCount?: number;
+  towers: Tower[];
+  financing: {
+    initialFeePercentage?: number;
+    initialFeeAmount?: number;
+    creditPercentage?: number;
+    creditAmount?: number;
+    separationAmount?: number;
+  };
+  salesRoom: {
+    address?: string;
+    phone?: string;
+    email?: string;
+    hours?: string;
+  };
 };
 
 /** Default map view — roughly the centre of the Aburrá Valley. */
@@ -267,6 +317,11 @@ const currency = new Intl.NumberFormat("es-CO", {
   currency: "COP",
   maximumFractionDigits: 0,
 });
+
+/** `$ 139.320.000` — any peso amount, no decimals. */
+export function formatCOP(value: number) {
+  return currency.format(value);
+}
 
 /** `$ 890.000.000` for venta, `$ 2.450.000 / mes` for arriendo. */
 export function formatPrice(property: Pick<Property, "price" | "operation">) {

@@ -22,6 +22,12 @@ import { GallerySection } from "@/components/property-detail/gallery-section";
 import { LocationMap } from "@/components/property-detail/location-map";
 import { PropertyGallery } from "@/components/property-detail/property-gallery";
 import { TalkToAgentButton } from "@/components/property-detail/talk-to-agent-button";
+import {
+  FinancingSummary,
+  ProjectDetailsSection,
+  SalesRoomSection,
+  TowersSection,
+} from "@/components/property-detail/project-details";
 import { AmenityItem } from "@/components/property-detail/amenity-item";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { formatRange } from "@/lib/typology-ranges";
@@ -94,6 +100,7 @@ export default async function PropertyDetailPage({
   if (!property) notFound();
 
   const amenities = property.amenities ?? DEFAULT_AMENITIES;
+  const details = property.details;
   const description =
     property.description ??
     `${property.title} es una propiedad ${OPERATION_LABELS[property.operation].toLowerCase()} en ${property.neighborhood}, ${property.city}. ${specs(property) ? `Cuenta con ${specs(property)}, ideal` : "Ideal"} para quienes buscan calidad de vida cerca de los principales servicios de la zona.`;
@@ -151,18 +158,11 @@ export default async function PropertyDetailPage({
                   ) : null}
                 </div>
 
-                <div className="mt-5 flex items-center gap-4 rounded-lg border border-separator bg-surface p-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-sm font-semibold text-white">
-                    JP
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">Asesor personalizado: Juan Pérez</p>
-                    <p className="text-sm text-muted">5 años de experiencia</p>
-                  </div>
-                </div>
-
-                <p className="mt-5 leading-relaxed text-foreground/90">{description}</p>
+                <p className="mt-5 whitespace-pre-line leading-relaxed text-foreground/90">{description}</p>
               </div>
+
+              {details ? <ProjectDetailsSection property={property} details={details} /> : null}
+              {details ? <TowersSection towers={details.towers} /> : null}
 
               <section id="servicios" className="scroll-mt-24">
                 <h3 className="font-display text-2xl font-semibold text-foreground">Lo que este lugar ofrece</h3>
@@ -184,6 +184,8 @@ export default async function PropertyDetailPage({
                   </p>
                 )}
               </section>
+
+              {details ? <SalesRoomSection salesRoom={details.salesRoom} /> : null}
             </div>
 
             <aside className="lg:sticky lg:top-24 lg:h-fit">
@@ -197,9 +199,14 @@ export default async function PropertyDetailPage({
 
                 <div className="h-px bg-separator" />
 
+                {details ? <FinancingSummary financing={details.financing} /> : null}
+
                 <AffordabilityCalculator property={property} />
 
-                <TalkToAgentButton propertyTitle={property.title} />
+                <TalkToAgentButton
+                  propertyTitle={property.title}
+                  phone={details?.developer?.phone ?? details?.salesRoom.phone}
+                />
               </div>
             </aside>
           </div>

@@ -37,18 +37,27 @@ const AMENITIES: Amenity[] = [
   { label: "Parque infantil", icon: LeafIcon, isAnimated: false },
   { label: "Cowork", icon: LaptopMinimalCheckIcon, isAnimated: true },
   { label: "Terraza", icon: WindIcon, isAnimated: true },
+  // Names used by the common areas catalogue in the dashboard.
+  { label: "Coworking", icon: LaptopMinimalCheckIcon, isAnimated: true },
+  { label: "Portería", icon: ShieldCheckIcon, isAnimated: true },
+  { label: "Juegos infantiles", icon: LeafIcon, isAnimated: false },
+  { label: "Placa polideportiva", icon: SquareActivityIcon, isAnimated: true },
 ];
 
-const AMENITY_MAP = Object.fromEntries(AMENITIES.map((a) => [a.label, a]));
+/** "Salon social " and "Salón social" are the same amenity: ignore case, accents and stray spaces. */
+const normalize = (label: string) =>
+  label.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
+const AMENITY_MAP = new Map(AMENITIES.map((a) => [normalize(a.label), a]));
+
+/** An amenity of the listing. Ones without a dedicated icon get a generic check, never a "missing" style. */
 export function AmenityItem({ label }: { label: string }) {
-  const amenity = AMENITY_MAP[label];
-  const isFound = !!amenity;
-  const Icon = amenity?.icon || CheckCircleIcon;
+  const amenity = AMENITY_MAP.get(normalize(label));
+  const Icon: Amenity["icon"] = amenity?.icon || CheckCircleIcon;
   const isAnimated = amenity?.isAnimated ?? false;
 
   return (
-    <li className={`flex items-center gap-3 ${!isFound ? "opacity-50" : ""}`}>
+    <li className="flex items-center gap-3">
       <div className="shrink-0">
         {isAnimated ? (
           <Icon size={20} animateOnHover={true} />
@@ -56,9 +65,7 @@ export function AmenityItem({ label }: { label: string }) {
           <Icon className="size-5 text-foreground" />
         )}
       </div>
-      <span className={`text-foreground ${!isFound ? "line-through" : ""}`}>
-        {label}
-      </span>
+      <span className="text-foreground">{label}</span>
     </li>
   );
 }
