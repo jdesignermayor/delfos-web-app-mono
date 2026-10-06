@@ -1,3 +1,5 @@
+import { slugify } from "@/lib/slug";
+
 /** What the SEO autofill needs from the property form. */
 export type SeoAutofillInput = {
   projectName: string;
@@ -52,15 +54,6 @@ function fitSentences(sentences: (string | false | undefined)[], max: number) {
   return result;
 }
 
-const slugify = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-
 const range = (values: number[], unit = "") => {
   if (!values.length) return "";
   const min = Math.min(...values);
@@ -106,7 +99,7 @@ export function buildSeoTexts(input: SeoAutofillInput): SeoTexts {
   ].filter(Boolean);
 
   const sentences = [
-    `${kind} en ${place}${price > 0 ? ` desde ${priceText(price)}` : ""}.`,
+    `${kind} en venta en ${place}${price > 0 ? ` desde ${priceText(price)}` : ""}.`,
     specs.length > 0 && `${specs.join(", ")}.`,
     delivery && `Entrega en ${delivery}.`,
     affordable && "Vivienda VIS.",
@@ -138,12 +131,13 @@ export function buildSeoTexts(input: SeoAutofillInput): SeoTexts {
 
   return {
     meta: {
-      ogTitle: fit(`${project} | ${kind} en ${municipality || place}`, 60),
+      ogTitle: fit(`${project}: ${kind.toLowerCase()} en venta en ${municipality || place}`, 60),
       ogDescription: fitSentences(sentences, 160),
       campaign: slugify(project),
     },
     google: {
-      metaTitle: fit(`${project}: ${kind} en ${municipality || place}`, 60),
+      // Phrased like the query ("apartamentos en venta en La Estrella"), which is what Google and ChatGPT's searches match.
+      metaTitle: fit(`${project}: ${kind.toLowerCase()} en venta en ${municipality || place}`, 60),
       slug: slugify([project, municipality].filter(Boolean).join(" ")),
       metaDescription: fitSentences(sentences, 160),
       keywords: uniqueKeywords.join(", "),
@@ -154,7 +148,7 @@ export function buildSeoTexts(input: SeoAutofillInput): SeoTexts {
       videoDescription: fit(videoDescription, 5000),
     },
     linkedin: {
-      title: fit(`${project}: nuevo proyecto en ${municipality || place}`, 70),
+      title: fit(`${project}: ${kind.toLowerCase()} nuevos en venta en ${municipality || place}`, 70),
       description: fitSentences(sentences, 150),
     },
   };

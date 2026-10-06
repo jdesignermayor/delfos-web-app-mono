@@ -3,6 +3,64 @@ import type { Metadata } from "next";
 import type { Property } from "@/components/marketing/properties";
 import { NOINDEX, SITE_URL } from "@/lib/site";
 
+const KIND: Record<string, [singular: string, plural: string]> = {
+  apartamento: ["apartamento", "apartamentos"],
+  casa: ["casa", "casas"],
+  apartaestudio: ["apartaestudio", "apartaestudios"],
+  proyecto: ["vivienda", "vivienda nueva"],
+};
+const monthYear = new Intl.DateTimeFormat("es-CO", { month: "short", year: "numeric", timeZone: "UTC" });
+const millions = (price: number) => `$${Math.round(price / 1_000_000).toLocaleString("es-CO")}M`;
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** "La Estrella" — the most specific place we know, for titles. */
+const placeOf = (property: Property) => property.neighborhood || property.city || "Medellín";
+
+/**
+ * Default <title> when the SEO step leaves it empty, phrased the way people
+ * (and ChatGPT's Bing queries) search: "Bantue: apartamentos en venta en La
+ * Estrella desde $464M". Branding alone ("Bantue Apartamentos") matches no query.
+ */
+export function defaultPropertyTitle(property: Property) {
+  const kind = KIND[property.type]?.[1] ?? "vivienda";
+  const deal = property.operation === "arrendar" ? "en arriendo" : "en venta";
+  const base = `${property.title}: ${kind} ${deal} en ${placeOf(property)}`;
+  const withPrice = property.price > 0 ? `${base} desde ${millions(property.price)}` : base;
+  // ~60 characters is what Google shows; drop the price before cutting words.
+  return withPrice.length <= 65 ? withPrice : base;
+}
+
+/**
+ * Default meta description: offer, place, price, size, delivery date and a
+ * call to action — the concrete facts a search snippet is judged on.
+ */
+export function defaultPropertyDescription(property: Property) {
+  const kind = KIND[property.type]?.[1] ?? "vivienda";
+  const deal = property.operation === "arrendar" ? "en arriendo" : "nuevos en venta";
+  const specs = [
+    property.beds && `${property.beds.min === property.beds.max ? property.beds.min : `${property.beds.min}-${property.beds.max}`} hab.`,
+    property.baths && `${property.baths.min === property.baths.max ? property.baths.min : `${property.baths.min}-${property.baths.max}`} baños`,
+    property.area && `${property.area.min === property.area.max ? property.area.min : `${property.area.min}-${property.area.max}`} m²`,
+  ].filter(Boolean);
+  const delivery = property.details?.deliveryDate
+    ? monthYear.format(new Date(`${property.details.deliveryDate.slice(0, 10)}T00:00:00Z`)).replace(".", "")
+    : "";
+  const sentences = [
+    `${capitalize(kind)} ${deal} en ${placeOf(property)}${property.price > 0 ? ` desde ${millions(property.price)}` : ""}.`,
+    specs.length > 0 && `${specs.join(", ")}.`,
+    delivery && `Entrega ${delivery}.`,
+    property.details?.developer?.name && `Por ${property.details.developer.name}.`,
+    "Mira precios, tipologías y agenda tu visita.",
+  ];
+  let text = "";
+  for (const sentence of sentences) {
+    if (!sentence) continue;
+    const next = text ? `${text} ${sentence}` : sentence;
+    if (next.length <= 160) text = next;
+  }
+  return text;
+}
+
 /** "dQw4w9WgXcQ" from watch?v=, youtu.be/, /shorts/ or /embed/ URLs; null when it isn't YouTube. */
 export function youtubeId(url: string | undefined): string | null {
   if (!url) return null;
@@ -45,12 +103,11 @@ const splitList = (value: string | undefined) =>
  */
 export function buildPropertyMetadata(
   property: Property,
-  fallbackDescription: string,
   searchParams: Record<string, string | string[] | undefined>,
 ): Metadata {
   const seo = property.seo;
-  const title = seo?.google.metaTitle || property.title;
-  const description = seo?.google.metaDescription || fallbackDescription;
+  const title = seo?.google.metaTitle || defaultPropertyTitle(property);
+  const description = seo?.google.metaDescription || defaultPropertyDescription(property);
   const canonical = seo?.google.canonicalUrl || propertyPath(property);
 
   const linkedin = sharePlatform(searchParams) === "linkedin";
@@ -108,10 +165,37 @@ export function buildPropertyMetadata(
  * schema.org data for search engines: the development as an ApartmentComplex
  * (name, address, geo, photos) plus its promo video when one is set.
  */
-export function buildPropertyJsonLd(property: Property, description: string): Record<string, unknown> {
+export function buildPropertyJsonLd(property: Property): Record<string, unknown> {
   const url = `${SITE_URL}${propertyPath(property)}`;
+  const description = property.seo?.google.metaDescription || defaultPropertyDescription(property);
   const images = property.images?.length ? property.images : property.image ? [property.image] : [];
   const graph: Record<string, unknown>[] = [
+    // The listing itself: what's offered, for how much, and when it was published/updated (freshness).
+    {
+      "@type": "RealEstateListing",
+      "@id": `${url}#listing`,
+      url,
+      name: property.seo?.google.metaTitle || defaultPropertyTitle(property),
+      description,
+      image: images[0],
+      datePosted: property.createdAt,
+      dateModified: property.updatedAt,
+      inLanguage: "es-CO",
+      about: { "@id": `${url}#property` },
+      offers:
+        property.price > 0
+          ? {
+              "@type": "Offer",
+              price: property.price,
+              priceCurrency: "COP",
+              availability: "https://schema.org/InStock",
+              businessFunction: `https://purl.org/goodrelations/v1#${property.operation === "arrendar" ? "LeaseOut" : "Sell"}`,
+              seller: property.details?.developer?.name
+                ? { "@type": "Organization", name: property.details.developer.name }
+                : undefined,
+            }
+          : undefined,
+    },
     {
       "@type": "ApartmentComplex",
       "@id": `${url}#property`,

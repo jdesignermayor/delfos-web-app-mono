@@ -49,6 +49,9 @@ export type Property = {
   details?: PropertyDetails;
   /** SEO/ads fields from the dashboard's SEO step. Only real (DB) listings have it. */
   seo?: PropertySeo;
+  /** ISO timestamps; real listings only. Shown and published as freshness signals. */
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 /** `properties.seo`, per platform; every field is optional (only filled ones are stored). */

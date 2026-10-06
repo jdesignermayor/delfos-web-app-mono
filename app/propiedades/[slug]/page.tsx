@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { BathIcon, BedIcon, CarIcon, RulerIcon } from "@/components/icons";
 import { SiteNavbar } from "@/components/marketing/site-navbar";
@@ -34,7 +34,7 @@ import { PropertyVideo } from "@/components/property-detail/property-video";
 import { JsonLd } from "@/components/seo/json-ld";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { TrackPropertyView } from "@/components/analytics/track-property-view";
-import { buildPropertyJsonLd, buildPropertyMetadata, youtubeId } from "@/lib/property-seo";
+import { buildPropertyJsonLd, buildPropertyMetadata, propertyPath, youtubeId } from "@/lib/property-seo";
 import { formatRange } from "@/lib/typology-ranges";
 
 const DEFAULT_AMENITIES = [
@@ -60,29 +60,25 @@ function specs(property: Property) {
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} y ${parts.at(-1)}` : (parts[0] ?? "");
 }
 
+const UPDATED_FORMAT = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Bogota" });
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Mock listings first (no DB round-trip); real DB properties are found by
  * their public UUID or by the SEO slug set in the dashboard.
  */
+/** One URL per property: the old UUID address permanently redirects to the clean, keyword-rich slug. */
+function redirectToSlug(requested: string, property: Property) {
+  const seoSlug = property.seo?.google.slug;
+  if (seoSlug && decodeURIComponent(requested) !== seoSlug) permanentRedirect(propertyPath(property));
+}
+
 async function resolveProperty(slug: string): Promise<Property | null> {
   const mock = getPropertyBySlug(slug);
   if (mock) return mock;
 
   return getDbPropertyBySlug(decodeURIComponent(slug), UUID_RE.test(slug) ? "uuid" : "seo-slug");
-}
-
-/** Default description when the SEO step leaves it empty: place, specs and price. */
-function summary(property: Property) {
-  const place = [property.neighborhood, property.city].filter(Boolean).join(", ");
-  return [
-    `${property.title}${place ? ` en ${place}` : ""}.`,
-    specs(property) && `${specs(property)}.`,
-    `${formatPrice(property)}.`,
-  ]
-    .filter(Boolean)
-    .join(" ");
 }
 
 export async function generateMetadata({
@@ -92,8 +88,11 @@ export async function generateMetadata({
   const { slug } = await params;
   const property = await resolveProperty(slug);
   if (!property) return { title: "Propiedad no encontrada" };
+  // Metadata resolves before the response starts, so the redirect is a real 308 here
+  // (from the page body it would be too late to change the status code).
+  redirectToSlug(slug, property);
 
-  return buildPropertyMetadata(property, summary(property), await searchParams);
+  return buildPropertyMetadata(property, await searchParams);
 }
 
 export default async function PropertyDetailPage({
@@ -102,6 +101,8 @@ export default async function PropertyDetailPage({
   const { slug } = await params;
   const property = await resolveProperty(slug);
   if (!property) notFound();
+
+  redirectToSlug(slug, property);
 
   const amenities = property.amenities ?? DEFAULT_AMENITIES;
   const details = property.details;
@@ -112,7 +113,7 @@ export default async function PropertyDetailPage({
 
   return (
     <SearchModeProvider>
-      <JsonLd data={buildPropertyJsonLd(property, summary(property))} />
+      <JsonLd data={buildPropertyJsonLd(property)} />
       <GoogleAnalytics />
       <TrackPropertyView
         property={{
@@ -176,6 +177,13 @@ export default async function PropertyDetailPage({
                 </div>
 
                 <p className="mt-5 whitespace-pre-line leading-relaxed text-foreground/90">{description}</p>
+                {property.updatedAt ? (
+                  // Visible freshness: search engines and AI answers favour listings that are clearly current.
+                  <p className="mt-3 text-xs text-muted">
+                    Información actualizada el{" "}
+                    <time dateTime={property.updatedAt}>{UPDATED_FORMAT.format(new Date(property.updatedAt))}</time>
+                  </p>
+                ) : null}
               </div>
 
               {details ? <ProjectDetailsSection property={property} details={details} /> : null}

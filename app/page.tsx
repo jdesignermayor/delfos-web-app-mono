@@ -13,50 +13,71 @@ import { StatsSection } from "@/components/marketing/stats-section";
 import { CtaSection } from "@/components/marketing/cta-section";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { JsonLd } from "@/components/seo/json-ld";
-import { NOINDEX, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
+import { NOINDEX, SITE_DESCRIPTION, SITE_NAME, SITE_URL, currentYear } from "@/lib/site";
+import { createPublicClient } from "@/supabase/public";
 
 const SHARE_IMAGE = { url: "/og/landing", width: 1200, height: 630, alt: "Delfos — vivienda nueva en Medellín" };
 
-export const metadata: Metadata = {
-  title: { absolute: SITE_TITLE },
-  description: SITE_DESCRIPTION,
-  keywords: [
-    "vivienda nueva medellín",
-    "apartamentos nuevos medellín",
-    "proyectos sobre planos",
-    "apartamentos en envigado",
-    "apartamentos en sabaneta",
-    "apartamentos en la estrella",
-    "vivienda vis medellín",
-    "constructoras medellín",
-    "comprar apartamento medellín",
-  ],
-  applicationName: SITE_NAME,
-  category: "Bienes raíces",
-  alternates: { canonical: "/" },
-  robots: NOINDEX
-    ? { index: false, follow: false }
-    : {
-        index: true,
-        follow: true,
-        googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
-      },
-  openGraph: {
-    type: "website",
-    locale: "es_CO",
-    siteName: SITE_NAME,
-    url: "/",
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-    images: [SHARE_IMAGE],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-    images: [SHARE_IMAGE.url],
-  },
-};
+/** Live numbers for the landing's description, from the same cached query as the listings. */
+async function landingStats() {
+  const { data } = await createPublicClient({ revalidate: 3600, tags: [PROPERTIES_CACHE_TAG] })
+    .from("properties")
+    .select("price, delivery_date");
+  if (!data?.length) return null;
+  const prices = data.map((row) => Number(row.price)).filter((price) => price > 0);
+  const years = data.flatMap((row) => (row.delivery_date ? [Number(row.delivery_date.slice(0, 4))] : []));
+  return {
+    count: data.length,
+    minPrice: prices.length ? Math.min(...prices) : 0,
+    years: years.length ? [Math.min(...years), Math.max(...years)] : null,
+  };
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const stats = await landingStats();
+  const year = currentYear();
+  const title = `Apartamentos nuevos en venta en Medellín ${year} | ${SITE_NAME}`;
+  // "Compara 6 proyectos de vivienda nueva en venta en Medellín… desde $429M. Entregas 2026–2028. Agenda tu visita."
+  const description = stats
+    ? [
+        `Compara ${stats.count} proyectos de vivienda nueva en venta en Medellín y el Valle de Aburrá`,
+        stats.minPrice ? ` desde $${Math.round(stats.minPrice / 1_000_000).toLocaleString("es-CO")}M` : "",
+        ". ",
+        stats.years
+          ? `Precios, tipologías y entregas ${stats.years[0] === stats.years[1] ? stats.years[0] : `${stats.years[0]}–${stats.years[1]}`}. `
+          : "Precios, tipologías y fechas de entrega. ",
+        "Agenda tu visita.",
+      ].join("")
+    : SITE_DESCRIPTION;
+
+  return {
+    title: { absolute: title },
+    description,
+    keywords: [
+      `apartamentos nuevos en venta medellín ${year}`,
+      "vivienda nueva medellín",
+      "proyectos sobre planos medellín",
+      "apartamentos en venta envigado",
+      "apartamentos en venta sabaneta",
+      "apartamentos en venta la estrella",
+      "vivienda vis medellín",
+      "constructoras medellín",
+    ],
+    applicationName: SITE_NAME,
+    category: "Bienes raíces",
+    alternates: { canonical: "/" },
+    robots: NOINDEX
+      ? { index: false, follow: false }
+      : {
+          index: true,
+          follow: true,
+          googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+        },
+    openGraph: { type: "website", locale: "es_CO", siteName: SITE_NAME, url: "/", title, description, images: [SHARE_IMAGE] },
+    twitter: { card: "summary_large_image", title, description, images: [SHARE_IMAGE.url] },
+  };
+}
 
 /** Who Delfos is and what the site is, for Google's knowledge panel and site name in results. */
 const SITE_JSON_LD = {

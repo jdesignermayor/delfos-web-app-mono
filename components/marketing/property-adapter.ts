@@ -161,12 +161,14 @@ export function toProperty(row: PropertyRow): Property {
     stratum: row.stratum || undefined,
     details: toDetails(row),
     seo: parseSeo(row.seo),
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? row.created_at ?? undefined,
   };
 }
 
-/** Fetches every real property from Supabase, newest first. */
-export async function getDbProperties(): Promise<Property[]> {
-  const supabase = createPublicClient();
+/** Fetches every real property from Supabase, newest first. Cached like the detail pages and deduped per request. */
+export const getDbProperties = cache(async (): Promise<Property[]> => {
+  const supabase = createPublicClient({ revalidate: 300, tags: [PROPERTIES_CACHE_TAG] });
   const { data, error } = await supabase
     .from("properties")
     .select(PROPERTY_SELECT)
@@ -174,7 +176,7 @@ export async function getDbProperties(): Promise<Property[]> {
 
   if (error || !data) return [];
   return data.map(toProperty);
-}
+});
 
 /**
  * Looks up a single real property for `/propiedades/[slug]`, by its public

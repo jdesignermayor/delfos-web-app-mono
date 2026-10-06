@@ -7,6 +7,7 @@ import { createAdminClient } from "@/supabase/admin";
 import { createClient } from "@/supabase/server";
 import type { Amenity } from "@/lib/amenities";
 import { imageToShareCard, imageToWebp } from "@/lib/image-to-webp";
+import { slugify } from "@/lib/slug";
 import { getCurrentUser } from "@/supabase/roles";
 import type { Typology } from "@/components/dashboard/properties/typologies-editor";
 
@@ -158,7 +159,33 @@ function buildPropertyRow(input: CreatePropertyInput) {
     sales_room_email: input.salesRoomEmail.trim() || null,
     sales_room_hours: input.salesRoomHours.trim() || null,
     seo: cleanSeo(input.seo),
+    // There's no DB trigger for this; it's the "last updated" date shown to visitors and search engines.
+    updated_at: new Date().toISOString(),
   };
+}
+
+type PropertyRow = ReturnType<typeof buildPropertyRow>;
+
+/**
+ * Every property gets a clean, keyword-rich URL slug (`/propiedades/<slug>`):
+ * the one typed in the SEO step (normalised), or one made from the project
+ * name and municipality. Suffixes -2, -3… keep it unique across properties.
+ */
+async function withUniqueSlug(row: PropertyRow, id?: number): Promise<PropertyRow> {
+  const seo = row.seo as Record<string, Record<string, string>>;
+  const base = slugify(seo.google?.slug || `${row.title} ${row.location.split(",")[0] ?? ""}`);
+  if (!base) return row;
+
+  const admin = createAdminClient();
+  let candidate = base;
+  for (let n = 2; n < 100; n++) {
+    let query = admin.from("properties").select("id").eq("seo->google->>slug", candidate).limit(1);
+    if (id != null) query = query.neq("id", id);
+    const { data } = await query;
+    if (!data?.length) break;
+    candidate = `${base}-${n}`;
+  }
+  return { ...row, seo: { ...seo, google: { ...seo.google, slug: candidate } } };
 }
 
 export async function createProperty(input: CreatePropertyInput): Promise<CreatePropertyResult> {
@@ -170,7 +197,7 @@ export async function createProperty(input: CreatePropertyInput): Promise<Create
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("properties")
-    .insert(buildPropertyRow(input))
+    .insert(await withUniqueSlug(buildPropertyRow(input)))
     .select("id")
     .single();
 
@@ -191,7 +218,7 @@ export async function updateProperty(
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.from("properties").update(buildPropertyRow(input)).eq("id", id);
+  const { error } = await admin.from("properties").update(await withUniqueSlug(buildPropertyRow(input), id)).eq("id", id);
 
   if (error) {
     return { success: false, error: error.message };

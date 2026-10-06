@@ -3,10 +3,18 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://godelfos.c
 
 export const SITE_NAME = "Delfos";
 
-/** Landing title/description: what people search for (new housing, Medellín, Valle de Aburrá) up front. */
-export const SITE_TITLE = "Delfos | Proyectos de vivienda nueva en Medellín y el Valle de Aburrá";
+/** Current year in Colombia, for fresh, query-shaped titles ("… en venta 2026"). */
+export const currentYear = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric" }).format(new Date());
+
+/**
+ * Landing title/description phrased like real searches (and the Bing queries
+ * ChatGPT sends): offer + "en venta" + place + year, then concrete facts.
+ * Used as-is when live numbers aren't available.
+ */
+export const SITE_TITLE = `Apartamentos nuevos en venta en Medellín ${currentYear()} | Delfos`;
 export const SITE_DESCRIPTION =
-  "Encuentra apartamentos y casas nuevas para comprar en Medellín, Envigado, Sabaneta, Itagüí y La Estrella. Compara proyectos sobre planos, precios, tipologías y fechas de entrega de las mejores constructoras.";
+  "Compara proyectos de vivienda nueva en venta en Medellín, Envigado, Sabaneta, Itagüí y La Estrella: precios, tipologías y fechas de entrega. Agenda tu visita.";
 
 /** Brand blue used in generated images (matches the app's accent). */
 export const BRAND_COLOR = "#0b84ff";
