@@ -48,6 +48,8 @@ export function PhotoTour({
   onClose: () => void;
 }) {
   const desktop = useSyncExternalStore(subscribeToDesktop, isDesktop);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLButtonElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<(HTMLElement | null)[]>([]);
@@ -65,6 +67,24 @@ export function PhotoTour({
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previous;
+    };
+  }, []);
+
+  // Keep keyboard and screen-reader focus inside the tour: the rest of the
+  // page goes inert, focus starts on "Volver" and returns to the clicked
+  // photo when the tour closes. Modals opened later (login) are appended
+  // after this point, so they stay interactive.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const background = [...document.body.children].filter(
+      (el): el is HTMLElement => el instanceof HTMLElement && el !== dialog && !el.inert
+    );
+    background.forEach((el) => (el.inert = true));
+    backRef.current?.focus();
+    return () => {
+      background.forEach((el) => (el.inert = false));
+      opener?.focus({ preventScroll: true });
     };
   }, []);
 
@@ -93,6 +113,7 @@ export function PhotoTour({
 
   return createPortal(
     <motion.div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={`Recorrido gráfico de ${title}`}
@@ -104,10 +125,11 @@ export function PhotoTour({
     >
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-separator px-4 py-3 sm:px-6">
         <button
+          ref={backRef}
           type="button"
           onClick={onClose}
           aria-label="Volver"
-          className="flex size-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-secondary"
+          className="flex size-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <ChevronLeft className="size-5" />
         </button>
@@ -120,20 +142,27 @@ export function PhotoTour({
           <p className="mt-1 text-sm text-muted">
             {photos.length} {photos.length === 1 ? "foto" : "fotos"}
           </p>
+          {/* Announces the photo shown after a thumbnail, arrow key or swipe. */}
+          <p className="sr-only" aria-live="polite" aria-atomic="true">
+            Foto {active + 1} de {photos.length}
+          </p>
 
           {/* Thumbnails: a swipeable strip on phones, a grid from `sm` up. */}
           <div
             ref={stripRef}
-            className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 md:grid-cols-6 [&::-webkit-scrollbar]:hidden"
+            role="group"
+            aria-label="Miniaturas de las fotos"
+            className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 md:grid-cols-6 [&::-webkit-scrollbar]:hidden"
           >
             {photos.map((src, index) => (
               <button
                 key={`${src}-${index}`}
                 type="button"
                 onClick={() => goTo(index)}
-                aria-label={`Ver foto ${index + 1}`}
-                aria-current={active === index}
-                className={`relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg ring-2 ring-offset-2 transition sm:w-auto ${
+                aria-label={`Ver foto ${index + 1} de ${photos.length}`}
+                aria-current={active === index ? "true" : undefined}
+                // The ring marks the photo in view; the outline marks keyboard focus.
+                className={`relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg ring-2 ring-offset-2 transition focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-[6px] focus-visible:outline-accent sm:w-auto ${
                   active === index ? "ring-foreground" : "ring-transparent opacity-80 hover:opacity-100"
                 }`}
               >
@@ -159,36 +188,51 @@ export function PhotoTour({
                 onVisible={setActive}
               />
 
-              <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white">
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white"
+              >
                 {active + 1} / {photos.length}
               </span>
 
-              {active > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => goTo(active - 1)}
-                  aria-label="Foto anterior"
-                  className="absolute left-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow"
-                >
-                  <ChevronLeft className="size-5" />
-                </button>
-              ) : null}
-              {active < photos.length - 1 ? (
-                <button
-                  type="button"
-                  onClick={() => goTo(active + 1)}
-                  aria-label="Foto siguiente"
-                  className="absolute right-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow"
-                >
-                  <ChevronRight className="size-5" />
-                </button>
-              ) : null}
+              {/* Always mounted (aria-disabled at the ends) so a focused button never vanishes and drops focus. */}
+              <CarouselButton direction="previous" disabled={active === 0} onClick={() => goTo(active - 1)} />
+              <CarouselButton
+                direction="next"
+                disabled={active === photos.length - 1}
+                onClick={() => goTo(active + 1)}
+              />
             </div>
           )}
         </div>
       </div>
     </motion.div>,
     document.body
+  );
+}
+
+function CarouselButton({
+  direction,
+  disabled,
+  onClick,
+}: {
+  direction: "previous" | "next";
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const Icon = direction === "previous" ? ChevronLeft : ChevronRight;
+  return (
+    <button
+      type="button"
+      onClick={disabled ? undefined : onClick}
+      aria-disabled={disabled}
+      aria-label={direction === "previous" ? "Foto anterior" : "Foto siguiente"}
+      className={`absolute top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white aria-disabled:cursor-default aria-disabled:opacity-0 aria-disabled:focus-visible:opacity-60 ${
+        direction === "previous" ? "left-3" : "right-3"
+      }`}
+    >
+      <Icon className="size-5" />
+    </button>
   );
 }
 
@@ -259,6 +303,9 @@ const PhotoCarousel = memo(function PhotoCarousel(props: PhotoListProps) {
   return (
     <div
       ref={carouselRef}
+      role="region"
+      aria-roledescription="carrusel"
+      aria-label="Fotos"
       className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {photos.map((src, index) => (
@@ -268,6 +315,9 @@ const PhotoCarousel = memo(function PhotoCarousel(props: PhotoListProps) {
             itemsRef.current[index] = el;
           }}
           data-index={index}
+          role="group"
+          aria-roledescription="foto"
+          aria-label={`${index + 1} de ${photos.length}`}
           className="relative h-[calc(100dvh-14rem)] min-h-80 w-full shrink-0 snap-center bg-surface"
         >
           <Image
