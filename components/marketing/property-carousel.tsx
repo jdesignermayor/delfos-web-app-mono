@@ -6,6 +6,11 @@ import { ArrowRightIcon } from "@/components/icons";
 import { PropertyCard } from "@/components/marketing/property-card";
 import type { Property } from "@/components/marketing/properties";
 
+/** Card width per breakpoint; shared with the skeleton so nothing shifts when listings arrive. */
+const SLIDE_CLASS = "w-[62%] shrink-0 snap-start sm:w-[38%] lg:w-[26%] xl:w-[20%]";
+/** At most this many cards are on screen at load (xl shows 5 + a peek), so only they load eagerly. */
+const EAGER_CARDS = 6;
+
 export function PropertyCarousel({
   title,
   properties,
@@ -49,12 +54,31 @@ export function PropertyCarousel({
         ref={trackRef}
         className="no-scrollbar mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2"
       >
-        {properties.map((property) => (
-          <div
-            key={property.slug}
-            className="w-[62%] shrink-0 snap-start sm:w-[38%] lg:w-[26%] xl:w-[20%]"
-          >
-            <PropertyCard property={property} />
+        {properties.map((property, index) => (
+          <div key={property.slug} className={SLIDE_CLASS}>
+            <PropertyCard
+              property={property}
+              eager={index < EAGER_CARDS}
+              sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 26vw, (min-width: 640px) 38vw, 62vw"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Placeholder while the listings stream in: same title, card size and spacing as the real carousel. */
+export function PropertyCarouselSkeleton({ title }: { title: string }) {
+  return (
+    <div aria-busy="true" aria-label="Cargando propiedades">
+      <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
+      <div className="mt-6 flex gap-4 overflow-hidden pb-2">
+        {Array.from({ length: EAGER_CARDS }, (_, index) => (
+          <div key={index} className={SLIDE_CLASS}>
+            <div className="aspect-square w-full animate-pulse rounded-2xl bg-surface-secondary" />
+            <div className="mt-3 h-4 w-3/4 animate-pulse rounded-full bg-surface-secondary" />
+            <div className="mt-2 h-3.5 w-1/2 animate-pulse rounded-full bg-surface-secondary" />
           </div>
         ))}
       </div>

@@ -1,5 +1,8 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
+
+import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
 import { createAdminClient } from "@/supabase/admin";
 import { createClient } from "@/supabase/server";
 import type { Amenity } from "@/lib/amenities";
@@ -153,6 +156,7 @@ export async function createProperty(input: CreatePropertyInput): Promise<Create
   if (error) {
     return { success: false, error: error.message };
   }
+  revalidateTag(PROPERTIES_CACHE_TAG, "max");
   return { success: true, id: data.id };
 }
 
@@ -171,6 +175,7 @@ export async function updateProperty(
   if (error) {
     return { success: false, error: error.message };
   }
+  revalidateTag(PROPERTIES_CACHE_TAG, "max");
   return { success: true, id };
 }
 

@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import ReactDOM from "react-dom";
 import { HeartIcon } from "lucide-animated";
@@ -8,7 +10,39 @@ import { useOverlayState } from "@heroui/react";
 
 import { BuildingIcon } from "@/components/icons";
 import { formatPrice, type Property } from "@/components/marketing/properties";
-import { AuthModal } from "@/components/marketing/auth-modal";
+
+/**
+ * The sign-in modal is only needed after a signed-out visitor taps the heart,
+ * so it's code-split and mounted on demand instead of once per card.
+ */
+const AuthModal = dynamic(() => import("@/components/marketing/auth-modal").then((mod) => mod.AuthModal), {
+  ssr: false,
+});
+
+/** Photo with a pulsing placeholder underneath; the photo fades in once decoded. */
+function CardPhoto({ src, alt, sizes, eager }: { src: string; alt: string; sizes: string; eager: boolean }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <>
+      {loaded ? null : <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-surface-secondary" />}
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes={sizes}
+        loading={eager ? "eager" : "lazy"}
+        // An image that finished before hydration never fires onLoad, so check `complete` too.
+        ref={(img) => {
+          if (img?.complete && img.naturalWidth > 0) setLoaded(true);
+        }}
+        onLoad={() => setLoaded(true)}
+        className={`object-cover transition-[opacity,transform] duration-300 group-hover:scale-105 ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </>
+  );
+}
 
 export function PropertyCard({
   property,
@@ -16,8 +50,14 @@ export function PropertyCard({
   onActivate,
   onDeactivate,
   onLoginRequired,
+  eager = false,
+  sizes = "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw",
 }: {
   property: Property;
+  /** Skip lazy loading for cards visible on first paint. */
+  eager?: boolean;
+  /** Rendered width hint for next/image, so it serves a resized photo. */
+  sizes?: string;
   active?: boolean;
   onActivate?: () => void;
   onDeactivate?: () => void;
@@ -27,6 +67,7 @@ export function PropertyCard({
   const [lastEmail, setLastEmail] = useState<string | null>(null);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const authModal = useOverlayState();
+  const [authMounted, setAuthMounted] = useState(false);
 
   const maskEmail = (email: string) => {
     if (!email || email.length < 5) return email;
@@ -75,12 +116,7 @@ export function PropertyCard({
           }
         >
           {property.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={property.image}
-              alt={property.title}
-              className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
+            <CardPhoto src={property.image} alt={property.title} sizes={sizes} eager={eager} />
           ) : (
             <BuildingIcon className="absolute -bottom-6 -right-4 size-40 text-white/25" />
           )}
@@ -140,6 +176,7 @@ export function PropertyCard({
                 type="button"
                 onClick={() => {
                   setShowLoginPrompt(false);
+                  setAuthMounted(true);
                   authModal.open();
                 }}
                 className="flex-1 rounded bg-accent px-4 py-2 font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
@@ -152,7 +189,7 @@ export function PropertyCard({
         document.body
       )}
 
-      <AuthModal state={authModal} />
+      {authMounted ? <AuthModal state={authModal} /> : null}
     </>
   );
 }
