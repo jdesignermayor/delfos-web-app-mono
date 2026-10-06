@@ -14,10 +14,13 @@ import {
   type Property,
 } from "@/components/marketing/properties";
 import { AffordabilityCalculator } from "@/components/property-detail/affordability-calculator";
-import { FavoriteShareBar } from "@/components/property-detail/favorite-share-bar";
+import {
+  FavoriteShareBar,
+  PropertyActionsProvider,
+} from "@/components/property-detail/favorite-share-bar";
 import { GallerySection } from "@/components/property-detail/gallery-section";
 import { LocationMap } from "@/components/property-detail/location-map";
-import { PhotoCollage } from "@/components/property-detail/photo-collage";
+import { PropertyGallery } from "@/components/property-detail/property-gallery";
 import { TalkToAgentButton } from "@/components/property-detail/talk-to-agent-button";
 import { AmenityItem } from "@/components/property-detail/amenity-item";
 import { SiteFooter } from "@/components/marketing/site-footer";
@@ -101,13 +104,15 @@ export default async function PropertyDetailPage({
 
       <main className="w-full bg-white">
         <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
-          <FavoriteShareBar title={property.title} />
+          <PropertyActionsProvider title={property.title}>
+            <FavoriteShareBar />
 
-          <div className="mt-4">
-            <GallerySection>
-              <PhotoCollage property={property} />
-            </GallerySection>
-          </div>
+            <div className="mt-4">
+              <GallerySection>
+                <PropertyGallery property={property} />
+              </GallerySection>
+            </div>
+          </PropertyActionsProvider>
 
           <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="flex flex-col gap-10">

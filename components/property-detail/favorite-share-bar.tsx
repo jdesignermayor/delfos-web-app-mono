@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import ReactDOM from "react-dom";
 import { useOverlayState } from "@heroui/react";
 
@@ -8,39 +8,43 @@ import { HeartIcon } from "@/components/icons/animated/heart";
 import { SendIcon } from "@/components/icons/animated/send";
 import { AuthModal } from "@/components/marketing/auth-modal";
 
-/** Top action row: the listing name on the left, share + save on the right. */
-export function FavoriteShareBar({ title }: { title: string }) {
+type PropertyActionsValue = {
+  title: string;
+  saved: boolean;
+  toggleSaved: () => void;
+};
+
+const PropertyActionsContext = createContext<PropertyActionsValue | null>(null);
+
+function usePropertyActions() {
+  const value = useContext(PropertyActionsContext);
+  if (!value) throw new Error("PropertyActions must be rendered inside <PropertyActionsProvider>");
+  return value;
+}
+
+const maskEmail = (email: string) => {
+  if (!email || email.length < 5) return email;
+  const [localPart, domain] = email.split("@");
+  const maskedLocal = localPart.charAt(0) + "*".repeat(Math.max(0, localPart.length - 2)) + (localPart.length > 1 ? localPart.charAt(localPart.length - 1) : "");
+  return `${maskedLocal}@${domain}`;
+};
+
+/**
+ * Owns the "saved" flag, the login prompt and the auth modal once per page, so
+ * every PropertyActions (the top bar and the photo tour header) stays in sync
+ * without mounting its own copy of the modals.
+ */
+export function PropertyActionsProvider({ title, children }: { title: string; children: ReactNode }) {
   const [saved, setSaved] = useState(false);
   const [lastEmail, setLastEmail] = useState<string | null>(null);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const authModal = useOverlayState();
 
-  const maskEmail = (email: string) => {
-    if (!email || email.length < 5) return email;
-    const [localPart, domain] = email.split("@");
-    const maskedLocal = localPart.charAt(0) + "*".repeat(Math.max(0, localPart.length - 2)) + (localPart.length > 1 ? localPart.charAt(localPart.length - 1) : "");
-    return `${maskedLocal}@${domain}`;
-  };
-
-  async function handleShare() {
-    if (typeof navigator === "undefined") return;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, url: window.location.href });
-      } catch {
-        // User dismissed the share sheet
-      }
-      return;
-    }
-    await navigator.clipboard?.writeText(window.location.href);
-  }
-
-  const handleSaveClick = () => {
-    const isLoggedIn = typeof window !== "undefined" && !!localStorage.getItem("auth_token");
+  const toggleSaved = () => {
+    const isLoggedIn = !!localStorage.getItem("auth_token");
 
     if (!isLoggedIn) {
-      const storedEmail = typeof window !== "undefined" ? localStorage.getItem("last_email") : null;
-      setLastEmail(storedEmail);
+      setLastEmail(localStorage.getItem("last_email"));
       setShowLoginPrompt(true);
       return;
     }
@@ -49,37 +53,8 @@ export function FavoriteShareBar({ title }: { title: string }) {
   };
 
   return (
-    <>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="truncate font-display text-lg font-semibold text-foreground sm:text-xl">
-          {title}
-        </h1>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={handleShare}
-            className="flex items-center gap-1.5 rounded-full border border-separator px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-secondary"
-          >
-            <SendIcon size={18} />
-            Compartir
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSaveClick}
-            aria-pressed={saved}
-            className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors ${
-              saved
-                ? "border-danger text-danger"
-                : "border-separator text-foreground hover:bg-surface-secondary"
-            }`}
-          >
-            <HeartIcon size={18} filled={saved} />
-            {saved ? "Guardado" : "Guardar"}
-          </button>
-        </div>
-      </div>
+    <PropertyActionsContext.Provider value={{ title, saved, toggleSaved }}>
+      {children}
 
       {/* Login Prompt Modal - Using Portals */}
       {showLoginPrompt && ReactDOM.createPortal(
@@ -130,6 +105,68 @@ export function FavoriteShareBar({ title }: { title: string }) {
       )}
 
       <AuthModal state={authModal} />
-    </>
+    </PropertyActionsContext.Provider>
+  );
+}
+
+/** Top action row: the listing name on the left, share + save on the right. */
+export function FavoriteShareBar() {
+  const { title } = usePropertyActions();
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <h1 className="truncate font-display text-lg font-semibold text-foreground sm:text-xl">
+        {title}
+      </h1>
+      <PropertyActions />
+    </div>
+  );
+}
+
+/**
+ * Share + save buttons. `compact` hides the labels below `sm`, for tight
+ * headers like the photo tour.
+ */
+export function PropertyActions({ compact = false }: { compact?: boolean }) {
+  const { title, saved, toggleSaved } = usePropertyActions();
+
+  async function handleShare() {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url: window.location.href });
+      } catch {
+        // User dismissed the share sheet
+      }
+      return;
+    }
+    await navigator.clipboard?.writeText(window.location.href);
+  }
+
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <button
+        type="button"
+        onClick={handleShare}
+        className="flex items-center gap-1.5 rounded-full border border-separator px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-secondary"
+      >
+        <SendIcon size={18} />
+        <span className={compact ? "sr-only sm:not-sr-only" : undefined}>Compartir</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={toggleSaved}
+        aria-pressed={saved}
+        className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors ${
+          saved
+            ? "border-danger text-danger"
+            : "border-separator text-foreground hover:bg-surface-secondary"
+        }`}
+      >
+        <HeartIcon size={18} filled={saved} />
+        <span className={compact ? "sr-only sm:not-sr-only" : undefined}>
+          {saved ? "Guardado" : "Guardar"}
+        </span>
+      </button>
+    </div>
   );
 }

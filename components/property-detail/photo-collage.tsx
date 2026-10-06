@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { BuildingIcon } from "@/components/icons";
 import type { Property } from "@/components/marketing/properties";
 
@@ -7,17 +9,29 @@ function Tile({
   hueOffset,
   className,
   iconClassName,
+  sizes,
+  hero = false,
+  onOpen,
 }: {
   property: Property;
   src?: string;
   hueOffset: number;
   className: string;
   iconClassName: string;
+  sizes: string;
+  /** The large photo is fetched first; every tile is above the fold, so none lazy-load. */
+  hero?: boolean;
+  onOpen?: () => void;
 }) {
   const hue = property.hue + hueOffset;
+  const clickable = Boolean(src && onOpen);
+  const Wrapper = clickable ? "button" : "div";
   return (
-    <div
-      className={`relative overflow-hidden ${className}`}
+    <Wrapper
+      {...(clickable
+        ? { type: "button" as const, onClick: onOpen, "aria-label": `Ver fotos de ${property.title}` }
+        : {})}
+      className={`relative overflow-hidden ${clickable ? "group cursor-pointer" : ""} ${className}`}
       style={
         src
           ? undefined
@@ -25,21 +39,35 @@ function Tile({
       }
     >
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={property.title} className="size-full object-cover" />
+        <Image
+          src={src}
+          alt={property.title}
+          fill
+          sizes={sizes}
+          loading="eager"
+          fetchPriority={hero ? "high" : undefined}
+          className="object-cover transition-[filter] duration-200 group-hover:brightness-90"
+        />
       ) : (
         <BuildingIcon className={iconClassName} />
       )}
-    </div>
+    </Wrapper>
   );
 }
 
 /**
  * Photo collage: one large image on the left, four smaller square tiles on
  * the right. Falls back to tinted placeholders when the listing has no real
- * photos yet — this mock catalogue never does.
+ * photos yet — this mock catalogue never does. Tiles with a real photo call
+ * `onOpen`.
  */
-export function PhotoCollage({ property }: { property: Property }) {
+export function PhotoCollage({
+  property,
+  onOpen,
+}: {
+  property: Property;
+  onOpen?: () => void;
+}) {
   const images = property.images ?? [];
 
   return (
@@ -50,6 +78,9 @@ export function PhotoCollage({ property }: { property: Property }) {
         hueOffset={0}
         className="aspect-video sm:aspect-auto"
         iconClassName="absolute -bottom-10 -right-6 size-56 text-white/25"
+        sizes="(min-width: 1152px) 576px, (min-width: 640px) 50vw, 100vw"
+        hero
+        onOpen={onOpen}
       />
 
       <div className="grid grid-cols-2 grid-rows-2 gap-1">
@@ -61,6 +92,8 @@ export function PhotoCollage({ property }: { property: Property }) {
             hueOffset={[-25, 15, 40, -45][i]}
             className="aspect-square sm:aspect-auto"
             iconClassName="absolute -bottom-5 -right-3 size-24 text-white/25"
+            sizes="(min-width: 1152px) 288px, (min-width: 640px) 25vw, 50vw"
+            onOpen={onOpen}
           />
         ))}
       </div>

@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
 const nextConfig: NextConfig = {
+  images: {
+    // Property photos are served from the public Supabase storage bucket.
+    remotePatterns: supabaseUrl ? [new URL(`${supabaseUrl}/storage/v1/object/public/**`)] : [],
+  },
   // Loads libheif's WASM at runtime; bundling it breaks the decoder.
   serverExternalPackages: ["heic-decode", "libheif-js"],
   experimental: {
