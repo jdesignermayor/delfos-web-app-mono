@@ -52,7 +52,7 @@ export function PropertyCarousel({
         {properties.map((property) => (
           <div
             key={property.slug}
-            className="w-[38%] shrink-0 snap-start sm:w-[26%] lg:w-[18%] xl:w-[14%]"
+            className="w-[62%] shrink-0 snap-start sm:w-[38%] lg:w-[26%] xl:w-[20%]"
           >
             <PropertyCard property={property} />
           </div>
