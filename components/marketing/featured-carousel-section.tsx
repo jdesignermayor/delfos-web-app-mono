@@ -35,7 +35,7 @@ async function getFeaturedProperties(): Promise<Property[]> {
 
 async function FeaturedCarousel() {
   const properties = await getFeaturedProperties();
-  return <PropertyCarousel title={TITLE} properties={properties} />;
+  return <PropertyCarousel title={TITLE} properties={properties} analyticsListId="landing_featured" />;
 }
 
 /** Streams in: the rest of the landing renders immediately while the listings load. */

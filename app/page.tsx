@@ -9,6 +9,7 @@ import { SuggestedPropertiesSection } from "@/components/marketing/suggested-pro
 import { PublishSection } from "@/components/marketing/publish-section";
 import { StatsSection } from "@/components/marketing/stats-section";
 import { CtaSection } from "@/components/marketing/cta-section";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 
 export default function LandingPage() {
   return (
@@ -31,6 +32,7 @@ export default function LandingPage() {
       </SearchModeProvider>
 
       <SiteFooter />
+      <GoogleAnalytics />
     </div>
   );
 }

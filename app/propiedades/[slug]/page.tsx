@@ -32,6 +32,8 @@ import { AmenityItem } from "@/components/property-detail/amenity-item";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { PropertyVideo } from "@/components/property-detail/property-video";
 import { JsonLd } from "@/components/seo/json-ld";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import { TrackPropertyView } from "@/components/analytics/track-property-view";
 import { buildPropertyJsonLd, buildPropertyMetadata, youtubeId } from "@/lib/property-seo";
 import { formatRange } from "@/lib/typology-ranges";
 
@@ -111,6 +113,17 @@ export default async function PropertyDetailPage({
   return (
     <SearchModeProvider>
       <JsonLd data={buildPropertyJsonLd(property, summary(property))} />
+      <GoogleAnalytics />
+      <TrackPropertyView
+        property={{
+          slug: property.slug,
+          title: property.title,
+          price: property.price,
+          type: property.type,
+          city: property.city,
+          neighborhood: property.neighborhood,
+        }}
+      />
       <SiteNavbar alwaysShowSearch userPromise={getCurrentUser()} />
 
       <main className="w-full bg-white">

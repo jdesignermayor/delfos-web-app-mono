@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { ArrowRightIcon } from "@/components/icons";
 import { PropertyCard } from "@/components/marketing/property-card";
 import type { Property } from "@/components/marketing/properties";
+import { TrackPropertyList } from "@/components/analytics/track-property-view";
 
 /** Card width per breakpoint; shared with the skeleton so nothing shifts when listings arrive. */
 const SLIDE_CLASS = "w-[62%] shrink-0 snap-start sm:w-[38%] lg:w-[26%] xl:w-[20%]";
@@ -14,10 +15,14 @@ const EAGER_CARDS = 6;
 export function PropertyCarousel({
   title,
   properties,
+  analyticsListId,
 }: {
   title: string;
   properties: Property[];
+  /** When set, the list's impressions and card clicks are reported to GA4 under this id. */
+  analyticsListId?: string;
 }) {
+  const analyticsList = analyticsListId ? { id: analyticsListId, name: title } : undefined;
   const trackRef = useRef<HTMLDivElement>(null);
 
   function scrollBy(amount: number) {
@@ -26,6 +31,9 @@ export function PropertyCarousel({
 
   return (
     <div>
+      {analyticsList ? (
+        <TrackPropertyList listId={analyticsList.id} listName={analyticsList.name} properties={properties} />
+      ) : null}
       <div className="flex items-center justify-between gap-4">
         <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">
           {title}
@@ -58,6 +66,8 @@ export function PropertyCarousel({
           <div key={property.slug} className={SLIDE_CLASS}>
             <PropertyCard
               property={property}
+              analyticsList={analyticsList}
+              index={index}
               eager={index < EAGER_CARDS}
               sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 26vw, (min-width: 640px) 38vw, 62vw"
             />

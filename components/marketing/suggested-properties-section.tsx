@@ -32,8 +32,13 @@ export function SuggestedPropertiesSection() {
         </div>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {SUGGESTED.map((property) => (
-            <PropertyCard key={property.slug} property={property} />
+          {SUGGESTED.map((property, index) => (
+            <PropertyCard
+              key={property.slug}
+              property={property}
+              analyticsList={{ id: "landing_suggested", name: "Propiedades sugeridas en Medellín" }}
+              index={index}
+            />
           ))}
         </div>
       </div>

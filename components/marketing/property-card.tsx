@@ -10,6 +10,7 @@ import { useOverlayState } from "@heroui/react";
 
 import { BuildingIcon } from "@/components/icons";
 import { formatPrice, type Property } from "@/components/marketing/properties";
+import { propertyItem, trackEvent } from "@/lib/analytics";
 
 /**
  * The sign-in modal is only needed after a signed-out visitor taps the heart,
@@ -52,12 +53,18 @@ export function PropertyCard({
   onLoginRequired,
   eager = false,
   sizes = "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw",
+  analyticsList,
+  index,
 }: {
   property: Property;
   /** Skip lazy loading for cards visible on first paint. */
   eager?: boolean;
   /** Rendered width hint for next/image, so it serves a resized photo. */
   sizes?: string;
+  /** The landing list this card belongs to; clicks are reported to GA4 as `select_item` from it. */
+  analyticsList?: { id: string; name: string };
+  /** Position in that list (0-based), reported with the click. */
+  index?: number;
   active?: boolean;
   onActivate?: () => void;
   onDeactivate?: () => void;
@@ -101,6 +108,14 @@ export function PropertyCard({
         onMouseLeave={onDeactivate}
         onFocus={onActivate}
         onBlur={onDeactivate}
+        onClick={() => {
+          if (!analyticsList) return;
+          trackEvent("select_item", {
+            item_list_id: analyticsList.id,
+            item_list_name: analyticsList.name,
+            items: [propertyItem(property, index)],
+          });
+        }}
         className="group flex flex-col"
       >
         <div
