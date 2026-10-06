@@ -6,6 +6,7 @@ import { SearchFilters } from "@/components/marketing/search-filters";
 import { SearchResults } from "@/components/marketing/search-results";
 import {
   filterProperties,
+  sortProperties,
   type PropertyFilters,
 } from "@/components/marketing/properties";
 import { getDbProperties } from "@/components/marketing/property-adapter";
@@ -34,17 +35,26 @@ export default async function SearchPage({
     habitaciones: first(params.habitaciones),
     presupuesto: first(params.presupuesto),
     asequible: first(params.asequible),
+    banos: first(params.banos),
+    area: first(params.area),
+    estrato: first(params.estrato),
+    estado: first(params.estado),
+    orden: first(params.orden),
   };
 
-  const results = filterProperties(filters, await getDbProperties());
+  const results = sortProperties(filterProperties(filters, await getDbProperties()), filters.orden);
 
   return (
     <div
-      className="light flex min-h-[100dvh] flex-col bg-background text-foreground lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden"
+      className="light flex min-h-[100dvh] flex-col bg-white text-foreground lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden"
       style={{ colorScheme: "light" }}
     >
-      <SearchModeProvider initialMode={filters.operacion === "arrendar" ? "arrendar" : "comprar"}>
-        <SiteNavbar alwaysShowSearch userPromise={getCurrentUser()} />
+      <SearchModeProvider
+        initialMode={
+          filters.tipo === "proyecto" ? "proyecto" : filters.operacion === "arrendar" ? "arrendar" : "comprar"
+        }
+      >
+        <SiteNavbar alwaysShowSearch searchFilters={filters} userPromise={getCurrentUser()} />
         <SearchFilters filters={filters} />
         <SearchResults results={results} />
       </SearchModeProvider>

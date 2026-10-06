@@ -11,12 +11,15 @@ import {
   MEDELLIN_AREAS,
   TYPE_LABELS,
   type Operation,
+  type PropertyFilters,
   type PropertyType,
 } from "@/components/marketing/properties";
 
 type Field = "ubicacion" | "tipo" | "habitaciones" | "presupuesto";
 
 const ROOM_OPTIONS = ["1", "2", "3", "4"];
+
+const REFINEMENT_KEYS = ["banos", "area", "estrato", "estado", "orden", "asequible"] as const;
 
 const TYPE_OPTIONS = Object.entries(TYPE_LABELS) as [PropertyType, string][];
 
@@ -73,9 +76,12 @@ const LABELS = {
 
 export function PropertySearch({
   compact = false,
+  initialFilters,
   onSearchAction,
 }: {
   compact?: boolean;
+  /** Pre-fills the fields, e.g. with the search currently shown on /search. */
+  initialFilters?: PropertyFilters;
   /** Called right before navigating to the results — lets a caller (e.g. a search overlay) close itself. */
   onSearchAction?: () => void;
 }) {
@@ -85,10 +91,10 @@ export function PropertySearch({
   const labels = compact ? LABELS.compact : LABELS.full;
 
   const [activeField, setActiveField] = useState<Field | null>(null);
-  const [ubicacion, setUbicacion] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [habitaciones, setHabitaciones] = useState("");
-  const [presupuesto, setPresupuesto] = useState("");
+  const [ubicacion, setUbicacion] = useState(initialFilters?.ubicacion ?? "");
+  const [tipo, setTipo] = useState(initialFilters?.tipo === "proyecto" ? "" : (initialFilters?.tipo ?? ""));
+  const [habitaciones, setHabitaciones] = useState(initialFilters?.habitaciones ?? "");
+  const [presupuesto, setPresupuesto] = useState(initialFilters?.presupuesto ?? "");
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -123,6 +129,11 @@ export function PropertySearch({
     if (location.trim()) params.set("ubicacion", location.trim());
     if (habitaciones) params.set("habitaciones", habitaciones);
     if (activeBudget) params.set("presupuesto", activeBudget);
+    // Keep the /search filter-bar refinements when searching again from here.
+    for (const key of REFINEMENT_KEYS) {
+      const value = initialFilters?.[key];
+      if (value) params.set(key, value);
+    }
 
     router.push(`/search?${params.toString()}`);
   }

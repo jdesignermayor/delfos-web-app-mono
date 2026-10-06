@@ -345,7 +345,34 @@ export type PropertyFilters = {
   habitaciones?: string;
   presupuesto?: string;
   asequible?: string;
+  /** Refinements only offered by the /search filter bar (not by the main search). */
+  banos?: string;
+  area?: string;
+  estrato?: string;
+  estado?: string;
+  orden?: string;
 };
+
+/** Built-area buckets (m²) for the `area` filter. */
+export const AREA_OPTIONS = [
+  { value: "0-50", label: "Hasta 50 m²", min: 0, max: 50 },
+  { value: "50-80", label: "50 – 80 m²", min: 50, max: 80 },
+  { value: "80-120", label: "80 – 120 m²", min: 80, max: 120 },
+  { value: "120-", label: "Más de 120 m²", min: 120, max: Infinity },
+] as const;
+
+export const STATUS_OPTIONS: { value: string; label: Property["status"] }[] = [
+  { value: "sobre-planos", label: "Sobre planos" },
+  { value: "listo", label: "Listo para estrenar" },
+  { value: "usado", label: "Usado" },
+];
+
+export const SORT_OPTIONS = [
+  { value: "", label: "Relevancia" },
+  { value: "precio-asc", label: "Menor precio" },
+  { value: "precio-desc", label: "Mayor precio" },
+  { value: "entrega", label: "Entrega más pronta" },
+] as const;
 
 /** Upper bounds (COP) for each budget bucket the search box offers. */
 const BUDGET_MAX: Record<string, number> = {
@@ -372,28 +399,69 @@ export function getPropertyBySlug(slug: string): Property | undefined {
   return PROPERTIES.find((property) => property.slug === slug);
 }
 
+/** Lowercase and accent-free, so "medellin" finds "Medellín". */
+const normalizeText = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+/**
+ * "Proyectos nuevos" covers every new development — off-plan or ready to move
+ * in — not just listings typed as "proyecto". Real listings are always typed
+ * by their unit (apartamento, casa…), so matching on type alone found nothing.
+ */
+export function isNewProject(property: Pick<Property, "type" | "status">) {
+  return property.type === "proyecto" || property.status !== "Usado";
+}
+
 export function filterProperties(
   filters: PropertyFilters,
   source: Property[] = PROPERTIES,
 ): Property[] {
-  const query = filters.ubicacion?.trim().toLowerCase();
+  const tokens = normalizeText(filters.ubicacion ?? "").split(/[\s,]+/).filter(Boolean);
   const minBeds = filters.habitaciones ? Number.parseInt(filters.habitaciones, 10) : 0;
   const budgetCap = filters.presupuesto ? BUDGET_MAX[filters.presupuesto] : undefined;
+  const minBaths = filters.banos ? Number.parseInt(filters.banos, 10) : 0;
+  const areaBucket = AREA_OPTIONS.find((option) => option.value === filters.area);
+  const stratum = filters.estrato ? Number.parseInt(filters.estrato, 10) : 0;
+  const status = STATUS_OPTIONS.find((option) => option.value === filters.estado)?.label;
 
   return source.filter((property) => {
     if (filters.operacion && property.operation !== filters.operacion) return false;
-    if (filters.tipo && property.type !== filters.tipo) return false;
+    if (filters.tipo === "proyecto" ? !isNewProject(property) : filters.tipo && property.type !== filters.tipo) {
+      return false;
+    }
     if (filters.asequible === "si" && !property.affordable) return false;
     // A project matches when at least one of its typologies has enough bedrooms.
     if (minBeds && (!property.beds || property.beds.max < minBeds)) return false;
     if (budgetCap && property.price > budgetCap) return false;
-    if (query) {
-      const haystack = `${property.title} ${property.neighborhood} ${property.city}`.toLowerCase();
-      const tokens = query.split(/[\s,]+/).filter(Boolean);
+    if (minBaths && (!property.baths || property.baths.max < minBaths)) return false;
+    // A project matches when any of its typologies falls in the bucket.
+    if (areaBucket && (!property.area || property.area.max < areaBucket.min || property.area.min >= areaBucket.max)) {
+      return false;
+    }
+    if (stratum && property.stratum !== stratum) return false;
+    if (status && property.status !== status) return false;
+    if (tokens.length) {
+      const haystack = normalizeText(
+        [property.title, property.projectName, property.neighborhood, property.city, property.address]
+          .filter(Boolean)
+          .join(" "),
+      );
       if (!tokens.every((token) => haystack.includes(token))) return false;
     }
     return true;
   });
+}
+
+/** Applies the `orden` filter; "relevancia" keeps the source order (newest first). */
+export function sortProperties(properties: Property[], orden: string | undefined): Property[] {
+  const sorted = [...properties];
+  if (orden === "precio-asc") sorted.sort((a, b) => a.price - b.price);
+  else if (orden === "precio-desc") sorted.sort((a, b) => b.price - a.price);
+  else if (orden === "entrega") {
+    const time = (p: Property) => (p.details?.deliveryDate ? Date.parse(p.details.deliveryDate) : Infinity);
+    sorted.sort((a, b) => time(a) - time(b));
+  }
+  return sorted;
 }
 
 export function buildSearchQuery(filters: PropertyFilters): string {

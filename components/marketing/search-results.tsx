@@ -13,9 +13,9 @@ export function SearchResults({ results }: { results: Property[] }) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
 
   return (
-    <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr_1fr] xl:grid-cols-[1.1fr_1fr] lg:overflow-hidden">
-      {/* List */}
-      <div className="lg:h-full lg:min-h-0 lg:overflow-y-auto">
+    <div className="p-3 sm:p-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[1.2fr_1fr] lg:gap-4 lg:overflow-hidden xl:grid-cols-[1.35fr_1fr]">
+      {/* List: its own rounded panel that scrolls inside on desktop. */}
+      <div className="no-scrollbar rounded-3xl bg-white lg:h-full lg:min-h-0 lg:overflow-y-auto">
         <div className="px-4 py-5 sm:px-5">
           <p className="mb-4 text-sm text-muted">
             {results.length > 0
@@ -24,7 +24,7 @@ export function SearchResults({ results }: { results: Property[] }) {
           </p>
 
           {results.length > 0 ? (
-            <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 min-[1800px]:grid-cols-3">
               {results.map((property) => (
                 <PropertyListingCard
                   key={property.slug}
@@ -37,7 +37,7 @@ export function SearchResults({ results }: { results: Property[] }) {
               ))}
             </div>
           ) : (
-            <div className="mx-auto flex max-w-sm flex-col items-center rounded-2xl border border-separator bg-surface p-8 text-center">
+            <div className="mx-auto flex max-w-sm flex-col items-center rounded-2xl border border-separator bg-white p-8 text-center">
               <span className="flex size-11 items-center justify-center rounded-xl bg-accent-soft text-accent">
                 <SearchIcon />
               </span>
@@ -59,8 +59,8 @@ export function SearchResults({ results }: { results: Property[] }) {
         </div>
       </div>
 
-      {/* Map */}
-      <div className="hidden lg:block lg:h-full">
+      {/* Map: matching rounded panel, clipped so the map's corners follow it. */}
+      <div className="hidden overflow-hidden rounded-3xl bg-white lg:block lg:h-full">
         <PropertyMap results={results} activeSlug={activeSlug} onActivate={setActiveSlug} />
       </div>
     </div>

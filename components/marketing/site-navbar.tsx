@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useEffect, useState, useTransition } from "react";
+import { Suspense, use, useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -17,7 +17,10 @@ import { MiniSearchTrigger } from "@/components/marketing/mini-search-trigger";
 import { MobileLocationButton } from "@/components/marketing/mobile-location-button";
 import { PropertySearch } from "@/components/marketing/property-search";
 import { SEARCH_MODES, useSearchMode } from "@/components/marketing/search-mode-context";
+import type { PropertyFilters } from "@/components/marketing/properties";
 import type { CurrentUser } from "@/supabase/roles";
+
+const noopSubscribe = () => () => {};
 
 const TAB_ICONS = {
   comprar: HomeIcon,
@@ -83,16 +86,21 @@ function AccountActions({
 
 export function SiteNavbar({
   alwaysShowSearch = false,
+  searchFilters,
   userPromise,
 }: {
   alwaysShowSearch?: boolean;
+  /** The current search (on /search), so reopening the search bar keeps it instead of starting blank. */
+  searchFilters?: PropertyFilters;
   userPromise: Promise<CurrentUser | null>;
 }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchPanelSettled, setSearchPanelSettled] = useState(false);
-  const [mounted] = useState(() => typeof document !== "undefined");
+  // False on the server and during hydration, true after: the backdrop portal
+  // needs `document`, and reading it in render made server and client disagree.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const { mode, setMode, heroSearchRef, navbarRef } = useSearchMode();
   const authModal = useOverlayState();
 
@@ -242,7 +250,7 @@ export function SiteNavbar({
           >
             <div className="mx-auto flex w-full max-w-6xl justify-center px-4 py-6 sm:px-6">
               <div className="w-full max-w-3xl">
-                <PropertySearch onSearchAction={() => closeSearch()} />
+                <PropertySearch initialFilters={searchFilters} onSearchAction={() => closeSearch()} />
               </div>
             </div>
           </motion.div>

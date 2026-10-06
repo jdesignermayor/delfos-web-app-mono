@@ -39,10 +39,8 @@ export function MobileLocationButton() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Buscar por ubicación"
         aria-expanded={open}
-        className={`flex w-full items-center gap-3 rounded-full border px-4 py-3 text-left transition-colors ${
-          open
-            ? "border-foreground bg-surface-secondary text-foreground"
-            : "border-separator text-foreground hover:bg-surface-secondary"
+        className={`flex w-full items-center gap-3 rounded-full border bg-white px-4 py-3 text-left shadow-[0_2px_10px_-4px_rgba(15,23,42,0.18)] transition-colors ${
+          open ? "border-foreground text-foreground" : "border-separator text-foreground"
         }`}
       >
         <SearchIcon className="size-5 shrink-0 text-muted" />
@@ -58,17 +56,34 @@ export function MobileLocationButton() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="absolute inset-x-0 top-full z-20 mt-2 origin-top rounded-3xl border border-separator bg-surface p-5 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)]"
+            className="absolute inset-x-0 top-full z-20 mt-2 origin-top rounded-3xl border border-separator bg-white p-5 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)]"
           >
-            <LocationFields
-              value={ubicacion}
-              onValueChangeAction={setUbicacion}
-              onPickAction={(location) => {
-                setUbicacion(location);
+            {/* A form so typing a place and pressing Enter (or "Buscar") searches, not only the chips. */}
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
                 setOpen(false);
-                goToSearch(location);
+                goToSearch(ubicacion);
               }}
-            />
+              className="flex flex-col gap-4"
+            >
+              <LocationFields
+                value={ubicacion}
+                onValueChangeAction={setUbicacion}
+                onPickAction={(location) => {
+                  setUbicacion(location);
+                  setOpen(false);
+                  goToSearch(location);
+                }}
+              />
+              <button
+                type="submit"
+                className="flex items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
+              >
+                <SearchIcon className="size-4" />
+                Buscar
+              </button>
+            </form>
           </motion.div>
         ) : null}
       </AnimatePresence>

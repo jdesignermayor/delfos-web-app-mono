@@ -130,8 +130,10 @@ export function toProperty(row: PropertyRow): Property {
     beds: ranges.bedrooms,
     baths: ranges.bathrooms,
     area: ranges.area,
-    affordable: false,
-    status: "Listo para estrenar",
+    // "VIS" / "VIP" housing (but not "No VIS") is the affordable filter.
+    affordable: /^\s*vi[sp]\b/i.test(row.housing_type ?? ""),
+    // A delivery date still ahead means the project is off-plan.
+    status: row.delivery_date && new Date(row.delivery_date) > new Date() ? "Sobre planos" : "Listo para estrenar",
     hue: (row.id * 47) % 360,
     lat: row.latitude ?? undefined,
     lng: row.longitude ?? undefined,
