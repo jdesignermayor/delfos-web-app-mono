@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/providers/toast-provider";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 /**
@@ -29,6 +30,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Delfos — Vivienda nueva para comprar y arrendar",
     template: "%s · Delfos",

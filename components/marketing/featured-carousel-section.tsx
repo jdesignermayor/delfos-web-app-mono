@@ -1,31 +1,17 @@
 import { Suspense } from "react";
-import { createClient } from "@supabase/supabase-js";
 
 import { PropertyCarousel, PropertyCarouselSkeleton } from "@/components/marketing/property-carousel";
 import { PROPERTIES, type Property, type PropertyType } from "@/components/marketing/properties";
 import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
-import type { Database } from "@/supabase/types";
+import { createPublicClient } from "@/supabase/public";
 
 const TITLE = "Explora propiedades en Medellín";
-
-/**
- * Anon client whose requests go through Next's data cache: the landing's
- * listings are public and change rarely, so they're refreshed every 5 minutes
- * (or right away when a property is saved) instead of on every visit.
- */
-function createCachedPublicClient() {
-  return createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-    global: {
-      fetch: (input, init) => fetch(input, { ...init, next: { revalidate: 300, tags: [PROPERTIES_CACHE_TAG] } }),
-    },
-  });
-}
 
 const CARD_TYPES: PropertyType[] = ["apartamento", "casa", "apartaestudio", "proyecto"];
 
 /** Only what a carousel card shows — not descriptions, typologies or sales-room data. */
 async function getFeaturedProperties(): Promise<Property[]> {
-  const { data, error } = await createCachedPublicClient()
+  const { data, error } = await createPublicClient({ revalidate: 300, tags: [PROPERTIES_CACHE_TAG] })
     .from("properties")
     .select("id, uuid, title, image, price, property_type")
     .order("created_at", { ascending: false })

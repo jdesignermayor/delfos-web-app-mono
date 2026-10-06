@@ -47,6 +47,16 @@ export type Property = {
   stratum?: number;
   /** Project, financing and sales-room data. Only real (DB) listings have it. */
   details?: PropertyDetails;
+  /** SEO/ads fields from the dashboard's SEO step. Only real (DB) listings have it. */
+  seo?: PropertySeo;
+};
+
+/** `properties.seo`, per platform; every field is optional (only filled ones are stored). */
+export type PropertySeo = {
+  meta: Partial<Record<"ogTitle" | "ogDescription" | "ogImage" | "pixelId" | "campaign", string>>;
+  google: Partial<Record<"metaTitle" | "slug" | "metaDescription" | "keywords" | "canonicalUrl" | "adsConversionId", string>>;
+  youtube: Partial<Record<"videoUrl" | "videoTitle" | "tags" | "videoDescription", string>>;
+  linkedin: Partial<Record<"title" | "insightTagId" | "description" | "image", string>>;
 };
 
 /** A unit layout offered in one tower of the project. */

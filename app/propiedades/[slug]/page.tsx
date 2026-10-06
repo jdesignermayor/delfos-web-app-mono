@@ -5,7 +5,7 @@ import { BathIcon, BedIcon, CarIcon, RulerIcon } from "@/components/icons";
 import { SiteNavbar } from "@/components/marketing/site-navbar";
 import { getCurrentUser } from "@/supabase/roles";
 import { SearchModeProvider } from "@/components/marketing/search-mode-context";
-import { getDbPropertyByUuid } from "@/components/marketing/property-adapter";
+import { getDbPropertyBySlug } from "@/components/marketing/property-adapter";
 import {
   OPERATION_LABELS,
   PROPERTIES,
@@ -30,6 +30,9 @@ import {
 } from "@/components/property-detail/project-details";
 import { AmenityItem } from "@/components/property-detail/amenity-item";
 import { SiteFooter } from "@/components/marketing/site-footer";
+import { PropertyVideo } from "@/components/property-detail/property-video";
+import { JsonLd } from "@/components/seo/json-ld";
+import { buildPropertyJsonLd, buildPropertyMetadata, youtubeId } from "@/lib/property-seo";
 import { formatRange } from "@/lib/typology-ranges";
 
 const DEFAULT_AMENITIES = [
@@ -57,39 +60,38 @@ function specs(property: Property) {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Mock listings first (no DB round-trip); real DB properties are keyed by their public UUID. */
+/**
+ * Mock listings first (no DB round-trip); real DB properties are found by
+ * their public UUID or by the SEO slug set in the dashboard.
+ */
 async function resolveProperty(slug: string): Promise<Property | null> {
   const mock = getPropertyBySlug(slug);
   if (mock) return mock;
 
-  if (!UUID_RE.test(slug)) return null;
-  return getDbPropertyByUuid(slug);
+  return getDbPropertyBySlug(decodeURIComponent(slug), UUID_RE.test(slug) ? "uuid" : "seo-slug");
 }
 
-export async function generateMetadata({
-  params,
-}: PageProps<"/propiedades/[slug]">): Promise<Metadata> {
-  const { slug } = await params;
-  const property = await resolveProperty(slug);
-  if (!property) return { title: "Propiedad no encontrada" };
-
-  const description = [
-    `${property.title} en ${property.neighborhood}, ${property.city}.`,
+/** Default description when the SEO step leaves it empty: place, specs and price. */
+function summary(property: Property) {
+  const place = [property.neighborhood, property.city].filter(Boolean).join(", ");
+  return [
+    `${property.title}${place ? ` en ${place}` : ""}.`,
     specs(property) && `${specs(property)}.`,
     `${formatPrice(property)}.`,
   ]
     .filter(Boolean)
     .join(" ");
+}
 
-  return {
-    title: property.title,
-    description,
-    openGraph: {
-      title: property.title,
-      description,
-      images: property.image ? [property.image] : undefined,
-    },
-  };
+export async function generateMetadata({
+  params,
+  searchParams,
+}: PageProps<"/propiedades/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const property = await resolveProperty(slug);
+  if (!property) return { title: "Propiedad no encontrada" };
+
+  return buildPropertyMetadata(property, summary(property), await searchParams);
 }
 
 export default async function PropertyDetailPage({
@@ -104,9 +106,11 @@ export default async function PropertyDetailPage({
   const description =
     property.description ??
     `${property.title} es una propiedad ${OPERATION_LABELS[property.operation].toLowerCase()} en ${property.neighborhood}, ${property.city}. ${specs(property) ? `Cuenta con ${specs(property)}, ideal` : "Ideal"} para quienes buscan calidad de vida cerca de los principales servicios de la zona.`;
+  const videoId = youtubeId(property.seo?.youtube.videoUrl);
 
   return (
     <SearchModeProvider>
+      <JsonLd data={buildPropertyJsonLd(property, summary(property))} />
       <SiteNavbar alwaysShowSearch userPromise={getCurrentUser()} />
 
       <main className="w-full bg-white">
@@ -163,6 +167,18 @@ export default async function PropertyDetailPage({
 
               {details ? <ProjectDetailsSection property={property} details={details} /> : null}
               {details ? <TowersSection towers={details.towers} /> : null}
+
+              {videoId ? (
+                <section id="video" className="scroll-mt-24">
+                  <h3 className="font-display text-2xl font-semibold text-foreground">Video del proyecto</h3>
+                  {property.seo?.youtube.videoTitle ? (
+                    <p className="mt-1 text-sm text-muted">{property.seo.youtube.videoTitle}</p>
+                  ) : null}
+                  <div className="mt-4">
+                    <PropertyVideo videoId={videoId} title={property.seo?.youtube.videoTitle || property.title} />
+                  </div>
+                </section>
+              ) : null}
 
               <section id="servicios" className="scroll-mt-24">
                 <h3 className="font-display text-2xl font-semibold text-foreground">Lo que este lugar ofrece</h3>

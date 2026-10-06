@@ -1,11 +1,15 @@
+import { cache } from "react";
+
 import type {
   Property,
   PropertyDetails,
+  PropertySeo,
   PropertyType,
   Tower,
   Typology,
 } from "@/components/marketing/properties";
 import { createPublicClient } from "@/supabase/public";
+import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
 import type { Json, Tables } from "@/supabase/types";
 import { parseAmenities } from "@/lib/amenities";
 import { typologyRanges } from "@/lib/typology-ranges";
@@ -80,6 +84,18 @@ function parseTowers(typologies: Json, towerDetails: Json): Tower[] {
     .sort((a, b) => a.number - b.number);
 }
 
+/** Reads `properties.seo`, keeping only non-empty string fields per platform. */
+function parseSeo(value: Json | undefined): PropertySeo {
+  const platform = (key: keyof PropertySeo) => {
+    const fields = isObject(value) ? value[key] : undefined;
+    if (!isObject(fields)) return {};
+    return Object.fromEntries(
+      Object.entries(fields).flatMap(([name, v]) => (typeof v === "string" && v.trim() ? [[name, v.trim()]] : [])),
+    );
+  };
+  return { meta: platform("meta"), google: platform("google"), youtube: platform("youtube"), linkedin: platform("linkedin") };
+}
+
 function toDetails(row: PropertyRow): PropertyDetails {
   return {
     developer: row.developer
@@ -144,6 +160,7 @@ export function toProperty(row: PropertyRow): Property {
     address: row.address || undefined,
     stratum: row.stratum || undefined,
     details: toDetails(row),
+    seo: parseSeo(row.seo),
   };
 }
 
@@ -159,15 +176,20 @@ export async function getDbProperties(): Promise<Property[]> {
   return data.map(toProperty);
 }
 
-/** Looks up a single real property by its public UUID (used in `/propiedades/[slug]` URLs). */
-export async function getDbPropertyByUuid(uuid: string): Promise<Property | null> {
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
+/**
+ * Looks up a single real property for `/propiedades/[slug]`, by its public
+ * UUID or by the SEO slug set in the dashboard (`seo.google.slug`). Cached for
+ * 5 minutes (refreshed when a property is saved) and deduped per request, so
+ * `generateMetadata` and the page share one query.
+ */
+export const getDbPropertyBySlug = cache(async (slug: string, by: "uuid" | "seo-slug"): Promise<Property | null> => {
+  const query = createPublicClient({ revalidate: 300, tags: [PROPERTIES_CACHE_TAG] })
     .from("properties")
-    .select(PROPERTY_SELECT)
-    .eq("uuid", uuid)
+    .select(PROPERTY_SELECT);
+  const { data, error } = await (by === "uuid" ? query.eq("uuid", slug) : query.eq("seo->google->>slug", slug))
+    .limit(1)
     .maybeSingle();
 
   if (error || !data) return null;
   return toProperty(data);
-}
+});

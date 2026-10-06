@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 const nextConfig: NextConfig = {
+  // Render <title>, description, Open Graph, canonical, etc. inside <head> for
+  // every visitor and crawler, instead of streaming them into <body> after the
+  // page (Next's default for browsers and Googlebot). Metadata here comes from
+  // cached queries, so the extra wait before the first byte is minimal.
+  htmlLimitedBots: /.*/,
   images: {
     // Property photos are served from the public Supabase storage bucket.
     remotePatterns: supabaseUrl ? [new URL(`${supabaseUrl}/storage/v1/object/public/**`)] : [],
