@@ -2,7 +2,9 @@ import { Suspense } from "react";
 
 import { PropertyCarousel, PropertyCarouselSkeleton } from "@/components/marketing/property-carousel";
 import { PROPERTIES, type Property, type PropertyType } from "@/components/marketing/properties";
+import { JsonLd } from "@/components/seo/json-ld";
 import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
+import { SITE_URL } from "@/lib/site";
 import { createPublicClient } from "@/supabase/public";
 
 const TITLE = "Explora propiedades en Medellín";
@@ -13,13 +15,14 @@ const CARD_TYPES: PropertyType[] = ["apartamento", "casa", "apartaestudio", "pro
 async function getFeaturedProperties(): Promise<Property[]> {
   const { data, error } = await createPublicClient({ revalidate: 300, tags: [PROPERTIES_CACHE_TAG] })
     .from("properties")
-    .select("id, uuid, title, image, price, property_type")
+    .select("id, uuid, title, image, price, property_type, seo")
     .order("created_at", { ascending: false })
     .limit(12);
 
   if (error || !data || data.length === 0) return PROPERTIES;
   return data.map((row) => ({
-    slug: row.uuid,
+    // The SEO slug when set, so cards link to (and Google sees) the canonical URL.
+    slug: (row.seo as { google?: { slug?: string } } | null)?.google?.slug?.trim() || row.uuid,
     title: row.title,
     image: row.image,
     price: Number(row.price),
@@ -35,7 +38,26 @@ async function getFeaturedProperties(): Promise<Property[]> {
 
 async function FeaturedCarousel() {
   const properties = await getFeaturedProperties();
-  return <PropertyCarousel title={TITLE} properties={properties} analyticsListId="landing_featured" />;
+  return (
+    <>
+      {/* Lists the featured properties for search engines, linking the landing to each detail page. */}
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          name: TITLE,
+          itemListElement: properties.map((property, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            url: `${SITE_URL}/propiedades/${property.slug}`,
+            name: property.title,
+            image: property.image,
+          })),
+        }}
+      />
+      <PropertyCarousel title={TITLE} properties={properties} analyticsListId="landing_featured" />
+    </>
+  );
 }
 
 /** Streams in: the rest of the landing renders immediately while the listings load. */

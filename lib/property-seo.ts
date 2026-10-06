@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import type { Property } from "@/components/marketing/properties";
-import { SITE_URL } from "@/lib/site";
+import { NOINDEX, SITE_URL } from "@/lib/site";
 
 /** "dQw4w9WgXcQ" from watch?v=, youtu.be/, /shorts/ or /embed/ URLs; null when it isn't YouTube. */
 export function youtubeId(url: string | undefined): string | null {
@@ -70,7 +70,9 @@ export function buildPropertyMetadata(
     applicationName: "Delfos",
     category: "Bienes raíces",
     alternates: { canonical },
-    robots: {
+    robots: NOINDEX
+      ? { index: false, follow: false }
+      : {
       index: true,
       follow: true,
       // Let Google show large photo previews and full snippets/video previews in results.
