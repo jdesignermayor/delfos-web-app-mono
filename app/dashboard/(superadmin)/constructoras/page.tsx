@@ -4,12 +4,14 @@ import { Card, buttonVariants } from "@heroui/react";
 
 import { ArrowRightIcon } from "@/components/icons";
 import { getEntities } from "@/app/actions/entities";
+import { DeveloperEnabledSwitch } from "@/components/dashboard/constructoras/developer-enabled-switch";
+import type { Tables } from "@/supabase/types";
 
 export const metadata: Metadata = { title: "Constructoras" };
 
 export default async function ConstructorasPage() {
   const result = await getEntities("developers");
-  const constructoras = result.success ? (result.data as any[]) : [];
+  const constructoras = result.success ? (result.data as Tables<"developers">[]) : [];
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -29,13 +31,14 @@ export default async function ConstructorasPage() {
           <p className="text-center text-muted">No hay constructoras registradas</p>
         ) : (
           <div className="-mx-5 overflow-x-auto px-5">
-            <table className="w-full min-w-[560px] text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-separator text-left text-xs uppercase tracking-wider text-muted">
                   <th className="py-2 pr-4 font-medium">Nombre</th>
                   <th className="py-2 pr-4 font-medium">NIT</th>
                   <th className="py-2 pr-4 font-medium">Teléfono</th>
                   <th className="py-2 pr-4 font-medium">Email</th>
+                  <th className="py-2 pr-4 font-medium">Estado</th>
                   <th className="py-2 pl-4 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
@@ -46,6 +49,13 @@ export default async function ConstructorasPage() {
                     <td className="py-3 pr-4 text-muted">{item.nit || "-"}</td>
                     <td className="py-3 pr-4 text-muted">{item.phone || "-"}</td>
                     <td className="py-3 pr-4 text-muted">{item.email || "-"}</td>
+                    <td className="py-3 pr-4">
+                      <DeveloperEnabledSwitch
+                        developerId={item.id}
+                        developerName={item.name}
+                        isEnabled={item.is_enabled}
+                      />
+                    </td>
                     <td className="py-3 pl-4 text-right">
                       <Link href={`/dashboard/constructoras/${item.id}`} className="text-sm text-accent hover:underline">
                         Editar
