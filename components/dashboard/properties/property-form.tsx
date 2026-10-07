@@ -575,7 +575,7 @@ export function PropertyForm({
       ...values,
       developerName: developers.find((d) => String(d.id) === values.developerId)?.name,
       amenities: amenities.map((a) => a.name),
-      typologies: Object.values(towerTypologies).flat(),
+      typologies: Array.from({ length: Number(values.towerCount) || 0 }, (_, i) => towerTypologies[`tower-${i + 1}`] ?? []).flat(),
     });
 
     let filled = 0;
@@ -740,23 +740,17 @@ export function PropertyForm({
       }
       commitUploads();
 
+      const towerKeys = Array.from({ length: Number(values.towerCount) || 0 }, (_, i) => `tower-${i + 1}`);
       const payload: CreatePropertyInput = {
         ...values,
         image: imageUrl,
         latitude: coordinates?.lat ?? null,
         longitude: coordinates?.lng ?? null,
         amenities,
-        typologies: towerTypologies,
+        // Only the visible towers are saved, so lowering the count drops the extra towers' data.
+        typologies: Object.fromEntries(towerKeys.flatMap((key) => (towerTypologies[key] ? [[key, towerTypologies[key]]] : []))),
         // Every visible tower is saved with defaults, even if its fields were never touched.
-        towerDetails: {
-          ...towerDetails,
-          ...Object.fromEntries(
-            Array.from({ length: Number(values.towerCount) || 0 }, (_, i) => {
-              const key = `tower-${i + 1}`;
-              return [key, { ...EMPTY_TOWER_DETAIL, ...towerDetails[key] }];
-            }),
-          ),
-        },
+        towerDetails: Object.fromEntries(towerKeys.map((key) => [key, { ...EMPTY_TOWER_DETAIL, ...towerDetails[key] }])),
         additionalImages,
         seo: seoPayload,
       };

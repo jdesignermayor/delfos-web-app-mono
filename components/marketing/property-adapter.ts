@@ -52,9 +52,10 @@ const text = (value: string | null | undefined) => value?.trim() || undefined;
 /**
  * Merges `typologies` (`{ "tower-1": Typology[] }`) and `tower_details`
  * (`{ "tower-1": { deliveryDate, elevatorCount, hasTrashChute } }`) into one
- * list of towers, ordered by number.
+ * list of towers, ordered by number. Towers past `towerCount` are leftovers from
+ * when the count was higher, so they're dropped.
  */
-function parseTowers(typologies: Json, towerDetails: Json): Tower[] {
+function parseTowers(typologies: Json, towerDetails: Json, towerCount: number | null): Tower[] {
   const keys = new Set([
     ...(isObject(typologies) ? Object.keys(typologies) : []),
     ...(isObject(towerDetails) ? Object.keys(towerDetails) : []),
@@ -81,6 +82,7 @@ function parseTowers(typologies: Json, towerDetails: Json): Tower[] {
         ),
       };
     })
+    .filter((tower) => towerCount == null || tower.number <= towerCount)
     .sort((a, b) => a.number - b.number);
 }
 
@@ -107,7 +109,7 @@ function toDetails(row: PropertyRow): PropertyDetails {
     constructionBank: text(row.construction_bank),
     deliveryDate: text(row.delivery_date),
     towerCount: row.tower_count ?? undefined,
-    towers: parseTowers(row.typologies, row.tower_details),
+    towers: parseTowers(row.typologies, row.tower_details, row.tower_count),
     financing: {
       initialFeePercentage: row.initial_fee_percentage ?? undefined,
       initialFeeAmount: toNumber(row.initial_fee_amount),
