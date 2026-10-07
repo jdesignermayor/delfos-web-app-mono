@@ -20,8 +20,8 @@ export async function createClient() {
               cookieStore.set(name, value, options);
             }
           } catch {
-            // Called from a Server Component render — safe to ignore as long
-            // as session refresh happens elsewhere (e.g. middleware).
+            // Called from a Server Component render — safe to ignore: the
+            // session is refreshed and persisted in `proxy.ts` beforehand.
           }
         },
       },

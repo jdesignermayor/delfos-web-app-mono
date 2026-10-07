@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { getSuperadmin } from "@/lib/auth/dal";
+import { USER_PROFILES_CACHE_TAG } from "@/lib/cache-tags";
 import { createAdminUser, updateAdminUser, type SaveAdminUserResult } from "@/lib/users/admin-users";
 import {
   parseAdminUserForm,
@@ -42,6 +43,8 @@ async function saveAdminUser(
       : { success: false, message: result.error, fieldErrors: {} };
   }
 
+  // Role / constructora / active flag may have changed: expire cached profiles now.
+  updateTag(USER_PROFILES_CACHE_TAG);
   revalidatePath("/dashboard/users");
   return { success: true };
 }

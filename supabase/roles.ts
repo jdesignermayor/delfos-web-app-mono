@@ -1,5 +1,6 @@
 import { cache } from "react";
 
+import { USER_PROFILES_CACHE_TAG } from "@/lib/cache-tags";
 import { createAdminClient } from "@/supabase/admin";
 import { createClient } from "@/supabase/server";
 
@@ -26,15 +27,26 @@ export type CurrentUser = {
   developer: UserDeveloper | null;
 };
 
+/** Fallback lifetime of a cached profile; mutations expire it right away via `USER_PROFILES_CACHE_TAG`. */
+const PROFILE_CACHE_SECONDS = 60;
+
 /**
  * Loads a user's `public.users` profile (role and constructora).
  *
  * Row Level Security on `public.users` doesn't grant a user SELECT access
  * to their own row, so this reads the profile with the service-role client
  * instead — always scoped to an id the caller has already verified.
+ *
+ * `fresh` skips the data cache — used at sign-in, where access must reflect
+ * the database exactly. Dashboard requests use the cached copy.
  */
-export async function getUserProfile(authUser: { id: string; email?: string | null }): Promise<CurrentUser> {
-  const admin = createAdminClient();
+export async function getUserProfile(
+  authUser: { id: string; email?: string | null },
+  { fresh = false }: { fresh?: boolean } = {},
+): Promise<CurrentUser> {
+  const admin = fresh
+    ? createAdminClient()
+    : createAdminClient({ revalidate: PROFILE_CACHE_SECONDS, tags: [USER_PROFILES_CACHE_TAG] });
   const { data } = await admin
     .from("users")
     .select("name, email, is_active, roles(name), developer:developers!developer_id(id, name, is_enabled)")
@@ -58,15 +70,18 @@ export async function getUserProfile(authUser: { id: string; email?: string | nu
 /**
  * The authenticated user's profile and role, or `null` if signed out.
  * Memoized per request, so layouts, pages and actions can all call it freely.
+ *
+ * `getClaims()` verifies the session JWT locally against the project's
+ * asymmetric (ES256) signing keys — no round trip to Supabase Auth, unlike
+ * `getUser()` — which keeps every dashboard navigation fast.
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return null;
 
-  return getUserProfile(user);
+  return getUserProfile({ id: claims.sub, email: claims.email ?? null });
 });
 
 /** The role of the currently authenticated user, or `null` if signed out / roleless. */

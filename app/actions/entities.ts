@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { getDashboardUser } from "@/lib/auth/dal";
 import {
   canAccessEntity,
@@ -29,6 +31,11 @@ export type Entity = {
 };
 
 const UNAUTHORIZED = "No tienes permiso para realizar esta acción.";
+
+/** Catalogs feed every dashboard page (lists, property form selects): refresh them all. */
+function revalidateDashboard() {
+  revalidatePath("/dashboard", "layout");
+}
 
 /**
  * The current user, if they may perform `action` on `type`. Constructora
@@ -65,6 +72,7 @@ export async function createEntity(type: EntityType, data: Entity) {
       .select();
 
     if (error) throw error;
+    revalidateDashboard();
     return { success: true, data: result?.[0] };
   } catch (error) {
     return { success: false, error: String(error) };
@@ -134,6 +142,7 @@ export async function updateEntity(type: EntityType, id: string, data: Partial<E
       .select();
 
     if (error) throw error;
+    revalidateDashboard();
     return { success: true, data: result?.[0] };
   } catch (error) {
     return { success: false, error: String(error) };
@@ -148,6 +157,7 @@ export async function deleteEntity(type: EntityType, id: string) {
     const supabase = createAdminClient();
     const { error } = await supabase.from(type).delete().eq("id", id);
     if (error) throw error;
+    revalidateDashboard();
     return { success: true };
   } catch (error) {
     return { success: false, error: String(error) };

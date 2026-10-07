@@ -1,13 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Card, Chip } from "@heroui/react";
 import { Sparkles } from "lucide-react";
 
 import { ArrowRightIcon } from "@/components/icons";
-import { PropertyForm, type PropertyRecord } from "@/components/dashboard/properties/property-form";
+import { DashboardImage } from "@/components/dashboard/properties/dashboard-image";
+import {
+  preloadPropertyEditor,
+  PropertyEditor,
+  PropertyEditorSkeleton,
+} from "@/components/dashboard/properties/property-editor";
+import type { PropertyRecord } from "@/components/dashboard/properties/property-form";
 import { parseAmenities } from "@/lib/amenities";
+import type { PropertyFormOptions } from "@/lib/data/property-form-options";
 
 const currency = new Intl.NumberFormat("es-CO", {
   style: "currency",
@@ -40,28 +47,32 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {property.image ? (
-        <div className="overflow-hidden rounded-xl border border-separator">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={property.image}
-            alt={property.title}
-            className="aspect-video w-full object-cover"
-          />
-        </div>
-      ) : null}
+      {/* Small, low-quality previews with a shimmer placeholder while they're optimized. */}
+      {property.image || additionalImages.length > 0 ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          {property.image ? (
+            <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-xl border border-separator sm:w-80">
+              <DashboardImage
+                src={property.image}
+                alt={property.title}
+                sizes="(min-width: 640px) 320px, 100vw"
+                priority
+              />
+            </div>
+          ) : null}
 
-      {additionalImages.length > 0 ? (
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-          {additionalImages.map((url) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={url}
-              src={url}
-              alt=""
-              className="aspect-square w-full rounded-lg border border-separator object-cover"
-            />
-          ))}
+          {additionalImages.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {additionalImages.map((url) => (
+                <div
+                  key={url}
+                  className="relative size-20 overflow-hidden rounded-lg border border-separator"
+                >
+                  <DashboardImage src={url} alt="" sizes="80px" />
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -223,24 +234,30 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
   );
 }
 
+/** Downloads the editor bundle once the browser is idle, so "Editar" opens without waiting. */
+function usePreloadEditorWhenIdle() {
+  useEffect(() => {
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(preloadPropertyEditor);
+      return () => window.cancelIdleCallback(handle);
+    }
+    const timeout = setTimeout(preloadPropertyEditor, 1500);
+    return () => clearTimeout(timeout);
+  }, []);
+}
+
 export function PropertyDetailView({
   property,
-  developers,
-  realEstateAgencies,
-  trustCompanies,
-  commonAreas,
-  lockedDeveloper,
+  formOptionsPromise,
 }: {
   property: PropertyRecord;
-  developers: { id: number; name: string }[];
-  realEstateAgencies: { id: string; name: string }[];
-  trustCompanies: { id: string; name: string }[];
-  commonAreas: { id: string; name: string }[];
-  lockedDeveloper: { id: number; name: string } | null;
+  /** Started on the server with the page; only awaited once editing begins. */
+  formOptionsPromise: Promise<PropertyFormOptions>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   // Set when editing was opened from "Autorrellenar SEO", so the form lands on the SEO step.
   const [openSeo, setOpenSeo] = useState(false);
+  usePreloadEditorWhenIdle();
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -294,15 +311,9 @@ export function PropertyDetailView({
       ) : null}
 
       {isEditing ? (
-        <PropertyForm
-          developers={developers}
-          realEstateAgencies={realEstateAgencies}
-          trustCompanies={trustCompanies}
-          commonAreas={commonAreas}
-          lockedDeveloper={lockedDeveloper}
-          property={property}
-          openSeo={openSeo}
-        />
+        <Suspense fallback={<PropertyEditorSkeleton />}>
+          <PropertyEditor property={property} formOptionsPromise={formOptionsPromise} openSeo={openSeo} />
+        </Suspense>
       ) : (
         <PropertyReadView property={property} />
       )}

@@ -1,10 +1,9 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
 import { createAdminClient } from "@/supabase/admin";
-import { createClient } from "@/supabase/server";
 import type { Amenity } from "@/lib/amenities";
 import { imageToShareCard, imageToWebp } from "@/lib/image-to-webp";
 import { slugify } from "@/lib/slug";
@@ -226,6 +225,8 @@ export async function createProperty(input: CreatePropertyInput): Promise<Create
     return { success: false, error: error.message };
   }
   revalidateTag(PROPERTIES_CACHE_TAG, "max");
+  // Dashboard lists, stats and detail pages (and their client-side cache).
+  revalidatePath("/dashboard", "layout");
   return { success: true, id: data.id };
 }
 
@@ -251,25 +252,9 @@ export async function updateProperty(
     return { success: false, error: error.message };
   }
   revalidateTag(PROPERTIES_CACHE_TAG, "max");
+  // Dashboard lists, stats and detail pages (and their client-side cache).
+  revalidatePath("/dashboard", "layout");
   return { success: true, id };
-}
-
-/**
- * Fetches a single property (with its developer) for the detail/edit pages —
- * `null` when it doesn't exist or is outside the user's constructora.
- */
-export async function getPropertyById(id: number) {
-  const user = await getDashboardUser();
-  if (!user) return null;
-
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("properties")
-    .select("*, developers!developer_id(id, name, address, phone)")
-    .eq("id", id)
-    .maybeSingle();
-
-  return data && canManageProperty(user, data.developer_id) ? data : null;
 }
 
 /** "seo" is a share image (og:image / LinkedIn) picked in the SEO step. */

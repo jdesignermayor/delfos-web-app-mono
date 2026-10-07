@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { getSuperadmin } from "@/lib/auth/dal";
+import { USER_PROFILES_CACHE_TAG } from "@/lib/cache-tags";
 import { createAdminClient } from "@/supabase/admin";
 
 export type SetDeveloperEnabledResult = { success: true } | { success: false; error: string };
@@ -29,6 +30,8 @@ export async function setDeveloperEnabled(
     return { success: false, error: `No se pudo actualizar la constructora: ${error.message}` };
   }
 
+  // Its users' cached profiles carry `is_enabled`: expire them so access changes apply now.
+  updateTag(USER_PROFILES_CACHE_TAG);
   revalidatePath("/dashboard/constructoras");
   revalidatePath("/dashboard/users");
   return { success: true };

@@ -119,7 +119,7 @@ export async function signInAccount(input: {
 
   // Valid credentials aren't enough: the profile must exist and be active,
   // and a constructora's users need their constructora to be enabled.
-  const user = await getUserProfile(data.user);
+  const user = await getUserProfile(data.user, { fresh: true });
   const denialReason = signInDenialReason(user);
   if (denialReason) {
     await supabase.auth.signOut();
