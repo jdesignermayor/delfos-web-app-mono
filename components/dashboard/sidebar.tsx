@@ -85,7 +85,12 @@ function SidebarUser({ user }: { user: CurrentUser }) {
         <Avatar size="sm">
           <Avatar.Fallback color="accent">{initials(user.name, user.email)}</Avatar.Fallback>
         </Avatar>
-        <span className="flex-1 truncate text-sm font-medium">{displayName}</span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{displayName}</p>
+          {user.developer ? (
+            <p className="truncate text-xs text-muted">{user.developer.name}</p>
+          ) : null}
+        </div>
       </div>
       <Button
         type="button"

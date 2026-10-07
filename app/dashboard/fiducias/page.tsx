@@ -4,12 +4,17 @@ import { Card, buttonVariants } from "@heroui/react";
 
 import { ArrowRightIcon } from "@/components/icons";
 import { getEntities } from "@/app/actions/entities";
+import { requireDashboardUser } from "@/lib/auth/dal";
+import { isSuperadmin } from "@/lib/auth/permissions";
+import type { Tables } from "@/supabase/types";
 
 export const metadata: Metadata = { title: "Fiducias" };
 
 export default async function FidiciasPage() {
+  const user = await requireDashboardUser();
+  const canEdit = isSuperadmin(user);
   const result = await getEntities("trust_companies");
-  const fiducias = result.success ? (result.data as any[]) : [];
+  const fiducias = result.success ? (result.data as Tables<"trust_companies">[]) : [];
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -47,9 +52,13 @@ export default async function FidiciasPage() {
                     <td className="py-3 pr-4 text-muted">{item.phone || "-"}</td>
                     <td className="py-3 pr-4 text-muted">{item.email || "-"}</td>
                     <td className="py-3 pl-4 text-right">
-                      <Link href={`/dashboard/fiducias/${item.id}`} className="text-sm text-accent hover:underline">
-                        Editar
-                      </Link>
+                      {canEdit ? (
+                        <Link href={`/dashboard/fiducias/${item.id}`} className="text-sm text-accent hover:underline">
+                          Editar
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-muted">Solo lectura</span>
+                      )}
                     </td>
                   </tr>
                 ))}

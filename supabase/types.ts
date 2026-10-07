@@ -114,6 +114,7 @@ export type Database = {
           description: string | null
           email: string | null
           id: number
+          is_enabled: boolean
           name: string
           nit: string | null
           phone: string
@@ -125,6 +126,7 @@ export type Database = {
           description?: string | null
           email?: string | null
           id?: never
+          is_enabled?: boolean
           name: string
           nit?: string | null
           phone: string
@@ -136,6 +138,7 @@ export type Database = {
           description?: string | null
           email?: string | null
           id?: never
+          is_enabled?: boolean
           name?: string
           nit?: string | null
           phone?: string
@@ -240,8 +243,8 @@ export type Database = {
           sales_room_hours: string | null
           sales_room_phone: string | null
           seller_id: number | null
-          separation_amount: string | null
           seo: Json
+          separation_amount: string | null
           stratum: number
           title: string
           tower_count: number | null
@@ -286,8 +289,8 @@ export type Database = {
           sales_room_hours?: string | null
           sales_room_phone?: string | null
           seller_id?: number | null
-          separation_amount?: string | null
           seo?: Json
+          separation_amount?: string | null
           stratum: number
           title: string
           tower_count?: number | null
@@ -332,8 +335,8 @@ export type Database = {
           sales_room_hours?: string | null
           sales_room_phone?: string | null
           seller_id?: number | null
-          separation_amount?: string | null
           seo?: Json
+          separation_amount?: string | null
           stratum?: number
           title?: string
           tower_count?: number | null
@@ -436,6 +439,7 @@ export type Database = {
           address: string | null
           created_at: string | null
           description: string | null
+          developer_id: number | null
           email: string | null
           id: string
           name: string
@@ -447,6 +451,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           description?: string | null
+          developer_id?: number | null
           email?: string | null
           id?: string
           name: string
@@ -458,6 +463,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           description?: string | null
+          developer_id?: number | null
           email?: string | null
           id?: string
           name?: string
@@ -465,37 +471,55 @@ export type Database = {
           phone?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "trust_companies_developer_id_fkey"
+            columns: ["developer_id"]
+            isOneToOne: false
+            referencedRelation: "developers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
           created_at: string | null
+          developer_id: number | null
           email: string | null
           id: string
-          is_active: boolean | null
+          is_active: boolean
           name: string | null
           phone: string | null
           role_id: string | null
         }
         Insert: {
           created_at?: string | null
+          developer_id?: number | null
           email?: string | null
           id: string
-          is_active?: boolean | null
+          is_active?: boolean
           name?: string | null
           phone?: string | null
           role_id?: string | null
         }
         Update: {
           created_at?: string | null
+          developer_id?: number | null
           email?: string | null
           id?: string
-          is_active?: boolean | null
+          is_active?: boolean
           name?: string | null
           phone?: string | null
           role_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "users_developer_id_fkey"
+            columns: ["developer_id"]
+            isOneToOne: false
+            referencedRelation: "developers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "users_role_id_fkey"
             columns: ["role_id"]

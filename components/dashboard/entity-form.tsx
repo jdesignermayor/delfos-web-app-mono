@@ -58,27 +58,32 @@ export function EntityForm({
         {fields.map(({ name, label, type: fieldType = "text", required }) => {
           const defaultValue = entity?.[name as keyof Entity] || "";
 
+          // `TextField` owns the input's value, so `name` / `defaultValue` go on it, not on the input.
           if (fieldType === "textarea") {
             return (
-              <TextField key={name} className="sm:col-span-2" isRequired={required}>
+              <TextField
+                key={name}
+                name={name}
+                defaultValue={String(defaultValue)}
+                className="sm:col-span-2"
+                isRequired={required}
+              >
                 <Label>{label}</Label>
-                <TextArea
-                  name={name as string}
-                  defaultValue={String(defaultValue)}
-                />
+                <TextArea />
               </TextField>
             );
           }
 
           return (
-            <TextField key={name} type={fieldType} isRequired={required}>
+            <TextField
+              key={name}
+              name={name}
+              defaultValue={String(defaultValue)}
+              type={fieldType}
+              isRequired={required}
+            >
               <Label>{label}</Label>
-              <Input
-                name={name as string}
-                type={fieldType}
-                defaultValue={String(defaultValue)}
-                placeholder={label}
-              />
+              <Input type={fieldType} placeholder={label} />
             </TextField>
           );
         })}

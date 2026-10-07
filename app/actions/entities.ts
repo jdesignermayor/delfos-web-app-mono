@@ -1,5 +1,12 @@
 "use server";
 
+import { getDashboardUser } from "@/lib/auth/dal";
+import {
+  canAccessEntity,
+  developerScope,
+  type DashboardUser,
+  type EntityAction,
+} from "@/lib/auth/permissions";
 import { createAdminClient } from "@/supabase/admin";
 
 export type EntityType =
@@ -21,7 +28,22 @@ export type Entity = {
   updated_at?: string;
 };
 
+const UNAUTHORIZED = "No tienes permiso para realizar esta acción.";
+
+/**
+ * The current user, if they may perform `action` on `type`. Constructora
+ * admins read the shared catalog plus their own rows and can add new ones;
+ * editing and deleting is reserved to superadmins.
+ */
+async function authorize(type: EntityType, action: EntityAction): Promise<DashboardUser | null> {
+  const user = await getDashboardUser();
+  return user && canAccessEntity(user, type, action) ? user : null;
+}
+
 export async function createEntity(type: EntityType, data: Entity) {
+  const user = await authorize(type, "create");
+  if (!user) return { success: false, error: UNAUTHORIZED };
+
   try {
     const supabase = createAdminClient();
     const insertData: Record<string, unknown> = {
@@ -33,6 +55,9 @@ export async function createEntity(type: EntityType, data: Entity) {
     if (data.address) insertData.address = data.address;
     if (data.nit) insertData.nit = data.nit;
     if (data.description) insertData.description = data.description;
+
+    const ownerId = developerScope(user);
+    if (ownerId !== null) insertData.developer_id = ownerId;
 
     const { data: result, error } = await supabase
       .from(type)
@@ -46,13 +71,19 @@ export async function createEntity(type: EntityType, data: Entity) {
   }
 }
 
+/** Lists a catalog; constructora admins see the shared rows plus their own. */
 export async function getEntities(type: EntityType) {
+  const user = await authorize(type, "read");
+  if (!user) return { success: false, error: UNAUTHORIZED, data: [] };
+
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from(type)
-      .select("*")
-      .order("created_at", { ascending: false });
+    let query = supabase.from(type).select("*").order("created_at", { ascending: false });
+
+    const ownerId = developerScope(user);
+    if (ownerId !== null) query = query.or(`developer_id.is.null,developer_id.eq.${ownerId}`);
+
+    const { data, error } = await query;
     if (error) throw error;
     return { success: true, data: data || [] };
   } catch (error) {
@@ -61,13 +92,17 @@ export async function getEntities(type: EntityType) {
 }
 
 export async function getEntity(type: EntityType, id: string) {
+  const user = await authorize(type, "read");
+  if (!user) return { success: false, error: UNAUTHORIZED, data: null };
+
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from(type)
-      .select("*")
-      .eq("id", id)
-      .single();
+    let query = supabase.from(type).select("*").eq("id", id);
+
+    const ownerId = developerScope(user);
+    if (ownerId !== null) query = query.eq("developer_id" as never, ownerId as never);
+
+    const { data, error } = await query.single();
     if (error) throw error;
     return { success: true, data };
   } catch (error) {
@@ -75,7 +110,10 @@ export async function getEntity(type: EntityType, id: string) {
   }
 }
 
+/** Superadmin only. */
 export async function updateEntity(type: EntityType, id: string, data: Partial<Entity>) {
+  if (!(await authorize(type, "modify"))) return { success: false, error: UNAUTHORIZED };
+
   try {
     const supabase = createAdminClient();
     const updateData: Record<string, unknown> = {
@@ -102,7 +140,10 @@ export async function updateEntity(type: EntityType, id: string, data: Partial<E
   }
 }
 
+/** Superadmin only. */
 export async function deleteEntity(type: EntityType, id: string) {
+  if (!(await authorize(type, "modify"))) return { success: false, error: UNAUTHORIZED };
+
   try {
     const supabase = createAdminClient();
     const { error } = await supabase.from(type).delete().eq("id", id);

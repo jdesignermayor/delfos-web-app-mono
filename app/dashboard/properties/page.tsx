@@ -3,6 +3,8 @@ import Link from "next/link";
 import { buttonVariants, Card } from "@heroui/react";
 import { Plus } from "lucide-react";
 
+import { requireDashboardUser } from "@/lib/auth/dal";
+import { scopeToDeveloper } from "@/lib/auth/scope-query";
 import { createClient } from "@/supabase/server";
 import { ExportPropertiesButton } from "@/components/dashboard/properties/export-properties-button";
 import { LocationCell } from "@/components/dashboard/properties/location-cell";
@@ -20,11 +22,13 @@ const currency = new Intl.NumberFormat("es-CO", {
 });
 
 export default async function PropertiesPage() {
+  const user = await requireDashboardUser();
   const supabase = await createClient();
-  const { data: properties, error } = await supabase
-    .from("properties")
-    .select("*, developers!developer_id(id, name)")
-    .order("created_at", { ascending: false });
+  const { data: properties, error } = await scopeToDeveloper(
+    supabase.from("properties").select("*, developers!developer_id(id, name)"),
+    user,
+  ).order("created_at", { ascending: false });
+  const scopeLabel = user.developer ? `de ${user.developer.name}` : "en el sistema";
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -32,7 +36,7 @@ export default async function PropertiesPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Propiedades</h1>
           <p className="mt-1 text-sm text-muted">
-            {properties?.length ?? 0} propiedades en el sistema.
+            {properties?.length ?? 0} propiedades {scopeLabel}.
           </p>
         </div>
         <div className="flex items-center gap-2">

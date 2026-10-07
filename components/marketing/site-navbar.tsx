@@ -19,6 +19,7 @@ import { MobileLocationButton } from "@/components/marketing/mobile-location-but
 import { PropertySearch } from "@/components/marketing/property-search";
 import { SEARCH_MODES, useSearchMode } from "@/components/marketing/search-mode-context";
 import type { PropertyFilters } from "@/components/marketing/properties";
+import { canAccessDashboard } from "@/lib/auth/permissions";
 import type { CurrentUser } from "@/supabase/roles";
 
 const noopSubscribe = () => () => {};
@@ -64,7 +65,7 @@ function AccountActions({
 
   return (
     <>
-      {user.role === "superadmin" ? (
+      {canAccessDashboard(user) ? (
         <Link
           href="/dashboard"
           onClick={onNavigate}

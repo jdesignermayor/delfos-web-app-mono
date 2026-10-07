@@ -61,7 +61,7 @@ export function AuthModal({ state }: { state: UseOverlayStateReturn }) {
         localStorage.setItem("last_email", email);
       }
       state.close();
-      if (result.role === "superadmin") {
+      if (result.hasDashboardAccess) {
         router.push("/dashboard");
       } else {
         // No dedicated account area for other roles yet — at least refresh

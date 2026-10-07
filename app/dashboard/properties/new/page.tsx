@@ -1,25 +1,16 @@
 import type { Metadata } from "next";
 
 import { PropertyForm } from "@/components/dashboard/properties/property-form";
-import { createClient } from "@/supabase/server";
+import { requireDashboardUser } from "@/lib/auth/dal";
+import { getPropertyFormOptions } from "@/lib/data/property-form-options";
 
 export const metadata: Metadata = {
   title: "Nueva propiedad",
 };
 
 export default async function NewPropertyPage() {
-  const supabase = await createClient();
-  const [
-    { data: developers },
-    { data: realEstateAgencies },
-    { data: trustCompanies },
-    { data: commonAreas },
-  ] = await Promise.all([
-    supabase.from("developers").select("id, name").order("name"),
-    supabase.from("real_estate_agencies").select("id, name").order("name"),
-    supabase.from("trust_companies").select("id, name").order("name"),
-    supabase.from("common_areas").select("id, name").order("name"),
-  ]);
+  const user = await requireDashboardUser();
+  const options = await getPropertyFormOptions(user);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -30,12 +21,7 @@ export default async function NewPropertyPage() {
         </p>
       </div>
 
-      <PropertyForm
-        developers={developers ?? []}
-        realEstateAgencies={realEstateAgencies ?? []}
-        trustCompanies={trustCompanies ?? []}
-        commonAreas={commonAreas ?? []}
-      />
+      <PropertyForm {...options} />
     </div>
   );
 }

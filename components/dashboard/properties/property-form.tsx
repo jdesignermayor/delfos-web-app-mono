@@ -191,10 +191,23 @@ const CITY_OPTIONS = [
   "Bogotá",
 ];
 
+/** The main "Constructora" select: fixed to the user's own when they belong to one. */
+function developerOptions(
+  developers: { id: number; name: string }[],
+  lockedDeveloper: { id: number; name: string } | null,
+) {
+  if (lockedDeveloper) return [{ value: String(lockedDeveloper.id), label: lockedDeveloper.name }];
+  return [
+    { value: "", label: "Sin constructora" },
+    ...developers.map((d) => ({ value: String(d.id), label: d.name })),
+  ];
+}
+
 function buildSteps(
   developers: { id: number; name: string }[],
   realEstateAgencies: { id: string; name: string }[],
   trustCompanies: { id: string; name: string }[],
+  lockedDeveloper: { id: number; name: string } | null,
 ): StepConfig[] {
   return [
     {
@@ -210,10 +223,7 @@ function buildSteps(
               name: "developerId",
               label: "Constructora",
               kind: "select",
-              options: [
-                { value: "", label: "Sin constructora" },
-                ...developers.map((d) => ({ value: String(d.id), label: d.name })),
-              ],
+              options: developerOptions(developers, lockedDeveloper),
             },
             {
               name: "description",
@@ -415,6 +425,7 @@ export function PropertyForm({
   realEstateAgencies,
   trustCompanies,
   commonAreas,
+  lockedDeveloper = null,
   property,
   onSaved,
   openSeo = false,
@@ -423,6 +434,8 @@ export function PropertyForm({
   realEstateAgencies: { id: string; name: string }[];
   trustCompanies: { id: string; name: string }[];
   commonAreas: { id: string; name: string }[];
+  /** Constructora admins can only save properties under their own constructora. */
+  lockedDeveloper?: { id: number; name: string } | null;
   /** When provided, the form edits this property instead of creating a new one. */
   property?: PropertyRecord;
   /** Called after a successful edit, instead of the default create-mode redirect. */
@@ -433,13 +446,15 @@ export function PropertyForm({
   const router = useRouter();
   const toast = useToast();
   const isEditing = Boolean(property);
-  const steps = buildSteps(developers, realEstateAgencies, trustCompanies);
+  const steps = buildSteps(developers, realEstateAgencies, trustCompanies, lockedDeveloper);
   const formId = useId();
   const [stepIndex, setStepIndex] = useState(() =>
     openSeo ? Math.max(0, steps.findIndex((s) => s.key === "seo")) : 0,
   );
   const [values, setValues] = useState<PropertyFormValues>(() =>
-    property ? toInitialValues(property) : EMPTY_STATE,
+    property
+      ? toInitialValues(property)
+      : { ...EMPTY_STATE, developerId: lockedDeveloper ? String(lockedDeveloper.id) : "" },
   );
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(() =>
     property?.latitude != null && property?.longitude != null

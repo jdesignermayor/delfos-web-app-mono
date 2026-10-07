@@ -2,11 +2,11 @@
 
 import { redirect } from "next/navigation";
 
+import { canAccessDashboard, signInDenialReason } from "@/lib/auth/permissions";
+import { isValidEmail, normalizeEmail } from "@/lib/validation/email";
 import { createAdminClient } from "@/supabase/admin";
-import { getCurrentUser, type RoleName } from "@/supabase/roles";
+import { getUserProfile, type RoleName } from "@/supabase/roles";
 import { createClient } from "@/supabase/server";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type RegisterField = "fullName" | "email" | "phone" | "password";
 
@@ -16,7 +16,7 @@ export type RegisterResult =
 
 /** Looks up `public.users` with the service-role client so RLS can't hide a match. */
 export async function checkEmailExists(email: string): Promise<boolean> {
-  const normalized = email.trim().toLowerCase();
+  const normalized = normalizeEmail(email);
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("users")
@@ -35,14 +35,14 @@ export async function registerAccount(input: {
   password: string;
 }): Promise<RegisterResult> {
   const fullName = input.fullName.trim();
-  const email = input.email.trim().toLowerCase();
+  const email = normalizeEmail(input.email);
   const phone = input.phone.trim();
   const password = input.password;
 
   if (!fullName) {
     return { success: false, error: "Ingresa tu nombre completo.", field: "fullName" };
   }
-  if (!EMAIL_RE.test(email)) {
+  if (!isValidEmail(email)) {
     return { success: false, error: "Ingresa un correo válido.", field: "email" };
   }
   if (!phone) {
@@ -94,17 +94,17 @@ export async function registerAccount(input: {
 }
 
 export type SignInResult =
-  | { success: true; role: RoleName | null }
+  | { success: true; role: RoleName | null; hasDashboardAccess: boolean }
   | { success: false; error: string };
 
 export async function signInAccount(input: {
   email: string;
   password: string;
 }): Promise<SignInResult> {
-  const email = input.email.trim().toLowerCase();
+  const email = normalizeEmail(input.email);
   const password = input.password;
 
-  if (!EMAIL_RE.test(email)) {
+  if (!isValidEmail(email)) {
     return { success: false, error: "Ingresa un correo válido." };
   }
   if (!password) {
@@ -112,13 +112,21 @@ export async function signInAccount(input: {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.user) {
     return { success: false, error: "Correo o contraseña incorrectos." };
   }
 
-  const user = await getCurrentUser();
-  return { success: true, role: user?.role ?? null };
+  // Valid credentials aren't enough: the profile must exist and be active,
+  // and a constructora's users need their constructora to be enabled.
+  const user = await getUserProfile(data.user);
+  const denialReason = signInDenialReason(user);
+  if (denialReason) {
+    await supabase.auth.signOut();
+    return { success: false, error: denialReason };
+  }
+
+  return { success: true, role: user.role, hasDashboardAccess: canAccessDashboard(user) };
 }
 
 export async function signOutAccount(): Promise<never> {

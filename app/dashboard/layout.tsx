@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { getCurrentUser } from "@/supabase/roles";
+import { requireDashboardUser } from "@/lib/auth/dal";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -10,10 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
-  const user = await getCurrentUser();
-  if (user?.role !== "superadmin") {
-    redirect("/");
-  }
+  const user = await requireDashboardUser();
 
   return <DashboardShell user={user}>{children}</DashboardShell>;
 }

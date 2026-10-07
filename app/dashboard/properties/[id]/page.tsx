@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 
 import { getPropertyById } from "@/app/actions/properties";
 import { PropertyDetailView } from "@/components/dashboard/properties/property-detail-view";
-import { createClient } from "@/supabase/server";
+import { requireDashboardUser } from "@/lib/auth/dal";
+import { getPropertyFormOptions } from "@/lib/data/property-form-options";
 
 export async function generateMetadata({
   params,
@@ -17,34 +18,18 @@ export async function generateMetadata({
 export default async function PropertyDetailPage({
   params,
 }: PageProps<"/dashboard/properties/[id]">) {
+  const user = await requireDashboardUser();
   const { id } = await params;
   const numericId = Number(id);
   if (!Number.isInteger(numericId)) notFound();
 
-  const supabase = await createClient();
-  const [
-    property,
-    developersResult,
-    realEstateAgenciesResult,
-    trustCompaniesResult,
-    commonAreasResult,
-  ] = await Promise.all([
+  // `getPropertyById` returns null for properties outside the user's constructora.
+  const [property, options] = await Promise.all([
     getPropertyById(numericId),
-    supabase.from("developers").select("id, name").order("name"),
-    supabase.from("real_estate_agencies").select("id, name").order("name"),
-    supabase.from("trust_companies").select("id, name").order("name"),
-    supabase.from("common_areas").select("id, name").order("name"),
+    getPropertyFormOptions(user),
   ]);
 
   if (!property) notFound();
 
-  return (
-    <PropertyDetailView
-      property={property}
-      developers={developersResult.data ?? []}
-      realEstateAgencies={realEstateAgenciesResult.data ?? []}
-      trustCompanies={trustCompaniesResult.data ?? []}
-      commonAreas={commonAreasResult.data ?? []}
-    />
-  );
+  return <PropertyDetailView property={property} {...options} />;
 }

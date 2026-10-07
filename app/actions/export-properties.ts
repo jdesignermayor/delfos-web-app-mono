@@ -3,7 +3,8 @@
 import ExcelJS from "exceljs";
 
 import { createClient } from "@/supabase/server";
-import { getCurrentUser } from "@/supabase/roles";
+import { getDashboardUser } from "@/lib/auth/dal";
+import { scopeToDeveloper } from "@/lib/auth/scope-query";
 import type { Json } from "@/supabase/types";
 
 type Cell = string | number | boolean | null | undefined;
@@ -147,18 +148,20 @@ export type ExportPropertiesResult =
  */
 export async function exportProperties(): Promise<ExportPropertiesResult> {
   // Server actions are callable directly, so re-check what the layout enforces.
-  const user = await getCurrentUser();
-  if (user?.role !== "superadmin") {
+  const user = await getDashboardUser();
+  if (!user) {
     return { success: false, error: "No autorizado." };
   }
 
   const supabase = await createClient();
-  const { data: properties, error } = await supabase
-    .from("properties")
-    .select(
-      "*, developer:developers!developer_id(name), builder:developers!builder_id(name), seller:developers!seller_id(name)",
-    )
-    .order("created_at", { ascending: false });
+  const { data: properties, error } = await scopeToDeveloper(
+    supabase
+      .from("properties")
+      .select(
+        "*, developer:developers!developer_id(name), builder:developers!builder_id(name), seller:developers!seller_id(name)",
+      ),
+    user,
+  ).order("created_at", { ascending: false });
 
   if (error) {
     return { success: false, error: `No se pudieron exportar las propiedades: ${error.message}` };

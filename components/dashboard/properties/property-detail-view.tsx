@@ -229,12 +229,14 @@ export function PropertyDetailView({
   realEstateAgencies,
   trustCompanies,
   commonAreas,
+  lockedDeveloper,
 }: {
   property: PropertyRecord;
   developers: { id: number; name: string }[];
   realEstateAgencies: { id: string; name: string }[];
   trustCompanies: { id: string; name: string }[];
   commonAreas: { id: string; name: string }[];
+  lockedDeveloper: { id: number; name: string } | null;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   // Set when editing was opened from "Autorrellenar SEO", so the form lands on the SEO step.
@@ -297,6 +299,7 @@ export function PropertyDetailView({
           realEstateAgencies={realEstateAgencies}
           trustCompanies={trustCompanies}
           commonAreas={commonAreas}
+          lockedDeveloper={lockedDeveloper}
           property={property}
           openSeo={openSeo}
         />

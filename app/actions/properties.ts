@@ -8,7 +8,8 @@ import { createClient } from "@/supabase/server";
 import type { Amenity } from "@/lib/amenities";
 import { imageToShareCard, imageToWebp } from "@/lib/image-to-webp";
 import { slugify } from "@/lib/slug";
-import { getCurrentUser } from "@/supabase/roles";
+import { getDashboardUser } from "@/lib/auth/dal";
+import { canManageProperty, developerScope, type DashboardUser } from "@/lib/auth/permissions";
 import type { Typology } from "@/components/dashboard/properties/typologies-editor";
 
 /** Per-tower attributes stored in `properties.tower_details`. */
@@ -166,6 +167,21 @@ function buildPropertyRow(input: CreatePropertyInput) {
 
 type PropertyRow = ReturnType<typeof buildPropertyRow>;
 
+const UNAUTHORIZED = "No tienes permiso para realizar esta acción.";
+
+/** A constructora admin's properties always belong to their own constructora, whatever the form sent. */
+function withOwner(row: PropertyRow, user: DashboardUser): PropertyRow {
+  const developerId = developerScope(user);
+  return developerId === null ? row : { ...row, developer_id: developerId };
+}
+
+/** Whether `user` may edit the existing property `id` (it must exist and be in their scope). */
+async function canEditProperty(user: DashboardUser, id: number): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin.from("properties").select("developer_id").eq("id", id).maybeSingle();
+  return data !== null && canManageProperty(user, data.developer_id);
+}
+
 /**
  * Every property gets a clean, keyword-rich URL slug (`/propiedades/<slug>`):
  * the one typed in the SEO step (normalised), or one made from the project
@@ -189,6 +205,11 @@ async function withUniqueSlug(row: PropertyRow, id?: number): Promise<PropertyRo
 }
 
 export async function createProperty(input: CreatePropertyInput): Promise<CreatePropertyResult> {
+  const user = await getDashboardUser();
+  if (!user) {
+    return { success: false, error: UNAUTHORIZED };
+  }
+
   const validationError = validateInput(input);
   if (validationError) {
     return { success: false, error: validationError };
@@ -197,7 +218,7 @@ export async function createProperty(input: CreatePropertyInput): Promise<Create
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("properties")
-    .insert(await withUniqueSlug(buildPropertyRow(input)))
+    .insert(await withUniqueSlug(withOwner(buildPropertyRow(input), user)))
     .select("id")
     .single();
 
@@ -212,13 +233,19 @@ export async function updateProperty(
   id: number,
   input: CreatePropertyInput,
 ): Promise<CreatePropertyResult> {
+  const user = await getDashboardUser();
+  if (!user || !(await canEditProperty(user, id))) {
+    return { success: false, error: UNAUTHORIZED };
+  }
+
   const validationError = validateInput(input);
   if (validationError) {
     return { success: false, error: validationError };
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.from("properties").update(await withUniqueSlug(buildPropertyRow(input), id)).eq("id", id);
+  const row = await withUniqueSlug(withOwner(buildPropertyRow(input), user), id);
+  const { error } = await admin.from("properties").update(row).eq("id", id);
 
   if (error) {
     return { success: false, error: error.message };
@@ -227,8 +254,14 @@ export async function updateProperty(
   return { success: true, id };
 }
 
-/** Fetches a single property (with its developer) for the detail/edit pages. */
+/**
+ * Fetches a single property (with its developer) for the detail/edit pages —
+ * `null` when it doesn't exist or is outside the user's constructora.
+ */
 export async function getPropertyById(id: number) {
+  const user = await getDashboardUser();
+  if (!user) return null;
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("properties")
@@ -236,7 +269,7 @@ export async function getPropertyById(id: number) {
     .eq("id", id)
     .maybeSingle();
 
-  return data;
+  return data && canManageProperty(user, data.developer_id) ? data : null;
 }
 
 /** "seo" is a share image (og:image / LinkedIn) picked in the SEO step. */
@@ -262,6 +295,10 @@ function fileTimestamp(date = new Date()) {
 export async function uploadPropertyImage(
   formData: FormData,
 ): Promise<UploadPropertyImageResult> {
+  if (!(await getDashboardUser())) {
+    return { error: "No tienes permiso para subir imágenes." };
+  }
+
   const file = formData.get("file");
   const rawKind = formData.get("kind");
   const kind: PropertyImageKind = rawKind === "main" || rawKind === "seo" ? rawKind : "secondary";
@@ -300,8 +337,7 @@ export async function uploadPropertyImage(
  * arbitrary addresses.
  */
 export async function createSeoShareImage(formData: FormData): Promise<UploadPropertyImageResult> {
-  const user = await getCurrentUser();
-  if (user?.role !== "superadmin") {
+  if (!(await getDashboardUser())) {
     return { error: "No tienes permiso para generar imágenes." };
   }
 
