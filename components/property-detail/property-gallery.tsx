@@ -19,11 +19,11 @@ function getPhotos(property: Property) {
 
 /**
  * Photo collage that opens a fullscreen "Recorrido gráfico" when a photo is
- * clicked. The tour always starts from the top, whichever photo was clicked.
+ * clicked. A YouTube video, when the listing has one, comes first in both. The tour always starts from the top, whichever photo was clicked.
  * It pushes a history entry so the browser/phone back button closes it
  * instead of leaving the page.
  */
-export function PropertyGallery({ property }: { property: Property }) {
+export function PropertyGallery({ property, videoId }: { property: Property; videoId?: string | null }) {
   const photos = getPhotos(property);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -43,7 +43,7 @@ export function PropertyGallery({ property }: { property: Property }) {
     <>
       {/* Warm the tour chunk as soon as the user shows intent to open it. */}
       <div onPointerEnter={() => void loadPhotoTour()} onFocusCapture={() => void loadPhotoTour()}>
-        <PhotoCollage property={property} onOpen={photos.length ? open : undefined} />
+        <PhotoCollage property={property} videoId={videoId} onOpen={photos.length || videoId ? open : undefined} />
       </div>
 
       <AnimatePresence>
@@ -52,6 +52,7 @@ export function PropertyGallery({ property }: { property: Property }) {
             key="photo-tour"
             title={property.title}
             photos={photos}
+            videoId={videoId}
             onClose={() => window.history.back()}
           />
         ) : null}

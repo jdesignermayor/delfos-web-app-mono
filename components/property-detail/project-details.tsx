@@ -4,7 +4,6 @@ import { ArrowUpDown, BookOpen, CalendarDays, ChevronDown, Fence, Trash } from "
 import { BathIcon, BedIcon, BuildingIcon, RulerIcon } from "@/components/icons";
 import {
   TYPE_LABELS,
-  formatCOP,
   type Property,
   type PropertyDetails,
   type Tower,
@@ -202,29 +201,5 @@ export function SalesRoomSection({ salesRoom }: { salesRoom: PropertyDetails["sa
     <Section id="sala-de-ventas" title="Sala de ventas">
       <FactList items={items} className="grid-cols-1 sm:grid-cols-2" />
     </Section>
-  );
-}
-
-const withPercent = (amount: number | undefined, percent: number | undefined) =>
-  amount != null
-    ? `${formatCOP(amount)}${percent != null ? ` (${percent}%)` : ""}`
-    : percent != null
-      ? `${percent}%`
-      : undefined;
-
-/** Compact financing breakdown for the price card. */
-export function FinancingSummary({ financing }: { financing: PropertyDetails["financing"] }) {
-  const items: Item[] = [
-    { label: "Separación", value: financing.separationAmount != null ? formatCOP(financing.separationAmount) : undefined },
-    { label: "Cuota inicial", value: withPercent(financing.initialFeeAmount, financing.initialFeePercentage) },
-    { label: "Crédito", value: withPercent(financing.creditAmount, financing.creditPercentage) },
-  ];
-  if (!items.some((item) => item.value)) return null;
-
-  return (
-    <div>
-      <p className="text-sm font-semibold text-foreground">Financiación</p>
-      <FactList items={items} className="mt-3 grid-cols-1" />
-    </div>
   );
 }

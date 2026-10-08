@@ -9,11 +9,9 @@ import { getDbPropertyBySlug } from "@/components/marketing/property-adapter";
 import {
   OPERATION_LABELS,
   PROPERTIES,
-  formatPrice,
   getPropertyBySlug,
   type Property,
 } from "@/components/marketing/properties";
-import { AffordabilityCalculator } from "@/components/property-detail/affordability-calculator";
 import {
   FavoriteShareBar,
   PropertyActionsProvider,
@@ -23,13 +21,14 @@ import { LocationMap } from "@/components/property-detail/location-map";
 import { PropertyGallery } from "@/components/property-detail/property-gallery";
 import { TalkToAgentButton } from "@/components/property-detail/talk-to-agent-button";
 import {
-  FinancingSummary,
   ProjectDetailsSection,
   SalesRoomSection,
   TowersSection,
 } from "@/components/property-detail/project-details";
 import { AmenityItem } from "@/components/property-detail/amenity-item";
 import { SiteFooter } from "@/components/marketing/site-footer";
+import { PropertyPrice } from "@/components/property-detail/property-price";
+import { QuoteCard } from "@/components/property-detail/quote-card";
 import { PropertyVideo } from "@/components/property-detail/property-video";
 import { JsonLd } from "@/components/seo/json-ld";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
@@ -134,7 +133,7 @@ export default async function PropertyDetailPage({
 
             <div className="mt-4">
               <GallerySection>
-                <PropertyGallery property={property} />
+                <PropertyGallery property={property} videoId={videoId} />
               </GallerySection>
             </div>
           </PropertyActionsProvider>
@@ -148,6 +147,11 @@ export default async function PropertyDetailPage({
                 <p className="mt-1 text-muted">
                   {property.neighborhood}, {property.city}
                 </p>
+
+                {/* On phones the price card sits far below; show the price up here too. */}
+                <div className="mt-5 lg:hidden">
+                  <PropertyPrice property={property} />
+                </div>
 
                 <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-y border-separator py-4 text-sm text-foreground">
                   {property.beds ? (
@@ -226,25 +230,12 @@ export default async function PropertyDetailPage({
             </div>
 
             <aside className="lg:sticky lg:top-24 lg:h-fit">
-              <div className="flex flex-col gap-4 rounded-2xl border border-separator bg-surface p-5">
-                <div>
-                  <p className="text-sm text-muted">{OPERATION_LABELS[property.operation]}</p>
-                  <p className="mt-1 font-display text-2xl font-semibold text-foreground">
-                    {formatPrice(property)}
-                  </p>
-                </div>
-
-                <div className="h-px bg-separator" />
-
-                {details ? <FinancingSummary financing={details.financing} /> : null}
-
-                <AffordabilityCalculator property={property} />
-
+              <QuoteCard property={property} financing={details?.financing}>
                 <TalkToAgentButton
                   propertyTitle={property.title}
                   phone={details?.developer?.phone ?? details?.salesRoom.phone}
                 />
-              </div>
+              </QuoteCard>
             </aside>
           </div>
 

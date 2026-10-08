@@ -2,6 +2,7 @@ import {
   memo,
   useEffect,
   useEffectEvent,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -10,9 +11,10 @@ import {
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 
 import { PropertyActions } from "@/components/property-detail/favorite-share-bar";
+import { BackgroundVideo, youtubeThumbnail } from "@/components/property-detail/gallery-video";
 
 const DESKTOP_QUERY = "(min-width: 640px)";
 
@@ -24,16 +26,27 @@ function subscribeToDesktop(onChange: () => void) {
 
 const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
 
+/** A tour entry: the listing's YouTube video (always first) or a photo URL. */
+type TourItem = { kind: "video"; videoId: string } | { kind: "photo"; src: string };
+
+const itemKey = (item: TourItem, index: number) =>
+  `${item.kind === "video" ? item.videoId : item.src}-${index}`;
+
+/** Same clean, muted player as the collage: no YouTube controls, just the sound toggle. */
+function TourVideo({ videoId, title }: { videoId: string; title: string }) {
+  return <BackgroundVideo videoId={videoId} title={`${title} — video`} />;
+}
+
 type PhotoListProps = {
   title: string;
-  photos: string[];
+  items: TourItem[];
   itemsRef: RefObject<(HTMLElement | null)[]>;
   onVisible: (index: number) => void;
 };
 
 /**
- * Fullscreen "Recorrido gráfico": thumbnails of every photo, then the photos
- * themselves — stacked on desktop, a one-per-screen carousel on phones. Only
+ * Fullscreen "Recorrido gráfico": thumbnails of the video (if any) and every
+ * photo, then the items themselves — stacked on desktop, a one-per-screen carousel on phones. Only
  * the layout for the current viewport is mounted, so each photo loads once.
  * Loaded lazily by PropertyGallery (a client component) and never
  * server-rendered, so it needs no "use client" boundary of its own.
@@ -41,12 +54,23 @@ type PhotoListProps = {
 export function PhotoTour({
   title,
   photos,
+  videoId,
   onClose,
 }: {
   title: string;
   photos: string[];
+  /** Shown first, autoplaying muted, when the listing has a YouTube video. */
+  videoId?: string | null;
   onClose: () => void;
 }) {
+  // Stable between renders so the memoised lists below don't re-render on every active change.
+  const items = useMemo<TourItem[]>(
+    () => [
+      ...(videoId ? [{ kind: "video" as const, videoId }] : []),
+      ...photos.map((src) => ({ kind: "photo" as const, src })),
+    ],
+    [photos, videoId],
+  );
   const desktop = useSyncExternalStore(subscribeToDesktop, isDesktop);
   const dialogRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
@@ -56,7 +80,7 @@ export function PhotoTour({
   const [active, setActive] = useState(0);
 
   function goTo(index: number) {
-    const target = Math.max(0, Math.min(photos.length - 1, index));
+    const target = Math.max(0, Math.min(items.length - 1, index));
     setActive(target);
     itemsRef.current[target]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
   }
@@ -140,11 +164,12 @@ export function PhotoTour({
         <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
           <h2 className="font-display text-2xl font-semibold text-foreground">Recorrido gráfico</h2>
           <p className="mt-1 text-sm text-muted">
+            {videoId ? "1 video · " : null}
             {photos.length} {photos.length === 1 ? "foto" : "fotos"}
           </p>
-          {/* Announces the photo shown after a thumbnail, arrow key or swipe. */}
+          {/* Announces the item shown after a thumbnail, arrow key or swipe. */}
           <p className="sr-only" aria-live="polite" aria-atomic="true">
-            Foto {active + 1} de {photos.length}
+            {items[active]?.kind === "video" ? "Video" : "Foto"} {active + 1} de {items.length}
           </p>
 
           {/* Thumbnails: a swipeable strip on phones, a grid from `sm` up. */}
@@ -154,19 +179,29 @@ export function PhotoTour({
             aria-label="Miniaturas de las fotos"
             className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 md:grid-cols-6 [&::-webkit-scrollbar]:hidden"
           >
-            {photos.map((src, index) => (
+            {items.map((item, index) => (
               <button
-                key={`${src}-${index}`}
+                key={itemKey(item, index)}
                 type="button"
                 onClick={() => goTo(index)}
-                aria-label={`Ver foto ${index + 1} de ${photos.length}`}
+                aria-label={`Ver ${item.kind === "video" ? "video" : "foto"} ${index + 1} de ${items.length}`}
                 aria-current={active === index ? "true" : undefined}
                 // The ring marks the photo in view; the outline marks keyboard focus.
                 className={`relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg ring-2 ring-offset-2 transition focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-[6px] focus-visible:outline-accent sm:w-auto ${
                   active === index ? "ring-foreground" : "ring-transparent opacity-80 hover:opacity-100"
                 }`}
               >
-                <Image src={src} alt="" fill sizes="(min-width: 640px) 160px, 80px" className="object-cover" />
+                {item.kind === "video" ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- static YouTube thumbnail */}
+                    <img src={youtubeThumbnail(item.videoId)} alt="" className="size-full object-cover" />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-white">
+                      <Play className="size-5 fill-current" />
+                    </span>
+                  </>
+                ) : (
+                  <Image src={item.src} alt="" fill sizes="(min-width: 640px) 160px, 80px" className="object-cover" />
+                )}
               </button>
             ))}
           </div>
@@ -174,7 +209,7 @@ export function PhotoTour({
           {desktop ? (
             <StackedPhotos
               title={title}
-              photos={photos}
+              items={items}
               itemsRef={itemsRef}
               onVisible={setActive}
               scrollRef={scrollRef}
@@ -183,7 +218,7 @@ export function PhotoTour({
             <div className="relative mt-6 overflow-hidden rounded-2xl">
               <PhotoCarousel
                 title={title}
-                photos={photos}
+                items={items}
                 itemsRef={itemsRef}
                 onVisible={setActive}
               />
@@ -192,14 +227,14 @@ export function PhotoTour({
                 aria-hidden="true"
                 className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white"
               >
-                {active + 1} / {photos.length}
+                {active + 1} / {items.length}
               </span>
 
               {/* Always mounted (aria-disabled at the ends) so a focused button never vanishes and drops focus. */}
               <CarouselButton direction="previous" disabled={active === 0} onClick={() => goTo(active - 1)} />
               <CarouselButton
                 direction="next"
-                disabled={active === photos.length - 1}
+                disabled={active === items.length - 1}
                 onClick={() => goTo(active + 1)}
               />
             </div>
@@ -238,7 +273,7 @@ function CarouselButton({
 
 /** Reports the photo in view (read from `data-index`) as the user scrolls or swipes. */
 function useTrackVisiblePhoto(
-  { photos, itemsRef, onVisible }: PhotoListProps,
+  { items, itemsRef, onVisible }: PhotoListProps,
   root: RefObject<HTMLElement | null>,
   options: Omit<IntersectionObserverInit, "root">
 ) {
@@ -250,26 +285,26 @@ function useTrackVisiblePhoto(
       },
       { ...options, root: root.current }
     );
-    itemsRef.current.slice(0, photos.length).forEach((el) => el && observer.observe(el));
+    itemsRef.current.slice(0, items.length).forEach((el) => el && observer.observe(el));
     return () => observer.disconnect();
-    // `options` is a literal at each call site; the observer only needs to follow the photo list.
+    // `options` is a literal at each call site; the observer only needs to follow the item count.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photos, itemsRef, onVisible, root]);
+  }, [items.length, itemsRef, onVisible, root]);
 }
 
 /** Desktop: every photo at full width, stacked. Memoised so changing the active photo doesn't re-render the list. */
 const StackedPhotos = memo(function StackedPhotos(
   props: PhotoListProps & { scrollRef: RefObject<HTMLDivElement | null> }
 ) {
-  const { title, photos, itemsRef, scrollRef } = props;
+  const { title, items, itemsRef, scrollRef } = props;
   // A photo counts as "current" while it crosses the middle of the viewport.
   useTrackVisiblePhoto(props, scrollRef, { rootMargin: "-45% 0px -45% 0px" });
 
   return (
     <div className="mt-8 flex flex-col gap-4">
-      {photos.map((src, index) => (
+      {items.map((item, index) => (
         <figure
-          key={`${src}-${index}`}
+          key={itemKey(item, index)}
           ref={(el) => {
             itemsRef.current[index] = el;
           }}
@@ -277,17 +312,23 @@ const StackedPhotos = memo(function StackedPhotos(
           // Fixed frame: photos above can't shift the list while they load,
           // so jumping to a photo lands on it. `cover` fills it edge to edge,
           // lined up with the thumbnails above.
-          className="relative aspect-[3/2] scroll-mt-6 overflow-hidden rounded-2xl bg-surface"
+          className={`relative scroll-mt-6 overflow-hidden rounded-2xl bg-surface ${
+            item.kind === "video" ? "aspect-video" : "aspect-[3/2]"
+          }`}
         >
-          <Image
-            src={src}
-            alt={`${title} — foto ${index + 1}`}
-            fill
-            sizes="(min-width: 896px) 848px, calc(100vw - 48px)"
-            // The tour opens at the top, so the first photo is visible straight away.
-            loading={index === 0 ? "eager" : "lazy"}
-            className="object-cover"
-          />
+          {item.kind === "video" ? (
+            <TourVideo videoId={item.videoId} title={title} />
+          ) : (
+            <Image
+              src={item.src}
+              alt={`${title} — foto ${index + 1}`}
+              fill
+              sizes="(min-width: 896px) 848px, calc(100vw - 48px)"
+              // The tour opens at the top, so the first photo is visible straight away.
+              loading={index === 0 ? "eager" : "lazy"}
+              className="object-cover"
+            />
+          )}
         </figure>
       ))}
     </div>
@@ -296,7 +337,7 @@ const StackedPhotos = memo(function StackedPhotos(
 
 /** Phones: one photo per screen in a snapping carousel. Memoised for the same reason as StackedPhotos. */
 const PhotoCarousel = memo(function PhotoCarousel(props: PhotoListProps) {
-  const { title, photos, itemsRef } = props;
+  const { title, items, itemsRef } = props;
   const carouselRef = useRef<HTMLDivElement>(null);
   useTrackVisiblePhoto(props, carouselRef, { threshold: 0.6 });
 
@@ -308,26 +349,34 @@ const PhotoCarousel = memo(function PhotoCarousel(props: PhotoListProps) {
       aria-label="Fotos"
       className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
-      {photos.map((src, index) => (
+      {items.map((item, index) => (
         <div
-          key={`${src}-${index}`}
+          key={itemKey(item, index)}
           ref={(el) => {
             itemsRef.current[index] = el;
           }}
           data-index={index}
           role="group"
-          aria-roledescription="foto"
-          aria-label={`${index + 1} de ${photos.length}`}
+          aria-roledescription={item.kind === "video" ? "video" : "foto"}
+          aria-label={`${index + 1} de ${items.length}`}
           className="relative h-[calc(100dvh-14rem)] min-h-80 w-full shrink-0 snap-center bg-surface"
         >
-          <Image
-            src={src}
-            alt={`${title} — foto ${index + 1}`}
-            fill
-            sizes="100vw"
-            loading={index === 0 ? "eager" : "lazy"}
-            className="object-cover"
-          />
+          {item.kind === "video" ? (
+            <div className="absolute inset-0 flex items-center bg-black">
+              <div className="relative aspect-video w-full">
+                <TourVideo videoId={item.videoId} title={title} />
+              </div>
+            </div>
+          ) : (
+            <Image
+              src={item.src}
+              alt={`${title} — foto ${index + 1}`}
+              fill
+              sizes="100vw"
+              loading={index === 0 ? "eager" : "lazy"}
+              className="object-cover"
+            />
+          )}
         </div>
       ))}
     </div>
