@@ -26,7 +26,7 @@ export function TalkToAgentButton({ propertyTitle, phone }: { propertyTitle: str
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-accent-hover px-4 py-3.5 text-base font-semibold text-accent-foreground shadow-sm transition-[filter] hover:brightness-110"
+      className="brand-cta flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-accent-hover px-4 py-3.5 text-base font-semibold text-accent-foreground shadow-sm transition-[filter] hover:brightness-110"
     >
       <MessageCircleIcon className="size-4" />
       Hablar con un agente

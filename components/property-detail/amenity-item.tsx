@@ -58,11 +58,11 @@ export function AmenityItem({ label }: { label: string }) {
 
   return (
     <li className="flex items-center gap-3">
-      <div className="shrink-0">
+      <div className="brand-amenity shrink-0 text-foreground">
         {isAnimated ? (
           <Icon size={20} animateOnHover={true} />
         ) : (
-          <Icon className="size-5 text-foreground" />
+          <Icon className="size-5" />
         )}
       </div>
       <span className="text-foreground">{label}</span>

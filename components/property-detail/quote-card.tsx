@@ -75,7 +75,7 @@ export function QuoteCard({
   ].filter((cell): cell is { label: string; value: NonNullable<ReturnType<typeof financingValue>> } => cell.value !== null);
 
   return (
-    <div className="rounded-2xl border border-separator bg-white p-6 shadow-[0_6px_16px_rgba(0,0,0,0.12)]">
+    <div className="brand-card rounded-2xl border border-separator bg-white p-6 shadow-[0_6px_16px_rgba(0,0,0,0.12)]">
       <PropertyPrice property={property} />
 
       <div className="mt-6 overflow-hidden rounded-xl border border-[#b0b0b0]">

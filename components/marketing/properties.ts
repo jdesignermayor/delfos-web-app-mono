@@ -1,3 +1,4 @@
+import type { BrandColors } from "@/lib/brand-colors";
 import type { NumberRange } from "@/lib/typology-ranges";
 
 /**
@@ -47,6 +48,8 @@ export type Property = {
   stratum?: number;
   /** Project, financing and sales-room data. Only real (DB) listings have it. */
   details?: PropertyDetails;
+  /** Project palette extracted from its website; tints the detail page. Only set when at least one color exists. */
+  brandColors?: BrandColors;
   /** SEO/ads fields from the dashboard's SEO step. Only real (DB) listings have it. */
   seo?: PropertySeo;
   /** ISO timestamps; real listings only. Shown and published as freshness signals. */

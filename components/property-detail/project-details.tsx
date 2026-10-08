@@ -83,7 +83,7 @@ export function ProjectDetailsSection({ property, details }: { property: Propert
 function Fact({ icon: Icon, children }: { icon: ComponentType<{ className?: string }>; children: ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <Icon className="size-4 shrink-0 text-muted" />
+      <Icon className="brand-icon size-4 shrink-0" />
       {children}
     </span>
   );
@@ -118,8 +118,8 @@ function TowerItem({ tower }: { tower: Tower }) {
   return (
     <details className="group rounded-2xl border border-separator open:bg-surface/40">
       <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary">
-          <BuildingIcon className="size-5 text-foreground" />
+        <span className="brand-tile flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-foreground">
+          <BuildingIcon className="size-5" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-semibold text-foreground">Torre {tower.number}</span>

@@ -29,6 +29,7 @@ import { AmenityItem } from "@/components/property-detail/amenity-item";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { PropertyPrice } from "@/components/property-detail/property-price";
 import { MarkdownContent } from "@/components/markdown-content";
+import { BrandTheme } from "@/components/property-detail/brand-theme";
 import { QuoteCard } from "@/components/property-detail/quote-card";
 import { PropertyVideo } from "@/components/property-detail/property-video";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -128,120 +129,122 @@ export default async function PropertyDetailPage({
       <SiteNavbar alwaysShowSearch userPromise={getCurrentUser()} />
 
       <main className="w-full bg-white">
-        <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
-          <PropertyActionsProvider title={property.title}>
-            <FavoriteShareBar />
+        <BrandTheme colors={property.brandColors}>
+          <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+            <PropertyActionsProvider title={property.title}>
+              <FavoriteShareBar />
 
-            <div className="mt-4">
-              <GallerySection>
-                <PropertyGallery property={property} videoId={videoId} />
-              </GallerySection>
-            </div>
-          </PropertyActionsProvider>
+              <div className="mt-4">
+                <GallerySection>
+                  <PropertyGallery property={property} videoId={videoId} />
+                </GallerySection>
+              </div>
+            </PropertyActionsProvider>
 
-          <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="flex flex-col gap-10">
-              <div>
-                <h2 className="font-display text-sm font-semibold text-foreground">
-                  {property.title}
-                </h2>
-                <p className="mt-1 text-muted">
-                  {property.neighborhood}, {property.city}
-                </p>
-
-                {/* On phones the price card sits far below; show the price up here too. */}
-                <div className="mt-5 lg:hidden">
-                  <PropertyPrice property={property} />
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-y border-separator py-4 text-sm text-foreground">
-                  {property.beds ? (
-                    <span className="flex items-center gap-2">
-                      <BedIcon className="size-4 text-muted" />
-                      {formatRange(property.beds)} habitaciones
-                    </span>
-                  ) : null}
-                  {property.baths ? (
-                    <span className="flex items-center gap-2">
-                      <BathIcon className="size-4 text-muted" />
-                      {formatRange(property.baths)} baños
-                    </span>
-                  ) : null}
-                  {property.area ? (
-                    <span className="flex items-center gap-2">
-                      <RulerIcon className="size-4 text-muted" />
-                      {formatRange(property.area)} m²
-                    </span>
-                  ) : null}
-                  {property.parking != null ? (
-                    <span className="flex items-center gap-2">
-                      <CarIcon className="size-4 text-muted" />
-                      {property.parking} parqueaderos
-                    </span>
-                  ) : null}
-                </div>
-
-                <MarkdownContent className="mt-5 text-foreground/90">{description}</MarkdownContent>
-                {property.updatedAt ? (
-                  // Visible freshness: search engines and AI answers favour listings that are clearly current.
-                  <p className="mt-3 text-xs text-muted">
-                    Información actualizada el{" "}
-                    <time dateTime={property.updatedAt}>{UPDATED_FORMAT.format(new Date(property.updatedAt))}</time>
+            <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="flex flex-col gap-10">
+                <div>
+                  <h2 className="font-display text-sm font-semibold text-foreground">
+                    {property.title}
+                  </h2>
+                  <p className="mt-1 text-muted">
+                    {property.neighborhood}, {property.city}
                   </p>
+
+                  {/* On phones the price card sits far below; show the price up here too. */}
+                  <div className="mt-5 lg:hidden">
+                    <PropertyPrice property={property} />
+                  </div>
+
+                  <div className="brand-rule mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-y border-separator py-4 text-sm text-foreground">
+                    {property.beds ? (
+                      <span className="flex items-center gap-2">
+                        <BedIcon className="brand-icon size-4" />
+                        {formatRange(property.beds)} habitaciones
+                      </span>
+                    ) : null}
+                    {property.baths ? (
+                      <span className="flex items-center gap-2">
+                        <BathIcon className="brand-icon size-4" />
+                        {formatRange(property.baths)} baños
+                      </span>
+                    ) : null}
+                    {property.area ? (
+                      <span className="flex items-center gap-2">
+                        <RulerIcon className="brand-icon size-4" />
+                        {formatRange(property.area)} m²
+                      </span>
+                    ) : null}
+                    {property.parking != null ? (
+                      <span className="flex items-center gap-2">
+                        <CarIcon className="brand-icon size-4" />
+                        {property.parking} parqueaderos
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <MarkdownContent className="mt-5 text-foreground/90">{description}</MarkdownContent>
+                  {property.updatedAt ? (
+                    // Visible freshness: search engines and AI answers favour listings that are clearly current.
+                    <p className="mt-3 text-xs text-muted">
+                      Información actualizada el{" "}
+                      <time dateTime={property.updatedAt}>{UPDATED_FORMAT.format(new Date(property.updatedAt))}</time>
+                    </p>
+                  ) : null}
+                </div>
+
+                {details ? <ProjectDetailsSection property={property} details={details} /> : null}
+                {details ? <TowersSection towers={details.towers} /> : null}
+
+                {videoId ? (
+                  <section id="video" className="scroll-mt-24">
+                    <h3 className="font-display text-2xl font-semibold text-foreground">Video del proyecto</h3>
+                    {property.seo?.youtube.videoTitle ? (
+                      <p className="mt-1 text-sm text-muted">{property.seo.youtube.videoTitle}</p>
+                    ) : null}
+                    <div className="mt-4">
+                      <PropertyVideo videoId={videoId} title={property.seo?.youtube.videoTitle || property.title} />
+                    </div>
+                  </section>
                 ) : null}
+
+                <section id="servicios" className="scroll-mt-24">
+                  <h3 className="font-display text-2xl font-semibold text-foreground">Lo que este lugar ofrece</h3>
+                  <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-2">
+                    {amenities.map((amenity) => (
+                      <AmenityItem key={amenity} label={amenity} />
+                    ))}
+                  </ul>
+                </section>
+
+                <section id="ubicacion" className="scroll-mt-24">
+                  <h3 className="font-display text-2xl font-semibold text-foreground">Ubicación</h3>
+                  <p className="mt-2 text-sm text-muted">
+                    {property.neighborhood}, {property.city}
+                  </p>
+                  {property.address && (
+                    <p className="mt-3 text-sm text-foreground">
+                      {property.address}
+                    </p>
+                  )}
+                </section>
+
+                {details ? <SalesRoomSection salesRoom={details.salesRoom} /> : null}
               </div>
 
-              {details ? <ProjectDetailsSection property={property} details={details} /> : null}
-              {details ? <TowersSection towers={details.towers} /> : null}
-
-              {videoId ? (
-                <section id="video" className="scroll-mt-24">
-                  <h3 className="font-display text-2xl font-semibold text-foreground">Video del proyecto</h3>
-                  {property.seo?.youtube.videoTitle ? (
-                    <p className="mt-1 text-sm text-muted">{property.seo.youtube.videoTitle}</p>
-                  ) : null}
-                  <div className="mt-4">
-                    <PropertyVideo videoId={videoId} title={property.seo?.youtube.videoTitle || property.title} />
-                  </div>
-                </section>
-              ) : null}
-
-              <section id="servicios" className="scroll-mt-24">
-                <h3 className="font-display text-2xl font-semibold text-foreground">Lo que este lugar ofrece</h3>
-                <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-2">
-                  {amenities.map((amenity) => (
-                    <AmenityItem key={amenity} label={amenity} />
-                  ))}
-                </ul>
-              </section>
-
-              <section id="ubicacion" className="scroll-mt-24">
-                <h3 className="font-display text-2xl font-semibold text-foreground">Ubicación</h3>
-                <p className="mt-2 text-sm text-muted">
-                  {property.neighborhood}, {property.city}
-                </p>
-                {property.address && (
-                  <p className="mt-3 text-sm text-foreground">
-                    {property.address}
-                  </p>
-                )}
-              </section>
-
-              {details ? <SalesRoomSection salesRoom={details.salesRoom} /> : null}
+              <aside className="lg:sticky lg:top-24 lg:h-fit">
+                <QuoteCard property={property} financing={details?.financing}>
+                  <TalkToAgentButton
+                    propertyTitle={property.title}
+                    phone={details?.developer?.phone ?? details?.salesRoom.phone}
+                  />
+                </QuoteCard>
+              </aside>
             </div>
 
-            <aside className="lg:sticky lg:top-24 lg:h-fit">
-              <QuoteCard property={property} financing={details?.financing}>
-                <TalkToAgentButton
-                  propertyTitle={property.title}
-                  phone={details?.developer?.phone ?? details?.salesRoom.phone}
-                />
-              </QuoteCard>
-            </aside>
+            <LocationMap property={property} />
           </div>
-
-          <LocationMap property={property} />
-        </div>
+        </BrandTheme>
       </main>
 
       <SiteFooter />

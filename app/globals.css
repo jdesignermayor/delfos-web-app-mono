@@ -51,3 +51,105 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/*
+ * Project brand theming on property pages. `BrandTheme` sets --brand-* from the
+ * colors extracted from the project's website and marks the wrapper with
+ * [data-brand]. Without them, every rule below falls back to the default look,
+ * and the site chrome (navbar, search, logo) always keeps Delfos' accent.
+ */
+.brand-icon {
+  color: var(--brand-ink, var(--color-muted));
+}
+
+[data-brand] .brand-rule {
+  border-color: color-mix(in oklab, var(--brand-primary) 22%, var(--color-separator));
+}
+
+[data-brand] .brand-amenity {
+  color: var(--brand-ink);
+}
+
+[data-brand] .brand-tile {
+  background-color: color-mix(in oklab, var(--brand-tertiary) 14%, white);
+  color: var(--brand-ink);
+}
+
+[data-brand] .brand-card {
+  border-color: color-mix(in oklab, var(--brand-primary) 18%, var(--color-separator));
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.08),
+    0 18px 48px -18px color-mix(in oklab, var(--brand-primary) 45%, transparent);
+}
+
+/* Page CTAs in the project's primary color, with the contrast-checked text color. */
+[data-brand] .brand-cta {
+  background-image: linear-gradient(to right, var(--brand-cta), color-mix(in oklab, var(--brand-cta) 80%, black));
+  color: var(--brand-cta-foreground);
+}
+
+[data-brand] .brand-cta-text {
+  color: var(--brand-cta-text);
+}
+
+/*
+ * The glow plays once when the page opens (~9 s) and then stays still: the
+ * streak sweeps in from far left, overshoots slightly and settles, then the
+ * light "breathes" twice. Only opacity and transform animate, on their own GPU
+ * layers (will-change), so it stays smooth and never repaints the page.
+ * Reduced motion: it simply shows in its final state.
+ */
+@keyframes brand-glow-grow-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes brand-glow-sweep-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(-60%, -12%, 0) rotate(24deg) scale(0.8);
+  }
+  60% {
+    opacity: 1;
+    transform: translate3d(6%, 2%, 0) rotate(24deg) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(24deg) scale(1);
+  }
+}
+@keyframes brand-glow-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.brand-glow {
+  contain: layout paint;
+}
+.brand-glow-layer {
+  transform-origin: 0% 30%;
+}
+.brand-glow-streak {
+  transform: rotate(24deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .brand-glow-layer {
+    will-change: transform, opacity;
+    animation: brand-glow-grow-in 3.5s cubic-bezier(0.33, 0, 0.2, 1) 0.2s both;
+  }
+  .brand-glow-streak {
+    will-change: transform, opacity;
+    animation:
+      brand-glow-sweep-in 5s cubic-bezier(0.45, 0, 0.2, 1) 0.2s both,
+      brand-glow-breathe 2s ease-in-out 5.2s 2;
+  }
+}

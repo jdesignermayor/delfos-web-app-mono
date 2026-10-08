@@ -12,6 +12,7 @@ import { createPublicClient } from "@/supabase/public";
 import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
 import type { Json, Tables } from "@/supabase/types";
 import { parseAmenities } from "@/lib/amenities";
+import { BRAND_COLOR_KEYS, parseBrandColors } from "@/lib/brand-colors";
 import { typologyRanges } from "@/lib/typology-ranges";
 
 const TYPE_BY_PROPERTY_TYPE: Record<string, PropertyType> = {
@@ -126,6 +127,12 @@ function toDetails(row: PropertyRow): PropertyDetails {
   };
 }
 
+/** The project's palette, or undefined when none was extracted (the page keeps Delfos' look). */
+function toBrandColors(value: Json): Property["brandColors"] {
+  const colors = parseBrandColors(value);
+  return BRAND_COLOR_KEYS.some((key) => colors[key]) ? colors : undefined;
+}
+
 /** Maps a real `properties` row from Supabase onto the marketing site's mock `Property` shape. */
 export function toProperty(row: PropertyRow): Property {
   const images = row.additional_images?.length
@@ -163,6 +170,7 @@ export function toProperty(row: PropertyRow): Property {
     stratum: row.stratum || undefined,
     details: toDetails(row),
     seo: parseSeo(row.seo),
+    brandColors: toBrandColors(row.brand_colors),
     createdAt: row.created_at ?? undefined,
     updatedAt: row.updated_at ?? row.created_at ?? undefined,
   };

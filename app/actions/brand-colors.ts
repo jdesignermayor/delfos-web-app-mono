@@ -1,7 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
+import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
 import { getDashboardUser } from "@/lib/auth/dal";
 import { canManageProperty, type DashboardUser } from "@/lib/auth/permissions";
 import { ExtractionError, extractBrandColorsFromWebsite } from "@/lib/brand-color-extraction/extract";
@@ -85,7 +86,9 @@ export async function extractBrandColors(target: ExtractTarget): Promise<Extract
       .update({ brand_colors: cleanBrandColors(colors) })
       .eq("id", target.propertyId);
     if (error) return { success: false, error: error.message };
-    // The dashboard detail page re-reads the property, so reopening the editor shows the new colors.
+    // The public detail page reads the property from the Data Cache: refresh it so the new
+    // palette shows there, and the dashboard page so reopening the editor shows it too.
+    revalidateTag(PROPERTIES_CACHE_TAG, "max");
     revalidatePath(`/dashboard/properties/${target.propertyId}`);
   }
 

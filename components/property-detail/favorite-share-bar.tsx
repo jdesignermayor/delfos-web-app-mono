@@ -59,7 +59,7 @@ export function FavoriteShareBar() {
   const { title } = usePropertyActions();
   return (
     <div className="flex items-center justify-between gap-4">
-      <h1 className="truncate font-display text-lg font-semibold text-foreground sm:text-xl">
+      <h1 className="truncate font-display text-xl font-semibold text-foreground sm:text-xl">
         {title}
       </h1>
       <PropertyActions />
