@@ -1,89 +1,193 @@
 "use client";
 
-import { Suspense, use, useEffect, useState, useSyncExternalStore, useTransition } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button, buttonVariants, useOverlayState } from "@heroui/react";
-import { CircleUserRound } from "lucide-react";
-
-import { signOutAccount } from "@/app/actions/auth";
 
 import { CloseIcon, LogoMark, MenuIcon } from "@/components/icons";
-import { HomeIcon } from "@/components/icons/animated/home";
-import { KeyIcon } from "@/components/icons/animated/key";
-import { MapPinHouseIcon } from "@/components/icons/animated/map-pin-house";
+import { AccountActions, AccountSkeleton } from "@/components/marketing/account-actions";
 import { AuthModal } from "@/components/marketing/auth-modal";
 import { MiniSearchTrigger } from "@/components/marketing/mini-search-trigger";
 import { MobileLocationButton } from "@/components/marketing/mobile-location-button";
+import { HEADER_SEARCH_MOTION, HEADER_SWAP_MOTION } from "@/components/marketing/motion-presets";
 import { PropertySearch } from "@/components/marketing/property-search";
-import { SEARCH_MODES, useSearchMode } from "@/components/marketing/search-mode-context";
+import { useSearchMode } from "@/components/marketing/search-mode-context";
+import { SearchModeTabs } from "@/components/marketing/search-mode-tabs";
 import type { PropertyFilters } from "@/components/marketing/properties";
-import { canAccessDashboard } from "@/lib/auth/permissions";
+import { useDismissableOverlay } from "@/hooks/use-dismissable-overlay";
 import type { CurrentUser } from "@/supabase/roles";
 
 const noopSubscribe = () => () => {};
 
-const TAB_ICONS = {
-  comprar: HomeIcon,
-  arrendar: KeyIcon,
-  proyecto: MapPinHouseIcon,
-} as const;
-
-function AccountSkeleton({ fullWidth = false }: { fullWidth?: boolean }) {
-  return (
-    <div
-      aria-hidden
-      className={`h-8 animate-pulse rounded-lg bg-surface-secondary ${fullWidth ? "w-full" : "w-20"}`}
-    />
-  );
+/**
+ * False on the server and during hydration, true after: portals need `document`,
+ * and reading it in render made server and client disagree.
+ */
+function useIsMounted() {
+  return useSyncExternalStore(noopSubscribe, () => true, () => false);
 }
 
-/** Resolves the session promise streamed from the server; suspends until it settles. */
-function AccountActions({
-  userPromise,
-  fullWidth = false,
-  onLogin,
-  onNavigate,
-}: {
-  userPromise: Promise<CurrentUser | null>;
-  fullWidth?: boolean;
-  onLogin: () => void;
-  onNavigate?: () => void;
-}) {
-  const user = use(userPromise);
-  const [isPending, startTransition] = useTransition();
+/** True once the hero's search bar has scrolled under the sticky header. */
+function useHeroSearchScrolledPast(enabled: boolean) {
+  const { heroSearchRef, navbarRef } = useSearchMode();
+  const [scrolledPast, setScrolledPast] = useState(false);
 
-  if (!user) {
-    return (
-      <Button variant="ghost" size="sm" fullWidth={fullWidth} onPress={onLogin} className="gap-2 font-semibold">
-        <CircleUserRound className="size-6" strokeWidth={1.75} />
-        Ingresar
-      </Button>
+  useEffect(() => {
+    const heroSearch = heroSearchRef.current;
+    if (!enabled || !heroSearch) return;
+
+    const observer = new IntersectionObserver(([entry]) => setScrolledPast(!entry.isIntersecting), {
+      rootMargin: `-${navbarRef.current?.offsetHeight ?? 0}px 0px 0px 0px`,
+    });
+    observer.observe(heroSearch);
+    return () => observer.disconnect();
+  }, [enabled, heroSearchRef, navbarRef]);
+
+  return scrolledPast;
+}
+
+/** Open/close state of the /search header takeover, plus whether its expand animation has finished. */
+function useSearchTakeover() {
+  const [isOpen, setIsOpen] = useState(false);
+  // While expanding, the panel clips its content; once settled, dropdowns may overflow it.
+  const [isSettled, setIsSettled] = useState(false);
+
+  function open() {
+    setIsSettled(false);
+    setIsOpen(true);
+  }
+
+  function close() {
+    setIsOpen(false);
+    setIsSettled(false);
+  }
+
+  useDismissableOverlay(isOpen, close);
+
+  return { isOpen, isSettled, open, close, settle: () => setIsSettled(true) };
+}
+
+/**
+ * Centre of the desktop header. On the landing it swaps the mode tabs for a compact search once
+ * the hero search scrolls away; on pages without a hero (`alwaysShowSearch`) it shows a mini
+ * trigger that opens the full search takeover.
+ */
+function DesktopHeaderCenter({
+  alwaysShowSearch,
+  takeoverOpen,
+  onOpenTakeover,
+}: {
+  alwaysShowSearch: boolean;
+  takeoverOpen: boolean;
+  onOpenTakeover: () => void;
+}) {
+  const heroScrolledPast = useHeroSearchScrolledPast(!alwaysShowSearch);
+
+  if (alwaysShowSearch) {
+    return takeoverOpen ? (
+      <nav className="flex items-center gap-1">
+        <SearchModeTabs variant="desktop" />
+      </nav>
+    ) : (
+      <MiniSearchTrigger onOpenAction={onOpenTakeover} />
     );
   }
 
   return (
-    <>
-      {canAccessDashboard(user) ? (
+    <AnimatePresence mode="wait" initial={false}>
+      {heroScrolledPast ? (
+        <motion.div key="search" {...HEADER_SEARCH_MOTION} className="flex w-full justify-center">
+          <PropertySearch compact />
+        </motion.div>
+      ) : (
+        <motion.nav key="tabs" {...HEADER_SWAP_MOTION} className="flex items-center gap-1">
+          <SearchModeTabs variant="desktop" />
+        </motion.nav>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** Full search panel that expands below the header; shares its background so they read as one. */
+function SearchTakeoverPanel({
+  takeover,
+  searchFilters,
+}: {
+  takeover: ReturnType<typeof useSearchTakeover>;
+  searchFilters?: PropertyFilters;
+}) {
+  return (
+    <AnimatePresence>
+      {takeover.isOpen ? (
+        <motion.div
+          key="search-takeover"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.22, ease: "easeInOut" }}
+          onAnimationComplete={takeover.settle}
+          className={`hidden border-t border-separator md:block ${takeover.isSettled ? "" : "overflow-hidden"}`}
+        >
+          <div className="mx-auto flex w-full max-w-6xl justify-center px-4 py-6 sm:px-6">
+            <div className="w-full max-w-3xl">
+              <PropertySearch initialFilters={searchFilters} onSearchAction={takeover.close} />
+            </div>
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+/** Blurs the page behind the open takeover; clicking it closes the search. */
+function SearchTakeoverBackdrop({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const mounted = useIsMounted();
+  if (!mounted) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {isOpen ? (
+        <motion.div
+          key="search-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-white/70 backdrop-blur-md"
+        />
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  );
+}
+
+function MobileMenu({
+  userPromise,
+  onLogin,
+  onClose,
+}: {
+  userPromise: Promise<CurrentUser | null>;
+  onLogin: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="border-t border-separator bg-background px-4 py-4 md:hidden">
+      <div className="flex flex-col gap-2">
+        <Suspense fallback={<AccountSkeleton fullWidth />}>
+          <AccountActions userPromise={userPromise} fullWidth onLogin={onLogin} onNavigate={onClose} />
+        </Suspense>
         <Link
           href="/dashboard"
-          onClick={onNavigate}
-          className={buttonVariants({ variant: "ghost", size: "sm", fullWidth })}
+          onClick={onClose}
+          className={buttonVariants({ variant: "primary", size: "sm", fullWidth: true })}
         >
-          Dashboard
+          Publicar propiedad
         </Link>
-      ) : null}
-      <Button
-        variant="outline"
-        size="sm"
-        fullWidth={fullWidth}
-        isDisabled={isPending}
-        onPress={() => startTransition(async () => { await signOutAccount(); })}
-      >
-        {isPending ? "Saliendo…" : "Cerrar sesión"}
-      </Button>
-    </>
+      </div>
+    </div>
   );
 }
 
@@ -97,72 +201,17 @@ export function SiteNavbar({
   searchFilters?: PropertyFilters;
   userPromise: Promise<CurrentUser | null>;
 }) {
-  const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchPanelSettled, setSearchPanelSettled] = useState(false);
-  // False on the server and during hydration, true after: the backdrop portal
-  // needs `document`, and reading it in render made server and client disagree.
-  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
-  const { mode, setMode, heroSearchRef, navbarRef } = useSearchMode();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { navbarRef } = useSearchMode();
   const authModal = useOverlayState();
+  const takeover = useSearchTakeover();
 
-  useEffect(() => {
-    if (alwaysShowSearch) return;
-    const heroSearch = heroSearchRef.current;
-    if (!heroSearch) return;
+  const closeMenu = () => setMenuOpen(false);
 
-    const observer = new IntersectionObserver(
-      ([entry]) => setScrolled(!entry.isIntersecting),
-      { rootMargin: `-${navbarRef.current?.offsetHeight ?? 0}px 0px 0px 0px` }
-    );
-    observer.observe(heroSearch);
-    return () => observer.disconnect();
-  }, [alwaysShowSearch, heroSearchRef, navbarRef]);
-
-  function closeSearch() {
-    setSearchOpen(false);
-    setSearchPanelSettled(false);
+  function loginFromMenu() {
+    closeMenu();
+    authModal.open();
   }
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") closeSearch();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [searchOpen]);
-
-  const tabs = (
-    <>
-      {SEARCH_MODES.map((tab) => {
-        const Icon = TAB_ICONS[tab.value];
-        const active = tab.value === mode;
-        return (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => setMode(tab.value)}
-            aria-current={active ? "true" : undefined}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
-              active
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted hover:border-separator hover:text-foreground"
-            }`}
-          >
-            <Icon size={22} />
-            {tab.label}
-          </button>
-        );
-      })}
-    </>
-  );
 
   return (
     <header ref={navbarRef} className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl">
@@ -170,51 +219,18 @@ export function SiteNavbar({
         <Link
           href="/"
           className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight"
-          onClick={() => setOpen(false)}
+          onClick={closeMenu}
         >
           <LogoMark />
           <span className="hidden sm:inline">Delfos</span>
         </Link>
 
         <div className="hidden min-w-0 items-center justify-center md:flex">
-          {alwaysShowSearch ? (
-            searchOpen ? (
-              <nav className="flex items-center gap-1">{tabs}</nav>
-            ) : (
-              <MiniSearchTrigger
-                onOpenAction={() => {
-                  setSearchPanelSettled(false);
-                  setSearchOpen(true);
-                }}
-              />
-            )
-          ) : (
-            <AnimatePresence mode="wait" initial={false}>
-              {scrolled ? (
-                <motion.div
-                  key="search"
-                  initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="flex w-full justify-center"
-                >
-                  <PropertySearch compact />
-                </motion.div>
-              ) : (
-                <motion.nav
-                  key="tabs"
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="flex items-center gap-1"
-                >
-                  {tabs}
-                </motion.nav>
-              )}
-            </AnimatePresence>
-          )}
+          <DesktopHeaderCenter
+            alwaysShowSearch={alwaysShowSearch}
+            takeoverOpen={takeover.isOpen}
+            onOpenTakeover={takeover.open}
+          />
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -228,60 +244,20 @@ export function SiteNavbar({
             variant="ghost"
             size="sm"
             isIconOnly
-            aria-label={open ? "Cerrar menú" : "Abrir menú"}
-            aria-expanded={open}
-            onPress={() => setOpen((v) => !v)}
+            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={menuOpen}
+            onPress={() => setMenuOpen((isOpen) => !isOpen)}
           >
-            {open ? <CloseIcon /> : <MenuIcon />}
+            {menuOpen ? <CloseIcon /> : <MenuIcon />}
           </Button>
         </div>
       </div>
 
-      {/* Search takeover: shares this header's background, so it reads as one continuous panel. */}
-      <AnimatePresence>
-        {alwaysShowSearch && searchOpen ? (
-          <motion.div
-            key="search-takeover"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            onAnimationComplete={() => setSearchPanelSettled(true)}
-            className={`hidden border-t border-separator md:block ${
-              searchPanelSettled ? "" : "overflow-hidden"
-            }`}
-          >
-            <div className="mx-auto flex w-full max-w-6xl justify-center px-4 py-6 sm:px-6">
-              <div className="w-full max-w-3xl">
-                <PropertySearch initialFilters={searchFilters} onSearchAction={() => closeSearch()} />
-              </div>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {alwaysShowSearch ? <SearchTakeoverPanel takeover={takeover} searchFilters={searchFilters} /> : null}
 
       <div className="border-t border-separator px-4 py-2 md:hidden">
         <nav className="flex items-center justify-center gap-1">
-          {SEARCH_MODES.map((tab) => {
-            const Icon = TAB_ICONS[tab.value];
-            const active = tab.value === mode;
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setMode(tab.value)}
-                aria-current={active ? "true" : undefined}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  active
-                    ? "bg-surface-secondary text-foreground"
-                    : "text-muted hover:bg-surface-secondary hover:text-foreground"
-                }`}
-              >
-                <Icon size={18} />
-                {tab.label}
-              </button>
-            );
-          })}
+          <SearchModeTabs variant="mobile" />
         </nav>
       </div>
 
@@ -289,53 +265,9 @@ export function SiteNavbar({
         <MobileLocationButton />
       </div>
 
-      {open ? (
-        <div className="border-t border-separator bg-background px-4 py-4 md:hidden">
-          <div className="flex flex-col gap-2">
-            <Suspense fallback={<AccountSkeleton fullWidth />}>
-              <AccountActions
-                userPromise={userPromise}
-                fullWidth
-                onLogin={() => {
-                  setOpen(false);
-                  authModal.open();
-                }}
-                onNavigate={() => setOpen(false)}
-              />
-            </Suspense>
-            <Link
-              href="/dashboard"
-              onClick={() => setOpen(false)}
-              className={buttonVariants({
-                variant: "primary",
-                size: "sm",
-                fullWidth: true,
-              })}
-            >
-              Publicar propiedad
-            </Link>
-          </div>
-        </div>
-      ) : null}
+      {menuOpen ? <MobileMenu userPromise={userPromise} onLogin={loginFromMenu} onClose={closeMenu} /> : null}
 
-      {mounted && alwaysShowSearch
-        ? createPortal(
-            <AnimatePresence>
-              {searchOpen ? (
-                <motion.div
-                  key="search-backdrop"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={() => closeSearch()}
-                  className="fixed inset-0 z-40 bg-white/70 backdrop-blur-md"
-                />
-              ) : null}
-            </AnimatePresence>,
-            document.body
-          )
-        : null}
+      {alwaysShowSearch ? <SearchTakeoverBackdrop isOpen={takeover.isOpen} onClose={takeover.close} /> : null}
 
       <AuthModal state={authModal} />
     </header>

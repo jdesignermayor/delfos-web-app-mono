@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { LogoMark } from "@/components/icons";
+import { currentYear } from "@/lib/site";
 
 const FOOTER_LINKS = [
   { label: "Comprar", href: "/search?operacion=comprar" },
@@ -24,7 +25,7 @@ export function SiteFooter() {
             </Link>
           ))}
         </nav>
-        <p>© {new Date().getFullYear()} Delfos Vivienda S.A.S. Todos los derechos reservados.</p>
+        <p>© {currentYear()} Delfos Vivienda S.A.S. Todos los derechos reservados.</p>
       </div>
     </footer>
   );

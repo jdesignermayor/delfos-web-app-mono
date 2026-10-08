@@ -11,6 +11,22 @@ import { TrackPropertyList } from "@/components/analytics/track-property-view";
 const SLIDE_CLASS = "w-[62%] shrink-0 snap-start sm:w-[38%] lg:w-[26%] xl:w-[20%]";
 /** At most this many cards are on screen at load (xl shows 5 + a peek), so only they load eagerly. */
 const EAGER_CARDS = 6;
+/** How far (px) one arrow press scrolls the track — about two cards on desktop. */
+const SCROLL_STEP = 600;
+
+function CarouselArrow({ direction, onClick }: { direction: "previous" | "next"; onClick: () => void }) {
+  const isPrevious = direction === "previous";
+  return (
+    <button
+      type="button"
+      aria-label={isPrevious ? "Anterior" : "Siguiente"}
+      onClick={onClick}
+      className="flex size-9 items-center justify-center rounded-full border border-separator bg-surface text-foreground shadow-sm transition-colors hover:border-accent hover:text-accent"
+    >
+      <ArrowRightIcon className={`size-4 ${isPrevious ? "rotate-180" : ""}`} />
+    </button>
+  );
+}
 
 export function PropertyCarousel({
   title,
@@ -25,7 +41,7 @@ export function PropertyCarousel({
   const analyticsList = analyticsListId ? { id: analyticsListId, name: title } : undefined;
   const trackRef = useRef<HTMLDivElement>(null);
 
-  function scrollBy(amount: number) {
+  function scrollTrack(amount: number) {
     trackRef.current?.scrollBy({ left: amount, behavior: "smooth" });
   }
 
@@ -39,22 +55,8 @@ export function PropertyCarousel({
           {title}
         </h2>
         <div className="hidden items-center gap-2 sm:flex">
-          <button
-            type="button"
-            aria-label="Anterior"
-            onClick={() => scrollBy(-600)}
-            className="flex size-9 items-center justify-center rounded-full border border-separator bg-surface text-foreground shadow-sm transition-colors hover:border-accent hover:text-accent"
-          >
-            <ArrowRightIcon className="size-4 rotate-180" />
-          </button>
-          <button
-            type="button"
-            aria-label="Siguiente"
-            onClick={() => scrollBy(600)}
-            className="flex size-9 items-center justify-center rounded-full border border-separator bg-surface text-foreground shadow-sm transition-colors hover:border-accent hover:text-accent"
-          >
-            <ArrowRightIcon className="size-4" />
-          </button>
+          <CarouselArrow direction="previous" onClick={() => scrollTrack(-SCROLL_STEP)} />
+          <CarouselArrow direction="next" onClick={() => scrollTrack(SCROLL_STEP)} />
         </div>
       </div>
 
