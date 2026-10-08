@@ -28,6 +28,7 @@ import {
 import { AmenityItem } from "@/components/property-detail/amenity-item";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { PropertyPrice } from "@/components/property-detail/property-price";
+import { MarkdownContent } from "@/components/markdown-content";
 import { QuoteCard } from "@/components/property-detail/quote-card";
 import { PropertyVideo } from "@/components/property-detail/property-video";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -180,7 +181,7 @@ export default async function PropertyDetailPage({
                   ) : null}
                 </div>
 
-                <p className="mt-5 whitespace-pre-line leading-relaxed text-foreground/90">{description}</p>
+                <MarkdownContent className="mt-5 text-foreground/90">{description}</MarkdownContent>
                 {property.updatedAt ? (
                   // Visible freshness: search engines and AI answers favour listings that are clearly current.
                   <p className="mt-3 text-xs text-muted">

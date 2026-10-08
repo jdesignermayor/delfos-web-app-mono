@@ -213,6 +213,7 @@ export type Database = {
           additional_images: string[] | null
           address: string
           amenities: Json
+          brand_colors: Json
           builder_id: number | null
           city: string | null
           commune: string | null
@@ -237,6 +238,7 @@ export type Database = {
           neighborhood: string | null
           price: string
           project_name: string | null
+          project_url: string | null
           property_type: string | null
           sales_room_address: string | null
           sales_room_email: string | null
@@ -259,6 +261,7 @@ export type Database = {
           additional_images?: string[] | null
           address: string
           amenities?: Json
+          brand_colors?: Json
           builder_id?: number | null
           city?: string | null
           commune?: string | null
@@ -283,6 +286,7 @@ export type Database = {
           neighborhood?: string | null
           price: string
           project_name?: string | null
+          project_url?: string | null
           property_type?: string | null
           sales_room_address?: string | null
           sales_room_email?: string | null
@@ -305,6 +309,7 @@ export type Database = {
           additional_images?: string[] | null
           address?: string
           amenities?: Json
+          brand_colors?: Json
           builder_id?: number | null
           city?: string | null
           commune?: string | null
@@ -329,6 +334,7 @@ export type Database = {
           neighborhood?: string | null
           price?: string
           project_name?: string | null
+          project_url?: string | null
           property_type?: string | null
           sales_room_address?: string | null
           sales_room_email?: string | null

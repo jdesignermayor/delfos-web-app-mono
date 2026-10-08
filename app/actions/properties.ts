@@ -7,6 +7,8 @@ import { createAdminClient } from "@/supabase/admin";
 import type { Amenity } from "@/lib/amenities";
 import { imageToShareCard, imageToWebp } from "@/lib/image-to-webp";
 import { slugify } from "@/lib/slug";
+import { cleanBrandColors, type BrandColors } from "@/lib/brand-colors";
+import { normalizeWebsiteUrl } from "@/lib/url";
 import { getDashboardUser } from "@/lib/auth/dal";
 import { canManageProperty, developerScope, type DashboardUser } from "@/lib/auth/permissions";
 import type { Typology } from "@/components/dashboard/properties/typologies-editor";
@@ -37,6 +39,13 @@ export type CreatePropertyInput = {
   deliveryDate: string;
   developerId: string;
   projectName: string;
+  /** Sitio web del proyecto; saved with `https://` when typed without a protocol. */
+  projectUrl: string;
+  /**
+   * Brand palette from "Extraer colores de la marca". Only saved on create: for an
+   * existing property `extractBrandColors` saves it, so updates never overwrite it.
+   */
+  brandColors?: BrandColors;
   towerCount: string;
   constructionCompany: string;
   builderId: string;
@@ -93,6 +102,7 @@ const REQUIRED_FIELDS: Array<
       | "latitude"
       | "longitude"
       | "seo"
+      | "brandColors"
     >,
     string,
   ]
@@ -111,6 +121,9 @@ function validateInput(input: CreatePropertyInput): string | null {
     if (!input[key]?.trim()) {
       return `${label} es obligatorio.`;
     }
+  }
+  if (input.projectUrl?.trim() && !normalizeWebsiteUrl(input.projectUrl)) {
+    return "Sitio web del proyecto no es una URL válida.";
   }
   return null;
 }
@@ -141,6 +154,7 @@ function buildPropertyRow(input: CreatePropertyInput) {
     additional_images: input.additionalImages.length > 0 ? input.additionalImages : null,
     developer_id: input.developerId ? Number(input.developerId) : null,
     project_name: input.projectName.trim() || null,
+    project_url: normalizeWebsiteUrl(input.projectUrl ?? ""),
     tower_count: input.towerCount ? Number(input.towerCount) : null,
     construction_company: input.constructionCompany.trim() || null,
     builder_id: input.builderId ? Number(input.builderId) : null,
@@ -217,7 +231,10 @@ export async function createProperty(input: CreatePropertyInput): Promise<Create
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("properties")
-    .insert(await withUniqueSlug(withOwner(buildPropertyRow(input), user)))
+    .insert({
+      ...(await withUniqueSlug(withOwner(buildPropertyRow(input), user))),
+      brand_colors: cleanBrandColors(input.brandColors),
+    })
     .select("id")
     .single();
 

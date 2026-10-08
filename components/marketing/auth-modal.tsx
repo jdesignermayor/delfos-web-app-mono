@@ -236,26 +236,31 @@ export function AuthModal({ state }: { state: UseOverlayStateReturn }) {
   }
 
   return (
-    <Modal state={state}>
-      <Modal.Backdrop className="light" style={{ colorScheme: "light" }}>
-        <Modal.Container size="md" placement="top">
-          <Modal.Dialog>
-            <Modal.Header>
-              <Modal.Heading>{step === "email" ? "Inicia sesión" : "Crea tu cuenta"}</Modal.Heading>
-            </Modal.Header>
+    // Controlled straight on the backdrop: `<Modal>` wraps a DialogTrigger that expects a
+    // pressable <Modal.Trigger> child, and this modal is opened from elsewhere via `state`.
+    <Modal.Backdrop
+      isOpen={state.isOpen}
+      onOpenChange={state.setOpen}
+      className="light"
+      style={{ colorScheme: "light" }}
+    >
+      <Modal.Container size="md" placement="top">
+        <Modal.Dialog>
+          <Modal.Header>
+            <Modal.Heading>{step === "email" ? "Inicia sesión" : "Crea tu cuenta"}</Modal.Heading>
+          </Modal.Header>
 
-            <Modal.Body>
-              {step === "email" ? (
-                <LoginForm form={form} isPending={isPending} onSubmit={handleLogin} onSignUp={goToSignUp} />
-              ) : (
-                <SignupForm form={form} isPending={isPending} onSubmit={handleRegister} onGoogle={() => state.close()} />
-              )}
-            </Modal.Body>
+          <Modal.Body>
+            {step === "email" ? (
+              <LoginForm form={form} isPending={isPending} onSubmit={handleLogin} onSignUp={goToSignUp} />
+            ) : (
+              <SignupForm form={form} isPending={isPending} onSubmit={handleRegister} onGoogle={() => state.close()} />
+            )}
+          </Modal.Body>
 
-            <Modal.CloseTrigger />
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+          <Modal.CloseTrigger />
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   );
 }

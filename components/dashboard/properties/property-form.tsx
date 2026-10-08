@@ -22,6 +22,8 @@ import {
   useRevokePreviewsOnUnmount,
 } from "@/components/multi-image-picker";
 import { LocationPicker } from "@/components/location-picker";
+import { MarkdownEditor } from "@/components/markdown-editor";
+import { ExtractBrandColorsButton } from "@/components/dashboard/properties/extract-brand-colors-button";
 import { TypologiesEditor, type Typology } from "@/components/dashboard/properties/typologies-editor";
 import { TagMultiSelect } from "@/components/dashboard/tag-multi-select";
 import {
@@ -33,6 +35,7 @@ import {
   type SeoValues,
 } from "@/components/dashboard/properties/seo-editor";
 import { type Amenity, parseAmenities } from "@/lib/amenities";
+import { parseBrandColors } from "@/lib/brand-colors";
 import { buildSeoTexts } from "@/lib/seo-autofill";
 import type { Tables } from "@/supabase/types";
 
@@ -43,17 +46,26 @@ export type PropertyRecord = Tables<"properties"> & {
 type FieldKind =
   | "text"
   | "textarea"
+  | "markdown"
   | "number"
   | "select"
   | "month"
   | "location"
   | "tel"
   | "email"
+  | "url"
   | "boolean";
 
 type PropertyFormValues = Omit<
   CreatePropertyInput,
-  "amenities" | "typologies" | "towerDetails" | "additionalImages" | "latitude" | "longitude" | "seo"
+  | "amenities"
+  | "typologies"
+  | "towerDetails"
+  | "additionalImages"
+  | "latitude"
+  | "longitude"
+  | "seo"
+  | "brandColors"
 > & {
   // Note: title field is not part of form values, it's auto-generated from projectName
 };
@@ -72,7 +84,11 @@ type FieldConfig = {
 };
 
 type FieldGroup = {
+  /** Identifies the group, e.g. to render custom content (images, typologies) inside it. */
+  key: string;
   heading?: string;
+  /** One-line explanation under the heading. */
+  hint?: string;
   fields: FieldConfig[];
 };
 
@@ -99,6 +115,7 @@ const TEXT_FIELDS: (keyof PropertyFormValues)[] = [
   "deliveryDate",
   "developerId",
   "projectName",
+  "projectUrl",
   "towerCount",
   "constructionCompany",
   "builderId",
@@ -140,6 +157,7 @@ function toInitialValues(property: PropertyRecord): PropertyFormValues {
     deliveryDate: property.delivery_date ? property.delivery_date.slice(0, 7) : "",
     developerId: str(property.developer_id),
     projectName: property.project_name ?? "",
+    projectUrl: property.project_url ?? "",
     towerCount: str(property.tower_count),
     constructionCompany: property.construction_company ?? "",
     builderId: str(property.builder_id),
@@ -213,9 +231,10 @@ function buildSteps(
     {
       key: "macro",
       title: "Macro",
-      description: "Identidad del proyecto, ubicación y sala de ventas.",
+      description: "Identidad del proyecto, imágenes, ubicación y sala de ventas.",
       groups: [
         {
+          key: "identity",
           heading: "Identificación",
           fields: [
             { name: "projectName", label: "Nombre del Proyecto", kind: "text", required: true },
@@ -228,13 +247,34 @@ function buildSteps(
             {
               name: "description",
               label: "Descripción",
-              kind: "textarea",
+              kind: "markdown",
+              placeholder: "Cuenta qué hace especial al proyecto: ubicación, zonas comunes, acabados…",
               required: true,
               wide: true,
             },
           ],
         },
         {
+          key: "brand",
+          heading: "Sitio web y marca",
+          hint: "El sitio web del proyecto se usará para extraer los colores de la marca.",
+          fields: [
+            {
+              name: "projectUrl",
+              label: "Sitio web del proyecto",
+              kind: "url",
+              placeholder: "https://proyecto.com",
+              wide: true,
+            },
+          ],
+        },
+        {
+          key: "images",
+          heading: "Imágenes",
+          fields: [],
+        },
+        {
+          key: "location",
           heading: "Ubicación",
           fields: [
             {
@@ -247,6 +287,7 @@ function buildSteps(
           ],
         },
         {
+          key: "salesRoom",
           heading: "Sala de ventas",
           fields: [
             { name: "salesRoomAddress", label: "Dirección sala de ventas", kind: "text" },
@@ -263,6 +304,7 @@ function buildSteps(
       description: "Estructura del proyecto y entidades relacionadas.",
       groups: [
         {
+          key: "propertyType",
           heading: "Tipo de apartamento",
           fields: [
             {
@@ -281,6 +323,7 @@ function buildSteps(
           ],
         },
         {
+          key: "structure",
           heading: "Estructura",
           fields: [
             {
@@ -343,12 +386,14 @@ function buildSteps(
       description: "Características físicas, precio y financiación.",
       groups: [
         {
+          key: "features",
           heading: "Características",
           fields: [
             { name: "stratum", label: "Estrato", kind: "number", required: true },
           ],
         },
         {
+          key: "pricing",
           heading: "Precio y financiación",
           fields: [
             { name: "price", label: "Precio", kind: "number", required: true },
@@ -482,6 +527,9 @@ export function PropertyForm({
     property?.image ? [existingImage(property.image)] : [],
   );
   const [seo, setSeo] = useState<SeoValues>(() => parseSeo(property?.seo));
+  // Shown in the form in both modes, but only sent when creating: on edit,
+  // "Extraer colores de la marca" saves them on the property itself.
+  const [brandColors, setBrandColors] = useState(() => parseBrandColors(property?.brand_colors));
   // Share images live as picked files until save; existing ones come back as their URLs.
   const [seoImages, setSeoImages] = useState<SeoImages>(() => {
     const saved = parseSeo(property?.seo);
@@ -768,6 +816,7 @@ export function PropertyForm({
         towerDetails: Object.fromEntries(towerKeys.map((key) => [key, { ...EMPTY_TOWER_DETAIL, ...towerDetails[key] }])),
         additionalImages,
         seo: seoPayload,
+        brandColors: isEditing ? undefined : brandColors,
       };
 
       const result =
@@ -862,144 +911,182 @@ export function PropertyForm({
 
         <div className="flex flex-col gap-6">
           {step.groups.map((group, gi) => (
-            <div key={group.heading ?? gi} className="flex flex-col gap-4">
+            <section
+              key={group.key}
+              className={`flex flex-col gap-4 ${gi > 0 ? "border-t border-separator pt-6" : ""}`}
+            >
               {group.heading ? (
-                <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                  {group.heading}
-                </p>
+                <div>
+                  <h3 className="text-xs font-medium uppercase tracking-wider text-muted">{group.heading}</h3>
+                  {group.hint ? <p className="mt-1 text-xs text-muted">{group.hint}</p> : null}
+                </div>
               ) : null}
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                {group.fields.map((field) => {
-                  const value = values[field.name];
-                  const spanClass = field.wide ? "sm:col-span-2" : undefined;
-                  const fieldId = `${formId}-${field.name}`;
+              {group.fields.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {group.fields.map((field) => {
+                    const value = values[field.name];
+                    const spanClass = field.wide ? "sm:col-span-2" : undefined;
+                    const fieldId = `${formId}-${field.name}`;
 
-                  if (field.kind === "location") {
-                    return (
-                      <div key={field.name} className={spanClass}>
-                        <label className="mb-1.5 block text-sm font-medium">
-                          {field.label}
-                          {field.required ? <span className="text-danger"> *</span> : null}
-                        </label>
-                        <div className="flex items-end gap-2">
-                          <div className="flex-1">
-                            <LocationPicker
-                              label=""
-                              value={value}
-                              coordinates={coordinates}
-                              onChange={(address, coords, location) => {
-                                setField("address", address);
-                                if (location) {
-                                  setField("location", location);
-                                }
-                                setCoordinates(coords);
-                              }}
-                              isRequired={field.required}
-                            />
+                    if (field.kind === "location") {
+                      return (
+                        <div key={field.name} className={spanClass}>
+                          <label className="mb-1.5 block text-sm font-medium">
+                            {field.label}
+                            {field.required ? <span className="text-danger"> *</span> : null}
+                          </label>
+                          <div className="flex items-end gap-2">
+                            <div className="flex-1">
+                              <LocationPicker
+                                label=""
+                                value={value}
+                                coordinates={coordinates}
+                                onChange={(address, coords, location) => {
+                                  setField("address", address);
+                                  if (location) {
+                                    setField("location", location);
+                                  }
+                                  setCoordinates(coords);
+                                }}
+                                isRequired={field.required}
+                              />
+                            </div>
+                            {value && (
+                              <Button
+                                isIconOnly
+                                variant="outline"
+                                size="lg"
+                                onPress={() => {
+                                  navigator.clipboard.writeText(value);
+                                  toast.success("Dirección copiada", "Se ha copiado la dirección al portapapeles");
+                                }}
+                                className="mb-0"
+                              >
+                                <Copy size={18} />
+                              </Button>
+                            )}
                           </div>
-                          {value && (
-                            <Button
-                              isIconOnly
-                              variant="outline"
-                              size="lg"
-                              onPress={() => {
-                                navigator.clipboard.writeText(value);
-                                toast.success("Dirección copiada", "Se ha copiado la dirección al portapapeles");
-                              }}
-                              className="mb-0"
-                            >
-                              <Copy size={18} />
-                            </Button>
-                          )}
                         </div>
-                      </div>
-                    );
-                  }
+                      );
+                    }
 
-                  if (field.kind === "select" || field.kind === "boolean") {
-                    const options =
-                      field.kind === "boolean" ? BOOLEAN_OPTIONS : (field.options ?? []);
+                    if (field.kind === "select" || field.kind === "boolean") {
+                      const options =
+                        field.kind === "boolean" ? BOOLEAN_OPTIONS : (field.options ?? []);
+                      return (
+                        <div key={field.name} className={spanClass}>
+                          <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium">
+                            {field.label}
+                            {field.required ? <span className="text-danger"> *</span> : null}
+                          </label>
+                          <select
+                            id={fieldId}
+                            className={fieldClassName()}
+                            value={value}
+                            onChange={(e) => setField(field.name, e.target.value)}
+                          >
+                            {options.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    }
+
+                    if (field.kind === "markdown") {
                     return (
                       <div key={field.name} className={spanClass}>
-                        <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium">
+                        <p className="mb-1.5 block text-sm font-medium">
                           {field.label}
                           {field.required ? <span className="text-danger"> *</span> : null}
-                        </label>
-                        <select
-                          id={fieldId}
-                          className={fieldClassName()}
+                        </p>
+                        <MarkdownEditor
                           value={value}
-                          onChange={(e) => setField(field.name, e.target.value)}
-                        >
-                          {options.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(markdown) => setField(field.name, markdown)}
+                          placeholder={field.placeholder}
+                          ariaLabel={field.label}
+                        />
+                        {field.hint ? <p className="mt-1 text-xs text-muted">{field.hint}</p> : null}
                       </div>
                     );
                   }
 
                   if (field.name === "city") {
+                      return (
+                        <div key={field.name} className={spanClass}>
+                          <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium">
+                            {field.label}
+                          </label>
+                          <input
+                            id={fieldId}
+                            list={`${formId}-cities`}
+                            className={fieldClassName()}
+                            value={value}
+                            placeholder="Empieza a escribir…"
+                            onChange={(e) => setField(field.name, e.target.value)}
+                          />
+                          <datalist id={`${formId}-cities`}>
+                            {CITY_OPTIONS.map((city) => (
+                              <option key={city} value={city} />
+                            ))}
+                          </datalist>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={field.name} className={spanClass}>
-                        <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium">
-                          {field.label}
-                        </label>
-                        <input
-                          id={fieldId}
-                          list={`${formId}-cities`}
-                          className={fieldClassName()}
+                        <TextField
+                          type={
+                            field.kind === "number"
+                              ? "number"
+                              : field.kind === "month"
+                                ? "month"
+                                : field.kind === "tel"
+                                  ? "tel"
+                                  : field.kind === "email"
+                                    ? "email"
+                                    : field.kind === "url"
+                                      ? "url"
+                                      : "text"
+                          }
                           value={value}
-                          placeholder="Empieza a escribir…"
-                          onChange={(e) => setField(field.name, e.target.value)}
-                        />
-                        <datalist id={`${formId}-cities`}>
-                          {CITY_OPTIONS.map((city) => (
-                            <option key={city} value={city} />
-                          ))}
-                        </datalist>
+                          onChange={(v) => setField(field.name, v)}
+                          isRequired={field.required}
+                          isReadOnly={field.readOnly}
+                          validationBehavior="aria"
+                        >
+                          <Label>{field.label}</Label>
+                          {field.kind === "textarea" ? (
+                            <TextArea placeholder={field.placeholder} rows={4} />
+                          ) : (
+                            <Input placeholder={field.placeholder} />
+                          )}
+                          {field.hint ? <p className="mt-1 text-xs text-muted">{field.hint}</p> : null}
+                        </TextField>
                       </div>
                     );
-                  }
+                  })}
 
-                  return (
-                    <div key={field.name} className={spanClass}>
-                      <TextField
-                        type={
-                          field.kind === "number"
-                            ? "number"
-                            : field.kind === "month"
-                              ? "month"
-                              : field.kind === "tel"
-                                ? "tel"
-                                : field.kind === "email"
-                                  ? "email"
-                                  : "text"
-                        }
-                        value={value}
-                        onChange={(v) => setField(field.name, v)}
-                        isRequired={field.required}
-                        isReadOnly={field.readOnly}
-                        validationBehavior="aria"
-                      >
-                        <Label>{field.label}</Label>
-                        {field.kind === "textarea" ? (
-                          <TextArea placeholder={field.placeholder} rows={4} />
-                        ) : (
-                          <Input placeholder={field.placeholder} />
-                        )}
-                        {field.hint ? <p className="mt-1 text-xs text-muted">{field.hint}</p> : null}
-                      </TextField>
+                  {group.key === "brand" ? (
+                    <div className="sm:col-span-2">
+                      <ExtractBrandColorsButton
+                        projectUrl={values.projectUrl}
+                        savedProjectUrl={property?.project_url}
+                        propertyId={property?.id}
+                        colors={brandColors}
+                        onExtractedAction={setBrandColors}
+                      />
                     </div>
-                  );
-                })}
-              </div>
+                  ) : null}
+                </div>
+              ) : null}
 
-              {step.key === "macro" && gi === 0 ? (
-                <>
+              {group.key === "images" ? (
+                <div className="grid gap-6 sm:grid-cols-2">
                   <MultiImagePicker
                     images={mainImage}
                     onChange={setMainImage}
@@ -1012,10 +1099,10 @@ export function PropertyForm({
                     onChange={setImages}
                     label="Fotos adicionales"
                   />
-                </>
+                </div>
               ) : null}
 
-              {step.key === "micro" && gi === 1 && values.towerCount && Number(values.towerCount) > 0 ? (
+              {group.key === "structure" && values.towerCount && Number(values.towerCount) > 0 ? (
                 <div className="border-t border-separator pt-5">
                   <p className="mb-4 text-xs font-medium uppercase tracking-wider text-muted">
                     Tipologías por torre <span className="text-danger">*</span>
@@ -1095,8 +1182,7 @@ export function PropertyForm({
                   ))}
                 </div>
               ) : null}
-
-            </div>
+            </section>
           ))}
 
           {step.key === "seo" ? (

@@ -13,6 +13,7 @@ import {
   PropertyEditorSkeleton,
 } from "@/components/dashboard/properties/property-editor";
 import type { PropertyRecord } from "@/components/dashboard/properties/property-form";
+import { MarkdownContent } from "@/components/markdown-content";
 import { parseAmenities } from "@/lib/amenities";
 import type { PropertyFormOptions } from "@/lib/data/property-form-options";
 
@@ -96,7 +97,7 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
         </div>
 
         {property.description ? (
-          <p className="mt-5 text-sm text-muted">{property.description}</p>
+          <MarkdownContent className="mt-5 text-sm text-muted">{property.description}</MarkdownContent>
         ) : null}
       </Card>
 

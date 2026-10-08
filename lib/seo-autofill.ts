@@ -1,3 +1,4 @@
+import { markdownToPlainText } from "@/lib/markdown";
 import { slugify } from "@/lib/slug";
 
 /** What the SEO autofill needs from the property form. */
@@ -122,7 +123,7 @@ export function buildSeoTexts(input: SeoAutofillInput): SeoTexts {
 
   const videoDescription = [
     `${project}: ${sentences.filter(Boolean).join(" ")}`,
-    input.description.trim(),
+    markdownToPlainText(input.description),
     topAmenities.length > 0 ? `Zonas comunes: ${input.amenities.join(", ")}.` : "",
     "Conoce más y agenda tu visita en Delfos.",
   ]
