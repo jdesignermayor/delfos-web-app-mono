@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { buttonVariants, Card } from "@heroui/react";
 import { Plus } from "lucide-react";
 
@@ -7,6 +8,7 @@ import { ProjectOverview } from "@/components/dashboard/home/project-overview";
 import { computeProjectStats } from "@/components/dashboard/home/project-stats";
 import { requireDashboardUser } from "@/lib/auth/dal";
 import { scopeToDeveloper } from "@/lib/auth/scope-query";
+import { needsOnboarding } from "@/lib/onboarding";
 import { createClient } from "@/supabase/server";
 
 export const metadata: Metadata = {
@@ -16,6 +18,9 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const user = await requireDashboardUser();
+  // A constructora without properties starts at the onboarding guide.
+  if (await needsOnboarding(user)) redirect("/dashboard/onboarding");
+
   const supabase = await createClient();
   const { data, error } = await scopeToDeveloper(
     supabase
