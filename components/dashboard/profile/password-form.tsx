@@ -2,15 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { Button, FieldError, Input, Label, TextField } from "@heroui/react";
-import { Check, Eye, EyeOff, X } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { changePasswordAction } from "@/app/actions/profile";
+import { PasswordChecklist } from "@/components/auth/password-checklist";
 import { useToast } from "@/components/providers/toast-provider";
 import {
   EMPTY_PASSWORD_FORM,
   PASSWORD_MAX_LENGTH,
   PASSWORD_REGEX,
-  PASSWORD_RULES,
   type PasswordField,
   type PasswordFieldErrors,
 } from "@/lib/validation/profile";
@@ -20,22 +20,6 @@ const FIELDS: { name: PasswordField; label: string; autoComplete: string }[] = [
   { name: "newPassword", label: "Nueva contraseña", autoComplete: "new-password" },
   { name: "confirmPassword", label: "Confirmar nueva contraseña", autoComplete: "new-password" },
 ];
-
-function PasswordChecklist({ value }: { value: string }) {
-  return (
-    <ul className="grid gap-1 text-xs sm:grid-cols-2" aria-label="Requisitos de la contraseña">
-      {PASSWORD_RULES.map((rule) => {
-        const ok = rule.test(value);
-        return (
-          <li key={rule.id} className={`flex items-center gap-1.5 ${ok ? "text-success" : "text-muted"}`}>
-            {ok ? <Check className="size-3.5" /> : <X className="size-3.5" />}
-            {rule.label}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
 
 /** Change password: requires the current one and a new one matching `PASSWORD_REGEX`. */
 export function PasswordForm() {

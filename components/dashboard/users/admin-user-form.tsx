@@ -36,7 +36,7 @@ function textFields(mode: AdminUserFormMode): TextFieldConfig[] {
       required: isCreate,
       autoComplete: "new-password",
       description: isCreate
-        ? `Mínimo ${MIN_PASSWORD_LENGTH} caracteres. Compártela con el usuario de forma segura.`
+        ? `Mínimo ${MIN_PASSWORD_LENGTH} caracteres. Además le enviaremos un correo para que cree su propia contraseña.`
         : `Déjala vacía para conservar la actual. Mínimo ${MIN_PASSWORD_LENGTH} caracteres.`,
     },
   ];

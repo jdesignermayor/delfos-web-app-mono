@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { updateAdminUserAction } from "@/app/actions/users";
 import { ArrowRightIcon } from "@/components/icons";
 import { AdminUserForm } from "@/components/dashboard/users/admin-user-form";
+import { ResendWelcomeEmailButton } from "@/components/dashboard/users/resend-welcome-email-button";
 import { requireSuperadmin } from "@/lib/auth/dal";
 import { getDeveloperOptions } from "@/lib/data/developer-options";
 import { getAdminUser, type AdminUserRow } from "@/lib/users/admin-users";
@@ -39,11 +40,14 @@ export default async function EditUserPage({ params }: PageProps<"/dashboard/use
         Volver a usuarios
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Editar usuario</h1>
-        <p className="mt-1 text-sm text-muted">
-          {user.name || user.email} · {user.developer?.name ?? "Sin constructora"}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Editar usuario</h1>
+          <p className="mt-1 text-sm text-muted">
+            {user.name || user.email} · {user.developer?.name ?? "Sin constructora"}
+          </p>
+        </div>
+        <ResendWelcomeEmailButton userId={user.id} email={user.email} />
       </div>
 
       <AdminUserForm

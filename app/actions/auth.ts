@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { canAccessDashboard, signInDenialReason } from "@/lib/auth/permissions";
 import { isValidEmail, normalizeEmail } from "@/lib/validation/email";
+import { PASSWORD_REGEX } from "@/lib/validation/profile";
 import { createAdminClient } from "@/supabase/admin";
 import { getUserProfile, type RoleName } from "@/supabase/roles";
 import { createClient } from "@/supabase/server";
@@ -133,4 +134,66 @@ export async function signOutAccount(): Promise<never> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/");
+}
+
+export type SetPasswordField = "password" | "confirmPassword";
+
+export type SetPasswordResult =
+  | { success: true; hasDashboardAccess: boolean }
+  | { success: false; error: string; field?: SetPasswordField };
+
+/**
+ * Sets the password from an emailed link (welcome email / reset). The
+ * one-time Supabase token is only exchanged here, on submit — not when the
+ * page opens — so mail scanners that pre-open links can't burn it. On
+ * success the user is signed in with the new password.
+ */
+export async function setPasswordWithTokenAction(input: {
+  tokenHash: string;
+  password: string;
+  confirmPassword: string;
+}): Promise<SetPasswordResult> {
+  const tokenHash = typeof input.tokenHash === "string" ? input.tokenHash : "";
+  const password = typeof input.password === "string" ? input.password : "";
+  const confirmPassword = typeof input.confirmPassword === "string" ? input.confirmPassword : "";
+
+  if (!tokenHash) return { success: false, error: "El enlace no es válido." };
+  if (!PASSWORD_REGEX.test(password)) {
+    return { success: false, error: "La contraseña no cumple los requisitos de seguridad.", field: "password" };
+  }
+  if (password !== confirmPassword) {
+    return { success: false, error: "Las contraseñas no coinciden.", field: "confirmPassword" };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
+  if (error || !data.user) {
+    return {
+      success: false,
+      error: "El enlace venció o ya fue usado. Pide al administrador que te envíe uno nuevo.",
+    };
+  }
+
+  const { error: updateError } = await supabase.auth.updateUser({ password });
+  if (updateError) {
+    await supabase.auth.signOut();
+    return {
+      success: false,
+      error:
+        updateError.code === "weak_password"
+          ? "La contraseña es demasiado débil o aparece en filtraciones conocidas."
+          : "No pudimos guardar tu contraseña. Intenta de nuevo.",
+      field: "password",
+    };
+  }
+
+  // Same gate as a normal sign-in: an inactive user or disabled constructora stays out.
+  const user = await getUserProfile(data.user, { fresh: true });
+  const denialReason = signInDenialReason(user);
+  if (denialReason) {
+    await supabase.auth.signOut();
+    return { success: false, error: `Tu contraseña quedó guardada, pero no puedes ingresar: ${denialReason}` };
+  }
+
+  return { success: true, hasDashboardAccess: canAccessDashboard(user) };
 }

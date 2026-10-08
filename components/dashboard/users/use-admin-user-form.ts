@@ -46,6 +46,7 @@ export function useAdminUserForm({
         return;
       }
       toast.success(successMessage);
+      if (result.warning) toast.warning("Correo no enviado", result.warning);
       router.push("/dashboard/users");
     });
   }

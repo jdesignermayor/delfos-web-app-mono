@@ -2,6 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 
+import { sendAdminWelcomeEmailAction } from "@/app/actions/email";
 import { getSuperadmin } from "@/lib/auth/dal";
 import { USER_PROFILES_CACHE_TAG } from "@/lib/cache-tags";
 import { createAdminUser, updateAdminUser, type SaveAdminUserResult } from "@/lib/users/admin-users";
@@ -14,7 +15,7 @@ import {
 } from "@/lib/validation/admin-user";
 
 export type AdminUserActionResult =
-  | { success: true }
+  | { success: true; userId: string; warning?: string }
   | { success: false; message: string | null; fieldErrors: AdminUserFieldErrors };
 
 /**
@@ -46,11 +47,19 @@ async function saveAdminUser(
   // Role / constructora / active flag may have changed: expire cached profiles now.
   updateTag(USER_PROFILES_CACHE_TAG);
   revalidatePath("/dashboard/users");
-  return { success: true };
+  return { success: true, userId: result.userId };
 }
 
+/** Creates the constructora user, then emails them a link to set their own password. */
 export async function createAdminUserAction(values: AdminUserFormValues): Promise<AdminUserActionResult> {
-  return saveAdminUser("create", values, createAdminUser);
+  const result = await saveAdminUser("create", values, createAdminUser);
+  if (!result.success) return result;
+
+  // The account already exists: a failed email is reported, not rolled back.
+  const email = await sendAdminWelcomeEmailAction(result.userId);
+  return email.success
+    ? result
+    : { ...result, warning: `No se pudo enviar el correo de bienvenida: ${email.error}` };
 }
 
 export async function updateAdminUserAction(
