@@ -19,6 +19,7 @@ export type CurrentUser = {
   id: string;
   name: string | null;
   email: string | null;
+  avatarUrl: string | null;
   role: RoleName | null;
   /** `false` once the user has been disabled in `public.users`. */
   isActive: boolean;
@@ -49,7 +50,7 @@ export async function getUserProfile(
     : createAdminClient({ revalidate: PROFILE_CACHE_SECONDS, tags: [USER_PROFILES_CACHE_TAG] });
   const { data } = await admin
     .from("users")
-    .select("name, email, is_active, roles(name), developer:developers!developer_id(id, name, is_enabled)")
+    .select("name, email, avatar_url, is_active, roles(name), developer:developers!developer_id(id, name, is_enabled)")
     .eq("id", authUser.id)
     .maybeSingle();
 
@@ -57,6 +58,7 @@ export async function getUserProfile(
     id: authUser.id,
     name: data?.name ?? null,
     email: data?.email ?? authUser.email ?? null,
+    avatarUrl: data?.avatar_url ?? null,
     role: (data?.roles?.name as RoleName | undefined) ?? null,
     // Only an explicit `false` disables a user; legacy rows may still hold NULL.
     isActive: data !== null && data.is_active !== false,

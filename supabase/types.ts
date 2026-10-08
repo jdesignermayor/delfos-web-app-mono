@@ -483,6 +483,7 @@ export type Database = {
       }
       users: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           developer_id: number | null
           email: string | null
@@ -491,8 +492,10 @@ export type Database = {
           name: string | null
           phone: string | null
           role_id: string | null
+          updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           developer_id?: number | null
           email?: string | null
@@ -501,8 +504,10 @@ export type Database = {
           name?: string | null
           phone?: string | null
           role_id?: string | null
+          updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           developer_id?: number | null
           email?: string | null
@@ -511,6 +516,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           role_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {

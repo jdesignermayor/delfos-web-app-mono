@@ -50,6 +50,18 @@ export async function imageToShareCard(file: File): Promise<Buffer> {
     .toBuffer();
 }
 
+/** Side, in pixels, of the square profile avatar. */
+export const AVATAR_SIZE = 512;
+
+/** Crops a profile photo to a 512 × 512 square around its most interesting area. */
+export async function imageToAvatar(file: File): Promise<Buffer> {
+  const image = await decode(file);
+  return image
+    .resize({ width: AVATAR_SIZE, height: AVATAR_SIZE, fit: "cover", position: sharp.strategy.attention })
+    .webp({ quality: 80 })
+    .toBuffer();
+}
+
 /** A sharp pipeline for the photo, decoding iPhone HEIC first and applying EXIF rotation. */
 async function decode(file: File) {
   const input = Buffer.from(await file.arrayBuffer());

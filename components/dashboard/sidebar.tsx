@@ -8,6 +8,7 @@ import { Avatar, Button } from "@heroui/react";
 import { signOutAccount } from "@/app/actions/auth";
 import { LogoMark } from "@/components/icons";
 import { getNavSections, type NavSection } from "@/components/dashboard/nav";
+import { initials } from "@/lib/initials";
 import type { CurrentUser } from "@/supabase/roles";
 
 function NavLinks({ sections }: { sections: NavSection[] }) {
@@ -67,31 +68,34 @@ function SidebarBrand() {
   );
 }
 
-function initials(name: string | null, email: string | null) {
-  const source = name?.trim() || email?.trim() || "?";
-  const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return source.slice(0, 2).toUpperCase();
-}
+const PROFILE_HREF = "/dashboard/profile";
 
-/** Avatar, name and sign-out control shown at the bottom of the sidebar, for every role. */
+/** Avatar, name (linking to the profile page) and sign-out control shown at the bottom of the sidebar, for every role. */
 function SidebarUser({ user }: { user: CurrentUser }) {
   const [isPending, startTransition] = useTransition();
+  const pathname = usePathname();
   const displayName = user.name || user.email || "Usuario";
+  const active = pathname.startsWith(PROFILE_HREF);
 
   return (
     <div className="border-t border-separator p-3">
-      <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+      <Link
+        href={PROFILE_HREF}
+        aria-current={active ? "page" : undefined}
+        title="Mi perfil"
+        className={`flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors ${
+          active ? "bg-accent-soft" : "hover:bg-surface-secondary"
+        }`}
+      >
         <Avatar size="sm">
+          {user.avatarUrl ? <Avatar.Image src={user.avatarUrl} alt={displayName} /> : null}
           <Avatar.Fallback color="accent">{initials(user.name, user.email)}</Avatar.Fallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{displayName}</p>
-          {user.developer ? (
-            <p className="truncate text-xs text-muted">{user.developer.name}</p>
-          ) : null}
+          <p className="truncate text-xs text-muted">{user.developer?.name ?? "Mi perfil"}</p>
         </div>
-      </div>
+      </Link>
       <Button
         type="button"
         variant="outline"
