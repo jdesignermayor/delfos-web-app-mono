@@ -236,7 +236,7 @@ export default async function PropertyDetailPage({
                 <QuoteCard property={property} financing={details?.financing}>
                   <TalkToAgentButton
                     propertyTitle={property.title}
-                    phone={details?.developer?.phone ?? details?.salesRoom.phone}
+                    phone={details?.salesRoom.phone ?? details?.developer?.phone}
                   />
                 </QuoteCard>
               </aside>

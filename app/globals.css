@@ -93,63 +93,64 @@ body {
 }
 
 /*
- * The glow plays once when the page opens (~9 s) and then stays still: the
- * streak sweeps in from far left, overshoots slightly and settles, then the
- * light "breathes" twice. Only opacity and transform animate, on their own GPU
- * layers (will-change), so it stays smooth and never repaints the page.
- * Reduced motion: it simply shows in its final state.
+ * Ambient brand glow: the blobs fade in once, then drift on slow, offset
+ * loops (22–30 s, alternating) so the motion never visibly repeats. Only
+ * transform loops, on GPU layers (will-change), so it costs nothing to paint.
+ * Reduced motion: the blobs simply sit still.
  */
-@keyframes brand-glow-grow-in {
+@keyframes brand-glow-fade-in {
   from {
     opacity: 0;
-    transform: scale(0.85);
   }
   to {
     opacity: 1;
-    transform: scale(1);
   }
 }
-@keyframes brand-glow-sweep-in {
-  0% {
-    opacity: 0;
-    transform: translate3d(-60%, -12%, 0) rotate(24deg) scale(0.8);
+@keyframes brand-glow-drift-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
   }
-  60% {
-    opacity: 1;
-    transform: translate3d(6%, 2%, 0) rotate(24deg) scale(1.06);
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(24deg) scale(1);
+  to {
+    transform: translate3d(90px, 50px, 0) scale(1.08);
   }
 }
-@keyframes brand-glow-breathe {
-  0%,
-  100% {
-    opacity: 1;
+@keyframes brand-glow-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
   }
-  50% {
-    opacity: 0.55;
+  to {
+    transform: translate3d(-70px, -60px, 0) scale(1.12);
+  }
+}
+@keyframes brand-glow-drift-c {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  to {
+    transform: translate3d(-60px, 70px, 0) scale(0.95);
   }
 }
 .brand-glow {
   contain: layout paint;
 }
-.brand-glow-layer {
-  transform-origin: 0% 30%;
-}
-.brand-glow-streak {
-  transform: rotate(24deg);
-}
 @media (prefers-reduced-motion: no-preference) {
-  .brand-glow-layer {
-    will-change: transform, opacity;
-    animation: brand-glow-grow-in 3.5s cubic-bezier(0.33, 0, 0.2, 1) 0.2s both;
+  .brand-glow-blob {
+    will-change: transform;
   }
-  .brand-glow-streak {
-    will-change: transform, opacity;
+  .brand-glow-blob-a {
     animation:
-      brand-glow-sweep-in 5s cubic-bezier(0.45, 0, 0.2, 1) 0.2s both,
-      brand-glow-breathe 2s ease-in-out 5.2s 2;
+      brand-glow-fade-in 1.6s ease-out both,
+      brand-glow-drift-a 26s ease-in-out infinite alternate;
+  }
+  .brand-glow-blob-b {
+    animation:
+      brand-glow-fade-in 1.6s ease-out 0.2s both,
+      brand-glow-drift-b 30s ease-in-out infinite alternate;
+  }
+  .brand-glow-blob-c {
+    animation:
+      brand-glow-fade-in 1.6s ease-out 0.4s both,
+      brand-glow-drift-c 22s ease-in-out infinite alternate;
   }
 }
+

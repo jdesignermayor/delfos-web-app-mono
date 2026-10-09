@@ -153,9 +153,10 @@ export function PhotoTour({
           type="button"
           onClick={onClose}
           aria-label="Volver"
-          className="flex size-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="flex h-10 items-center justify-center gap-1.5 rounded-full bg-foreground pl-2.5 pr-4 text-sm font-semibold text-white shadow-md transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent max-sm:w-10 max-sm:px-0"
         >
           <ChevronLeft className="size-5" />
+          <span className="max-sm:sr-only">Volver</span>
         </button>
         <PropertyActions compact />
       </header>

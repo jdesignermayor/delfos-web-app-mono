@@ -190,9 +190,9 @@ export function LocationMap({ property }: { property: Property }) {
           href={`https://www.google.com/maps/dir/?api=1&destination=${property.lat},${property.lng}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 border-t border-separator bg-surface px-4 py-3 brand-cta-text text-sm font-semibold text-accent transition-colors hover:bg-surface-secondary"
+          className="brand-cta flex items-center justify-center gap-2 bg-gradient-to-r from-accent to-accent-hover px-4 py-4 text-base font-semibold text-accent-foreground transition-[filter] hover:brightness-110"
         >
-          <MapPinIcon className="size-4" />
+          <MapPinIcon className="size-5" />
           Cómo llegar
         </a>
       </div>

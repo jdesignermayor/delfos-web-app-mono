@@ -11,7 +11,7 @@ function toWhatsAppNumber(phone: string) {
 
 /**
  * Opens a WhatsApp chat (WhatsApp Web on desktop, the app on phones) with the
- * constructora, pre-filled with the listing's name. Renders nothing when the
+ * sales room (sala de ventas), pre-filled with the listing's name. Renders nothing when the
  * listing has no contact phone.
  */
 export function TalkToAgentButton({ propertyTitle, phone }: { propertyTitle: string; phone?: string }) {
