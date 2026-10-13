@@ -13,6 +13,11 @@ export const queryKeys = {
     list: () => [...queryKeys.trustCompanies.all, "list"] as const,
     detail: (trustCompanyId: string) => [...queryKeys.trustCompanies.all, trustCompanyId] as const,
   },
+  banks: {
+    all: ["banks"] as const,
+    list: () => [...queryKeys.banks.all, "list"] as const,
+    detail: (bankId: string) => [...queryKeys.banks.all, bankId] as const,
+  },
   commonAreas: {
     all: ["common-areas"] as const,
     list: () => [...queryKeys.commonAreas.all, "list"] as const,

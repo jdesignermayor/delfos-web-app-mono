@@ -1,5 +1,10 @@
 import type { TextFieldConfig } from "@/components/dashboard/forms/form-text-field";
-import { COMPANY_LIMITS, type CompanyField, type ContactField, type ContactRules } from "@/lib/validation/company";
+import {
+  COMPANY_LIMITS,
+  type CompanyField,
+  type ContactField,
+  type ContactRules,
+} from "@/lib/validation/company";
 
 /** Inputs for the contact fields, marked required per the entity's rules. */
 export function contactTextFields({
@@ -31,8 +36,15 @@ const NIT_FIELD: TextFieldConfig<"nit"> = {
   maxLength: COMPANY_LIMITS.nit,
 };
 
-/** The contact inputs with the NIT right after the name. */
-export function companyTextFields(rules: ContactRules = {}): TextFieldConfig<CompanyField>[] {
+/**
+ * The contact inputs with the NIT right after the name. `nitLabel` renames
+ * it for entities that store another code there (banks: "Código DANE").
+ */
+export function companyTextFields({
+  nitLabel,
+  ...rules
+}: ContactRules & { nitLabel?: string } = {}): TextFieldConfig<CompanyField>[] {
   const [name, ...rest] = contactTextFields(rules);
-  return [name, NIT_FIELD, ...rest];
+  const nit = nitLabel ? { ...NIT_FIELD, label: nitLabel, placeholder: undefined } : NIT_FIELD;
+  return [name, nit, ...rest];
 }

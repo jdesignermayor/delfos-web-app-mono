@@ -1,49 +1,61 @@
 "use client";
 
 import type { QueryKey } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react";
 import { AlertDialog, Button, useOverlayState } from "@heroui/react";
 
-import { useDeleteMutation } from "@/hooks/use-delete-mutation";
+import { SHARP_BUTTON_CLASS } from "@/components/dashboard/row-actions";
+import { UNDO_WINDOW_MS, useDeleteMutation } from "@/hooks/use-delete-mutation";
 import type { ActionResult } from "@/lib/forms/action-result";
 
-export type DeleteEntityButtonProps<TId extends string | number> = {
+export type DeleteEntityButtonProps<TId extends string | number, TSnapshot> = {
   id: TId;
-  /** Shown in the confirmation, e.g. the constructora's name. */
+  /** Shown in the confirmation and toasts, e.g. the constructora's name. */
   itemName: string;
-  /** Singular, with its article: "la constructora", "la fiducia"… */
+  /** Singular, with its article: "la constructora", "el banco"… */
   entityLabel: string;
   /** What else happens (or doesn't) when deleting, shown under the warning. */
   consequence?: string;
-  action: (id: TId) => Promise<ActionResult>;
+  action: (id: TId) => Promise<{ success: true; data: TSnapshot } | { success: false; error: string }>;
+  restoreAction: (snapshot: TSnapshot) => Promise<ActionResult>;
   mutationKey: QueryKey;
   listKey: QueryKey;
   invalidateKey: QueryKey;
-  successMessage: string;
   redirectTo?: string;
-  /** "row" for a list's actions column, "page" for an edit page's header. */
+  /** "row": icon-only, for a list's actions column. "page": icon + label, for an edit page's header. */
   placement?: "row" | "page";
 };
 
 /**
- * "Eliminar" button that asks for confirmation in an alert dialog, then
- * deletes through a Server Action. Errors (e.g. "still in use") are shown
- * inside the dialog so the user can read them before closing it.
+ * Sharp trash button that asks for confirmation in an alert dialog, then
+ * deletes through a Server Action and offers "Deshacer" for a few seconds.
+ * Errors (e.g. "still in use") are shown inside the dialog so the user can
+ * read them before closing it.
  */
-export function DeleteEntityButton<TId extends string | number>({
+export function DeleteEntityButton<TId extends string | number, TSnapshot>({
   id,
   itemName,
   entityLabel,
   consequence,
   action,
+  restoreAction,
   mutationKey,
   listKey,
   invalidateKey,
-  successMessage,
   redirectTo,
   placement = "row",
-}: DeleteEntityButtonProps<TId>) {
+}: DeleteEntityButtonProps<TId, TSnapshot>) {
   const overlay = useOverlayState();
-  const mutation = useDeleteMutation({ id, action, mutationKey, listKey, invalidateKey, successMessage, redirectTo });
+  const mutation = useDeleteMutation({
+    id,
+    itemName,
+    action,
+    restoreAction,
+    mutationKey,
+    listKey,
+    invalidateKey,
+    redirectTo,
+  });
 
   function handleOpenChange(isOpen: boolean) {
     // Start each confirmation clean; never close mid-delete.
@@ -54,13 +66,22 @@ export function DeleteEntityButton<TId extends string | number>({
 
   return (
     <AlertDialog isOpen={overlay.isOpen} onOpenChange={handleOpenChange}>
-      <Button
-        size="sm"
-        variant={placement === "page" ? "danger-soft" : "ghost"}
-        className={placement === "row" ? "text-danger" : undefined}
-      >
-        Eliminar
-      </Button>
+      {placement === "row" ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          isIconOnly
+          aria-label={`Eliminar ${itemName}`}
+          className={`${SHARP_BUTTON_CLASS} text-danger`}
+        >
+          <Trash2 className="size-4" aria-hidden />
+        </Button>
+      ) : (
+        <Button size="sm" variant="danger-soft" className={SHARP_BUTTON_CLASS}>
+          <Trash2 className="size-4" aria-hidden />
+          Eliminar
+        </Button>
+      )}
 
       <AlertDialog.Backdrop>
         <AlertDialog.Container size="sm" placement="center">
@@ -72,7 +93,7 @@ export function DeleteEntityButton<TId extends string | number>({
 
             <AlertDialog.Body className="space-y-2 text-sm">
               <p>
-                Vas a eliminar <strong>{itemName}</strong>. Esta acción no se puede deshacer.
+                Vas a eliminar <strong>{itemName}</strong>. Podrás deshacerlo durante {UNDO_WINDOW_MS / 1000} segundos.
               </p>
               {consequence ? <p className="text-muted">{consequence}</p> : null}
               {mutation.error ? (
@@ -83,14 +104,21 @@ export function DeleteEntityButton<TId extends string | number>({
             </AlertDialog.Body>
 
             <AlertDialog.Footer>
-              <Button variant="tertiary" onPress={() => handleOpenChange(false)} isDisabled={mutation.isPending}>
+              <Button
+                variant="tertiary"
+                className={SHARP_BUTTON_CLASS}
+                onPress={() => handleOpenChange(false)}
+                isDisabled={mutation.isPending}
+              >
                 Cancelar
               </Button>
               <Button
                 variant="danger"
+                className={SHARP_BUTTON_CLASS}
                 onPress={() => mutation.mutate()}
                 isDisabled={mutation.isPending || mutation.isSuccess}
               >
+                <Trash2 className="size-4" aria-hidden />
                 {mutation.isPending ? "Eliminando…" : "Eliminar"}
               </Button>
             </AlertDialog.Footer>

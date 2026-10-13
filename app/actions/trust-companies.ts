@@ -5,7 +5,15 @@ import { revalidatePath } from "next/cache";
 import { getDashboardUser } from "@/lib/auth/dal";
 import { canAccessEntity } from "@/lib/auth/permissions";
 import { actionFailure, type ActionFormResult, type ActionResult } from "@/lib/forms/action-result";
-import { deleteTrustCompany, parseTrustCompanyId, updateTrustCompany } from "@/lib/trust-companies/trust-companies";
+import { parseDeveloperId } from "@/lib/developers/developers";
+import { parseDeletedRecord } from "@/lib/forms/deleted-record";
+import {
+  deleteTrustCompany,
+  parseTrustCompanyId,
+  restoreTrustCompany,
+  updateTrustCompany,
+  type TrustCompanySnapshot,
+} from "@/lib/trust-companies/trust-companies";
 import { parseTrustCompanyForm, type TrustCompanyFormValues } from "@/lib/validation/trust-company";
 
 export type UpdateTrustCompanyActionResult = ActionFormResult<TrustCompanyFormValues>;
@@ -43,7 +51,7 @@ export async function updateTrustCompanyAction(
 }
 
 /** Deletes a fiducia. Superadmins only, like editing. */
-export async function deleteTrustCompanyAction(trustCompanyId: string): Promise<ActionResult> {
+export async function deleteTrustCompanyAction(trustCompanyId: string): Promise<ActionResult<TrustCompanySnapshot>> {
   const user = await getDashboardUser();
   if (!user || !canAccessEntity(user, "trust_companies", "modify")) {
     return { success: false, error: "No tienes permiso para realizar esta acción." };
@@ -53,6 +61,25 @@ export async function deleteTrustCompanyAction(trustCompanyId: string): Promise<
   if (id === null) return { success: false, error: "Fiducia no válida." };
 
   const result = await deleteTrustCompany(id);
+  if (result.success) revalidatePath("/dashboard", "layout");
+  return result;
+}
+
+/** "Deshacer" for `deleteTrustCompanyAction`: re-creates the fiducia from its snapshot, owner included. */
+export async function restoreTrustCompanyAction(snapshot: TrustCompanySnapshot): Promise<ActionResult> {
+  const user = await getDashboardUser();
+  if (!user || !canAccessEntity(user, "trust_companies", "modify")) {
+    return { success: false, error: "No tienes permiso para realizar esta acción." };
+  }
+
+  const record = parseDeletedRecord(snapshot, parseTrustCompanyId, parseTrustCompanyForm);
+  // A shared fiducia has no owner; otherwise it must be a valid constructora id.
+  const developerId = snapshot?.developerId == null ? null : parseDeveloperId(snapshot.developerId);
+  if (!record || (snapshot.developerId != null && developerId === null)) {
+    return { success: false, error: "No se pudo restaurar: los datos no son válidos." };
+  }
+
+  const result = await restoreTrustCompany(record, developerId);
   if (result.success) revalidatePath("/dashboard", "layout");
   return result;
 }

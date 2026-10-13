@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import { QueryListState } from "@/components/dashboard/query-list-state";
+import { EditIconLink, RowActions } from "@/components/dashboard/row-actions";
 import { DeleteDeveloperButton } from "@/components/dashboard/constructoras/delete-developer-button";
 import { DeveloperEnabledSwitch } from "@/components/dashboard/constructoras/developer-enabled-switch";
 import { developerQueries } from "@/lib/developers/developer-queries";
@@ -41,12 +41,10 @@ export function ConstructorasTable() {
                     <DeveloperEnabledSwitch developerId={item.id} developerName={item.name} isEnabled={item.isEnabled} />
                   </td>
                   <td className="py-3 pl-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link href={`/dashboard/constructoras/${item.id}`} className="text-sm text-accent hover:underline">
-                        Editar
-                      </Link>
+                    <RowActions>
+                      <EditIconLink href={`/dashboard/constructoras/${item.id}`} itemName={item.name} />
                       <DeleteDeveloperButton developerId={item.id} name={item.name} />
-                    </div>
+                    </RowActions>
                   </td>
                 </tr>
               ))}

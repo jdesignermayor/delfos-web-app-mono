@@ -33,6 +33,12 @@ export type ContactRules = {
   addressRequired?: boolean;
 };
 
+/** Contact rules plus how the entity names its `nit` column (banks call it "código DANE"). */
+export type CompanyRules = ContactRules & {
+  /** Lower-case, for messages; defaults to the NIT. */
+  nitLabel?: string;
+};
+
 export const COMPANY_LIMITS = {
   name: 120,
   nit: 20,
@@ -97,17 +103,17 @@ export function parseContactFields(
   };
 }
 
-/** The contact fields plus an optional NIT. */
+/** The contact fields plus an optional NIT (or the entity's equivalent code). */
 export function parseCompanyFields(
   values: Partial<Record<CompanyField, unknown>>,
-  rules: ContactRules = {},
+  { nitLabel, ...rules }: CompanyRules = {},
 ): { data: CompanyInput; errors: CompanyFieldErrors } {
   const contact = parseContactFields(values, rules);
   const errors: CompanyFieldErrors = { ...contact.errors };
   const nit = asText(values.nit).replace(/\s+/g, "");
 
   if (nit && (!NIT_REGEX.test(nit) || nit.length > COMPANY_LIMITS.nit)) {
-    errors.nit = "Ingresa un NIT válido (ej. 900.123.456-7).";
+    errors.nit = nitLabel ? `Ingresa un ${nitLabel} válido.` : "Ingresa un NIT válido (ej. 900.123.456-7).";
   }
 
   return { data: { ...contact.data, nit: nit || null }, errors };

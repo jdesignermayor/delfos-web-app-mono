@@ -1,11 +1,13 @@
 /**
- * Constructoras (`developers` table): list, read, update and delete.
+ * Constructoras (`developers` table): list, read, update, delete and restore.
  * Server-only — uses the service-role client. Callers must check the caller
  * is a superadmin.
  */
 import { PG_ERROR } from "@/lib/db-errors";
 import type { ActionResult } from "@/lib/forms/action-result";
-import type { DeveloperField, DeveloperInput } from "@/lib/validation/developer";
+import type { DeletedRecord, ParsedDeletedRecord } from "@/lib/forms/deleted-record";
+import { toCompanyFormValues } from "@/lib/validation/company";
+import type { DeveloperField, DeveloperFormValues, DeveloperInput } from "@/lib/validation/developer";
 import { createAdminClient } from "@/supabase/admin";
 
 
@@ -23,6 +25,9 @@ export type DeveloperRow = {
 
 /** One row of the constructoras list (`/dashboard/constructoras`). */
 export type DeveloperListItem = Pick<DeveloperRow, "id" | "name" | "nit" | "phone" | "email" | "isEnabled">;
+
+/** A deleted constructora, kept by the client so "Deshacer" can restore it. */
+export type DeveloperSnapshot = DeletedRecord<number, DeveloperFormValues>;
 
 export type SaveDeveloperResult =
   | { success: true; developerId: number }
@@ -132,7 +137,7 @@ const IN_USE_HINT = "Reasígnalos o elimínalos primero, o deshabilita la constr
  * properties and its own fiducias block the delete (their foreign keys have
  * no `ON DELETE`), so they're counted first to explain why.
  */
-export async function deleteDeveloper(developerId: number): Promise<ActionResult> {
+export async function deleteDeveloper(developerId: number): Promise<ActionResult<DeveloperSnapshot>> {
   const inUse = (await countDeveloperDependents(developerId)).filter(({ count }) => count > 0);
   if (inUse.length > 0) {
     const summary = inUse.map(({ label, count }) => `${count} ${label}`).join(", ");
@@ -140,7 +145,12 @@ export async function deleteDeveloper(developerId: number): Promise<ActionResult
   }
 
   const admin = createAdminClient();
-  const { data, error } = await admin.from("developers").delete().eq("id", developerId).select("id").maybeSingle();
+  const { data, error } = await admin
+    .from("developers")
+    .delete()
+    .eq("id", developerId)
+    .select("id, name, nit, phone, email, address, description, is_enabled, created_at")
+    .maybeSingle();
 
   if (error) {
     // Something got linked between the check and the delete.
@@ -149,5 +159,41 @@ export async function deleteDeveloper(developerId: number): Promise<ActionResult
       : { success: false, error: `No se pudo eliminar la constructora: ${error.message}` };
   }
   if (!data) return { success: false, error: "La constructora no existe." };
+  return {
+    success: true,
+    data: {
+      id: data.id,
+      createdAt: data.created_at,
+      values: { ...toCompanyFormValues(data), isEnabled: data.is_enabled },
+    },
+  };
+}
+
+/**
+ * Re-creates a just-deleted constructora ("Deshacer"). Its id is a
+ * `GENERATED ALWAYS` identity, so it comes back with a new id; nothing
+ * referenced the old one (deleting requires that).
+ */
+export async function restoreDeveloper({
+  createdAt,
+  input,
+}: ParsedDeletedRecord<number, DeveloperInput>): Promise<ActionResult> {
+  const admin = createAdminClient();
+  const { error } = await admin.from("developers").insert({
+    name: input.name,
+    nit: input.nit,
+    phone: input.phone,
+    email: input.email,
+    address: input.address,
+    description: input.description,
+    is_enabled: input.isEnabled,
+    ...(createdAt ? { created_at: createdAt } : {}),
+  });
+
+  if (error) {
+    return error.code === PG_ERROR.uniqueViolation
+      ? { success: false, error: "No se pudo restaurar: ya existe otra constructora con este NIT." }
+      : { success: false, error: `No se pudo restaurar la constructora: ${error.message}` };
+  }
   return { success: true };
 }

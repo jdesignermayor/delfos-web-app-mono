@@ -4,8 +4,15 @@ import { revalidatePath, updateTag } from "next/cache";
 
 import { getSuperadmin } from "@/lib/auth/dal";
 import { USER_PROFILES_CACHE_TAG } from "@/lib/cache-tags";
-import { deleteDeveloper, parseDeveloperId, updateDeveloper } from "@/lib/developers/developers";
+import {
+  deleteDeveloper,
+  parseDeveloperId,
+  restoreDeveloper,
+  updateDeveloper,
+  type DeveloperSnapshot,
+} from "@/lib/developers/developers";
 import { actionFailure, type ActionFormResult, type ActionResult } from "@/lib/forms/action-result";
+import { parseDeletedRecord } from "@/lib/forms/deleted-record";
 import { parseDeveloperForm, type DeveloperFormValues } from "@/lib/validation/developer";
 import { createAdminClient } from "@/supabase/admin";
 
@@ -75,13 +82,25 @@ export async function updateDeveloperAction(
 }
 
 /** Deletes a constructora, unless users, projects, properties or fiducias still reference it. */
-export async function deleteDeveloperAction(developerId: number): Promise<ActionResult> {
+export async function deleteDeveloperAction(developerId: number): Promise<ActionResult<DeveloperSnapshot>> {
   if (!(await getSuperadmin())) return { success: false, error: "No tienes permiso para realizar esta acción." };
 
   const id = parseDeveloperId(developerId);
   if (id === null) return { success: false, error: "Constructora no válida." };
 
   const result = await deleteDeveloper(id);
+  if (result.success) revalidatePath("/dashboard", "layout");
+  return result;
+}
+
+/** "Deshacer" for `deleteDeveloperAction`: re-creates the constructora from its snapshot. */
+export async function restoreDeveloperAction(snapshot: DeveloperSnapshot): Promise<ActionResult> {
+  if (!(await getSuperadmin())) return { success: false, error: "No tienes permiso para realizar esta acción." };
+
+  const record = parseDeletedRecord(snapshot, parseDeveloperId, parseDeveloperForm);
+  if (!record) return { success: false, error: "No se pudo restaurar: los datos no son válidos." };
+
+  const result = await restoreDeveloper(record);
   if (result.success) revalidatePath("/dashboard", "layout");
   return result;
 }

@@ -11,5 +11,10 @@ export function actionFailure<TValues>(message: string): ActionFormResult<TValue
   return { success: false, message, fieldErrors: {} };
 }
 
-/** What a Server Action without a form returns (toggle, delete…). */
-export type ActionResult = { success: true } | { success: false; error: string };
+/**
+ * What a Server Action without a form returns (toggle, delete, restore…).
+ * Pass `TData` when a successful call returns something (e.g. a deleted row).
+ */
+export type ActionResult<TData = undefined> =
+  | ([TData] extends [undefined] ? { success: true } : { success: true; data: TData })
+  | { success: false; error: string };

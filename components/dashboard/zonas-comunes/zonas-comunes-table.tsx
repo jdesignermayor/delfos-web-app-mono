@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import { QueryListState } from "@/components/dashboard/query-list-state";
+import { EditIconLink, RowActions } from "@/components/dashboard/row-actions";
 import { DeleteCommonAreaButton } from "@/components/dashboard/zonas-comunes/delete-common-area-button";
 import { commonAreaQueries } from "@/lib/common-areas/common-area-queries";
 
@@ -40,12 +40,10 @@ export function ZonasComunesTable() {
                   <td className="py-3 pr-4 text-muted">{item.phone || "-"}</td>
                   <td className="py-3 pr-4 text-muted">{item.email || "-"}</td>
                   <td className="py-3 pl-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link href={`/dashboard/zonas-comunes/${item.id}`} className="text-sm text-accent hover:underline">
-                        Editar
-                      </Link>
+                    <RowActions>
+                      <EditIconLink href={`/dashboard/zonas-comunes/${item.id}`} itemName={item.name} />
                       <DeleteCommonAreaButton commonAreaId={item.id} name={item.name} />
-                    </div>
+                    </RowActions>
                   </td>
                 </tr>
               ))}

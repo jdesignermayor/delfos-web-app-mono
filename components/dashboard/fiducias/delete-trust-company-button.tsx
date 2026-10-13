@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteTrustCompanyAction } from "@/app/actions/trust-companies";
+import { deleteTrustCompanyAction, restoreTrustCompanyAction } from "@/app/actions/trust-companies";
 import { DeleteEntityButton } from "@/components/dashboard/delete-entity-button";
 import { queryKeys } from "@/lib/query-keys";
 import { trustCompanyQueries } from "@/lib/trust-companies/trust-company-queries";
@@ -24,10 +24,10 @@ export function DeleteTrustCompanyButton({
       entityLabel="la fiducia"
       consequence="Los inmuebles que ya la tienen asignada conservan su nombre, pero no podrá elegirse en inmuebles nuevos."
       action={deleteTrustCompanyAction}
+      restoreAction={restoreTrustCompanyAction}
       mutationKey={queryKeys.trustCompanies.detail(trustCompanyId)}
       listKey={trustCompanyQueries.list().queryKey}
       invalidateKey={queryKeys.trustCompanies.all}
-      successMessage={`${name} eliminada`}
       redirectTo={redirectTo}
       placement={placement}
     />

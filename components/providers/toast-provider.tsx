@@ -35,16 +35,38 @@ const TOAST_STYLES = `
   .toast-exit {
     animation: slideUp 0.3s ease-in forwards;
   }
+
+  @keyframes toastCountdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+  }
+
+  .toast-countdown {
+    transform-origin: left;
+    animation: toastCountdown linear forwards;
+  }
 `;
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
-interface Toast {
-  id: string;
+/** A button inside the toast (e.g. "Deshacer"); pressing it runs `onPress` and dismisses the toast. */
+export interface ToastAction {
+  label: string;
+  onPress: () => void;
+}
+
+export interface ToastOptions {
   type: ToastType;
   title: string;
   description?: string;
+  /** Milliseconds before it closes on its own; `0` keeps it open. */
   duration?: number;
+  action?: ToastAction;
+}
+
+interface Toast extends ToastOptions {
+  id: string;
+  duration: number;
 }
 
 interface ToastContextType {
@@ -52,6 +74,9 @@ interface ToastContextType {
   error: (title: string, description?: string, duration?: number) => void;
   warning: (title: string, description?: string, duration?: number) => void;
   info: (title: string, description?: string, duration?: number) => void;
+  /** Shows a toast with every option (e.g. an action button) and returns its id. */
+  show: (options: ToastOptions) => string;
+  dismiss: (id: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -60,18 +85,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [exitingIds, setExitingIds] = useState<Set<string>>(new Set());
 
-  const addToast = useCallback((type: ToastType, title: string, description?: string, duration = 3000) => {
+  const show = useCallback(({ duration = 3000, ...options }: ToastOptions) => {
     const id = Math.random().toString(36).slice(2);
-    const newToast: Toast = { id, type, title, description, duration };
-
-    setToasts((prev) => [...prev, newToast]);
+    setToasts((prev) => [...prev, { ...options, id, duration }]);
 
     if (duration > 0) {
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
       }, duration);
     }
+    return id;
   }, []);
+
+  const addToast = useCallback(
+    (type: ToastType, title: string, description?: string, duration?: number) => {
+      show({ type, title, description, duration });
+    },
+    [show],
+  );
 
   const removeToast = useCallback((id: string) => {
     setExitingIds((prev) => new Set([...prev, id]));
@@ -113,7 +144,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [addToast],
   );
 
-  const value = { success, error, warning, info };
+  const value = { success, error, warning, info, show, dismiss: removeToast };
 
   return (
     <ToastContext.Provider value={value}>
@@ -191,18 +222,40 @@ function ToastItem({
   const config = getConfig();
 
   return (
-    <Card className={`flex flex-row items-start gap-3 p-4 border ${config.bgColor} ${isExiting ? "toast-exit" : "toast-enter"}`}>
+    <Card className={`relative flex flex-row items-start gap-3 overflow-hidden p-4 border ${config.bgColor} ${isExiting ? "toast-exit" : "toast-enter"}`}>
       {config.icon}
       <div className="flex-1">
         <p className={`text-sm font-semibold ${config.textColor}`}>{toast.title}</p>
         {toast.description && <p className={`text-xs mt-1 ${config.textColor} opacity-75`}>{toast.description}</p>}
       </div>
+      {toast.action ? (
+        <button
+          type="button"
+          onClick={() => {
+            toast.action?.onPress();
+            onRemove(toast.id);
+          }}
+          className={`self-center border border-current px-2.5 py-1 text-xs font-semibold uppercase tracking-wide transition-opacity hover:opacity-80 ${config.textColor}`}
+        >
+          {toast.action.label}
+        </button>
+      ) : null}
       <button
+        type="button"
+        aria-label="Cerrar"
         onClick={() => onRemove(toast.id)}
         className={`text-sm transition-colors hover:opacity-80 ${config.textColor}`}
       >
         <X className="h-4 w-4" />
       </button>
+      {toast.action && toast.duration > 0 ? (
+        // How long the action stays available.
+        <span
+          aria-hidden
+          className={`toast-countdown absolute inset-x-0 bottom-0 h-0.5 bg-current opacity-40 ${config.textColor}`}
+          style={{ animationDuration: `${toast.duration}ms` }}
+        />
+      ) : null}
     </Card>
   );
 }

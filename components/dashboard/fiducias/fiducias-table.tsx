@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import { DeleteTrustCompanyButton } from "@/components/dashboard/fiducias/delete-trust-company-button";
 import { QueryListState } from "@/components/dashboard/query-list-state";
+import { EditIconLink, RowActions } from "@/components/dashboard/row-actions";
 import { trustCompanyQueries } from "@/lib/trust-companies/trust-company-queries";
 
 /**
@@ -37,12 +37,10 @@ export function FiduciasTable({ canEdit }: { canEdit: boolean }) {
                   <td className="py-3 pr-4 text-muted">{item.email || "-"}</td>
                   <td className="py-3 pl-4 text-right">
                     {canEdit ? (
-                      <div className="flex items-center justify-end gap-1">
-                        <Link href={`/dashboard/fiducias/${item.id}`} className="text-sm text-accent hover:underline">
-                          Editar
-                        </Link>
+                      <RowActions>
+                        <EditIconLink href={`/dashboard/fiducias/${item.id}`} itemName={item.name} />
                         <DeleteTrustCompanyButton trustCompanyId={item.id} name={item.name} />
-                      </div>
+                      </RowActions>
                     ) : (
                       <span className="text-xs text-muted">Solo lectura</span>
                     )}

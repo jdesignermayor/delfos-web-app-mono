@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteDeveloperAction } from "@/app/actions/developers";
+import { deleteDeveloperAction, restoreDeveloperAction } from "@/app/actions/developers";
 import { DeleteEntityButton } from "@/components/dashboard/delete-entity-button";
 import { developerQueries } from "@/lib/developers/developer-queries";
 import { queryKeys } from "@/lib/query-keys";
@@ -24,10 +24,10 @@ export function DeleteDeveloperButton({
       entityLabel="la constructora"
       consequence="Solo se puede eliminar si no tiene usuarios, proyectos, inmuebles ni fiducias propias. Si solo quieres bloquear el acceso, deshabilítala."
       action={deleteDeveloperAction}
+      restoreAction={restoreDeveloperAction}
       mutationKey={queryKeys.developers.detail(developerId)}
       listKey={developerQueries.list().queryKey}
       invalidateKey={queryKeys.developers.all}
-      successMessage={`${name} eliminada`}
       redirectTo={redirectTo}
       placement={placement}
     />
