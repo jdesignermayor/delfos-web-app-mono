@@ -1,14 +1,14 @@
 /**
- * Fiducias (`trust_companies` table): list, read and update.
+ * Fiducias (`trust_companies` table): list, read, update and delete.
  * Server-only — uses the service-role client. Callers must authorize the
  * caller and pass their constructora scope.
  */
+import { PG_ERROR } from "@/lib/db-errors";
+import type { ActionResult } from "@/lib/forms/action-result";
 import type { TrustCompanyField, TrustCompanyInput } from "@/lib/validation/trust-company";
 import { parseUuid } from "@/lib/validation/uuid";
 import { createAdminClient } from "@/supabase/admin";
 
-/** Postgres `unique_violation`. */
-const UNIQUE_VIOLATION = "23505";
 
 export type TrustCompanyRow = {
   id: string;
@@ -76,10 +76,28 @@ export async function updateTrustCompany(
 
   if (error) {
     // `nit` is the only unique column besides the id.
-    return error.code === UNIQUE_VIOLATION
+    return error.code === PG_ERROR.uniqueViolation
       ? { success: false, error: "Ya existe una fiducia con este NIT.", field: "nit" }
       : { success: false, error: `No se pudo actualizar la fiducia: ${error.message}` };
   }
   if (!data) return { success: false, error: "La fiducia no existe." };
   return { success: true, trustCompanyId: data.id };
+}
+
+/**
+ * Deletes a fiducia. Properties store the fiducia's name as text (not a
+ * foreign key), so the ones that used it keep showing that name.
+ */
+export async function deleteTrustCompany(trustCompanyId: string): Promise<ActionResult> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("trust_companies")
+    .delete()
+    .eq("id", trustCompanyId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) return { success: false, error: `No se pudo eliminar la fiducia: ${error.message}` };
+  if (!data) return { success: false, error: "La fiducia no existe." };
+  return { success: true };
 }

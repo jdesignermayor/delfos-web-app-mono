@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { updateCommonAreaAction } from "@/app/actions/common-areas";
 import { ArrowRightIcon } from "@/components/icons";
 import { CommonAreaForm } from "@/components/dashboard/zonas-comunes/common-area-form";
+import { DeleteCommonAreaButton } from "@/components/dashboard/zonas-comunes/delete-common-area-button";
 import { requireSuperadmin } from "@/lib/auth/dal";
 import { getCommonArea, parseCommonAreaId } from "@/lib/common-areas/common-areas";
 import { toContactFormValues } from "@/lib/validation/company";
@@ -29,9 +30,17 @@ export default async function EditZonaComunPage({ params }: PageProps<"/dashboar
         Volver a zonas comunes
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Editar zona común</h1>
-        <p className="mt-1 text-sm text-muted">{commonArea.name}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Editar zona común</h1>
+          <p className="mt-1 text-sm text-muted">{commonArea.name}</p>
+        </div>
+        <DeleteCommonAreaButton
+          commonAreaId={commonArea.id}
+          name={commonArea.name}
+          redirectTo="/dashboard/zonas-comunes"
+          placement="page"
+        />
       </div>
 
       <CommonAreaForm

@@ -1,8 +1,9 @@
 /**
- * Zonas comunes (`common_areas` table): list, read and update.
+ * Zonas comunes (`common_areas` table): list, read, update and delete.
  * Server-only — uses the service-role client. Callers must check the caller
  * is a superadmin.
  */
+import type { ActionResult } from "@/lib/forms/action-result";
 import type { CommonAreaInput } from "@/lib/validation/common-area";
 import { parseUuid } from "@/lib/validation/uuid";
 import { createAdminClient } from "@/supabase/admin";
@@ -62,4 +63,17 @@ export async function updateCommonArea(commonAreaId: string, input: CommonAreaIn
   if (error) return { success: false, error: `No se pudo actualizar la zona común: ${error.message}` };
   if (!data) return { success: false, error: "La zona común no existe." };
   return { success: true, commonAreaId: data.id };
+}
+
+/**
+ * Deletes a zona común. Properties keep a snapshot of their amenities
+ * (`properties.amenities`), so the ones that listed it keep showing it.
+ */
+export async function deleteCommonArea(commonAreaId: string): Promise<ActionResult> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("common_areas").delete().eq("id", commonAreaId).select("id").maybeSingle();
+
+  if (error) return { success: false, error: `No se pudo eliminar la zona común: ${error.message}` };
+  if (!data) return { success: false, error: "La zona común no existe." };
+  return { success: true };
 }

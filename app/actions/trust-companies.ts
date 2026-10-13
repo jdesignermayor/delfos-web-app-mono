@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { getDashboardUser } from "@/lib/auth/dal";
 import { canAccessEntity } from "@/lib/auth/permissions";
-import { actionFailure, type ActionFormResult } from "@/lib/forms/action-result";
-import { parseTrustCompanyId, updateTrustCompany } from "@/lib/trust-companies/trust-companies";
+import { actionFailure, type ActionFormResult, type ActionResult } from "@/lib/forms/action-result";
+import { deleteTrustCompany, parseTrustCompanyId, updateTrustCompany } from "@/lib/trust-companies/trust-companies";
 import { parseTrustCompanyForm, type TrustCompanyFormValues } from "@/lib/validation/trust-company";
 
 export type UpdateTrustCompanyActionResult = ActionFormResult<TrustCompanyFormValues>;
@@ -40,4 +40,19 @@ export async function updateTrustCompanyAction(
   // Fiducias feed catalogs and the property form's selects across the dashboard.
   revalidatePath("/dashboard", "layout");
   return { success: true };
+}
+
+/** Deletes a fiducia. Superadmins only, like editing. */
+export async function deleteTrustCompanyAction(trustCompanyId: string): Promise<ActionResult> {
+  const user = await getDashboardUser();
+  if (!user || !canAccessEntity(user, "trust_companies", "modify")) {
+    return { success: false, error: "No tienes permiso para realizar esta acción." };
+  }
+
+  const id = parseTrustCompanyId(trustCompanyId);
+  if (id === null) return { success: false, error: "Fiducia no válida." };
+
+  const result = await deleteTrustCompany(id);
+  if (result.success) revalidatePath("/dashboard", "layout");
+  return result;
 }

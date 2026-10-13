@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { updateDeveloperAction } from "@/app/actions/developers";
 import { ArrowRightIcon } from "@/components/icons";
+import { DeleteDeveloperButton } from "@/components/dashboard/constructoras/delete-developer-button";
 import { DeveloperForm } from "@/components/dashboard/constructoras/developer-form";
 import { requireSuperadmin } from "@/lib/auth/dal";
 import { getDeveloper, parseDeveloperId, type DeveloperRow } from "@/lib/developers/developers";
@@ -34,9 +35,17 @@ export default async function EditConstructoraPage({ params }: PageProps<"/dashb
         Volver a constructoras
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Editar constructora</h1>
-        <p className="mt-1 text-sm text-muted">{developer.name}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Editar constructora</h1>
+          <p className="mt-1 text-sm text-muted">{developer.name}</p>
+        </div>
+        <DeleteDeveloperButton
+          developerId={developer.id}
+          name={developer.name}
+          redirectTo="/dashboard/constructoras"
+          placement="page"
+        />
       </div>
 
       <DeveloperForm

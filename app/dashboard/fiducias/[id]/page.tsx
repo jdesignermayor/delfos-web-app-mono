@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { updateTrustCompanyAction } from "@/app/actions/trust-companies";
 import { ArrowRightIcon } from "@/components/icons";
+import { DeleteTrustCompanyButton } from "@/components/dashboard/fiducias/delete-trust-company-button";
 import { TrustCompanyForm } from "@/components/dashboard/fiducias/trust-company-form";
 import { requireDashboardUser } from "@/lib/auth/dal";
 import { canAccessEntity } from "@/lib/auth/permissions";
@@ -33,9 +34,17 @@ export default async function EditFiduciaPage({ params }: PageProps<"/dashboard/
         Volver a fiducias
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Editar fiducia</h1>
-        <p className="mt-1 text-sm text-muted">{trustCompany.name}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Editar fiducia</h1>
+          <p className="mt-1 text-sm text-muted">{trustCompany.name}</p>
+        </div>
+        <DeleteTrustCompanyButton
+          trustCompanyId={trustCompany.id}
+          name={trustCompany.name}
+          redirectTo="/dashboard/fiducias"
+          placement="page"
+        />
       </div>
 
       <TrustCompanyForm

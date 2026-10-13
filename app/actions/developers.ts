@@ -4,12 +4,12 @@ import { revalidatePath, updateTag } from "next/cache";
 
 import { getSuperadmin } from "@/lib/auth/dal";
 import { USER_PROFILES_CACHE_TAG } from "@/lib/cache-tags";
-import { parseDeveloperId, updateDeveloper } from "@/lib/developers/developers";
-import { actionFailure, type ActionFormResult } from "@/lib/forms/action-result";
+import { deleteDeveloper, parseDeveloperId, updateDeveloper } from "@/lib/developers/developers";
+import { actionFailure, type ActionFormResult, type ActionResult } from "@/lib/forms/action-result";
 import { parseDeveloperForm, type DeveloperFormValues } from "@/lib/validation/developer";
 import { createAdminClient } from "@/supabase/admin";
 
-export type SetDeveloperEnabledResult = { success: true } | { success: false; error: string };
+export type SetDeveloperEnabledResult = ActionResult;
 
 /**
  * Enables or disables a constructora. Its users can't sign in — and are
@@ -72,4 +72,16 @@ export async function updateDeveloperAction(
   updateTag(USER_PROFILES_CACHE_TAG);
   revalidatePath("/dashboard", "layout");
   return { success: true };
+}
+
+/** Deletes a constructora, unless users, projects, properties or fiducias still reference it. */
+export async function deleteDeveloperAction(developerId: number): Promise<ActionResult> {
+  if (!(await getSuperadmin())) return { success: false, error: "No tienes permiso para realizar esta acción." };
+
+  const id = parseDeveloperId(developerId);
+  if (id === null) return { success: false, error: "Constructora no válida." };
+
+  const result = await deleteDeveloper(id);
+  if (result.success) revalidatePath("/dashboard", "layout");
+  return result;
 }

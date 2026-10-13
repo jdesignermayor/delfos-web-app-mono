@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { getSuperadmin } from "@/lib/auth/dal";
-import { parseCommonAreaId, updateCommonArea } from "@/lib/common-areas/common-areas";
-import { actionFailure, type ActionFormResult } from "@/lib/forms/action-result";
+import { deleteCommonArea, parseCommonAreaId, updateCommonArea } from "@/lib/common-areas/common-areas";
+import { actionFailure, type ActionFormResult, type ActionResult } from "@/lib/forms/action-result";
 import { parseCommonAreaForm, type CommonAreaFormValues } from "@/lib/validation/common-area";
 
 export type UpdateCommonAreaActionResult = ActionFormResult<CommonAreaFormValues>;
@@ -31,4 +31,15 @@ export async function updateCommonAreaAction(
   // Zonas comunes feed the property form's amenity picker across the dashboard.
   revalidatePath("/dashboard", "layout");
   return { success: true };
+}
+
+export async function deleteCommonAreaAction(commonAreaId: string): Promise<ActionResult> {
+  if (!(await getSuperadmin())) return { success: false, error: "No tienes permiso para realizar esta acción." };
+
+  const id = parseCommonAreaId(commonAreaId);
+  if (id === null) return { success: false, error: "Zona común no válida." };
+
+  const result = await deleteCommonArea(id);
+  if (result.success) revalidatePath("/dashboard", "layout");
+  return result;
 }

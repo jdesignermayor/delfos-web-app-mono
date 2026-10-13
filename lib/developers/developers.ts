@@ -1,13 +1,13 @@
 /**
- * Constructoras (`developers` table): list, read and update.
+ * Constructoras (`developers` table): list, read, update and delete.
  * Server-only — uses the service-role client. Callers must check the caller
  * is a superadmin.
  */
+import { PG_ERROR } from "@/lib/db-errors";
+import type { ActionResult } from "@/lib/forms/action-result";
 import type { DeveloperField, DeveloperInput } from "@/lib/validation/developer";
 import { createAdminClient } from "@/supabase/admin";
 
-/** Postgres `unique_violation`. */
-const UNIQUE_VIOLATION = "23505";
 
 export type DeveloperRow = {
   id: number;
@@ -95,10 +95,59 @@ export async function updateDeveloper(developerId: number, input: DeveloperInput
 
   if (error) {
     // `nit` is the only unique column besides the id.
-    return error.code === UNIQUE_VIOLATION
+    return error.code === PG_ERROR.uniqueViolation
       ? { success: false, error: "Ya existe una constructora con este NIT.", field: "nit" }
       : { success: false, error: `No se pudo actualizar la constructora: ${error.message}` };
   }
   if (!data) return { success: false, error: "La constructora no existe." };
   return { success: true, developerId: data.id };
+}
+
+/** What still points at a constructora, by label — any of these blocks deleting it. */
+async function countDeveloperDependents(developerId: number): Promise<{ label: string; count: number }[]> {
+  const admin = createAdminClient();
+  const count = { count: "exact", head: true } as const;
+  const [users, projects, properties, trustCompanies] = await Promise.all([
+    admin.from("users").select("id", count).eq("developer_id", developerId),
+    admin.from("projects").select("id", count).eq("developer_id", developerId),
+    admin
+      .from("properties")
+      .select("id", count)
+      .or(`developer_id.eq.${developerId},builder_id.eq.${developerId},seller_id.eq.${developerId}`),
+    admin.from("trust_companies").select("id", count).eq("developer_id", developerId),
+  ]);
+
+  return [
+    { label: "usuarios", count: users.count ?? 0 },
+    { label: "proyectos", count: projects.count ?? 0 },
+    { label: "inmuebles", count: properties.count ?? 0 },
+    { label: "fiducias propias", count: trustCompanies.count ?? 0 },
+  ];
+}
+
+const IN_USE_HINT = "Reasígnalos o elimínalos primero, o deshabilita la constructora en su lugar.";
+
+/**
+ * Deletes a constructora that nothing references anymore. Users, projects,
+ * properties and its own fiducias block the delete (their foreign keys have
+ * no `ON DELETE`), so they're counted first to explain why.
+ */
+export async function deleteDeveloper(developerId: number): Promise<ActionResult> {
+  const inUse = (await countDeveloperDependents(developerId)).filter(({ count }) => count > 0);
+  if (inUse.length > 0) {
+    const summary = inUse.map(({ label, count }) => `${count} ${label}`).join(", ");
+    return { success: false, error: `No se puede eliminar: tiene ${summary}. ${IN_USE_HINT}` };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("developers").delete().eq("id", developerId).select("id").maybeSingle();
+
+  if (error) {
+    // Something got linked between the check and the delete.
+    return error.code === PG_ERROR.foreignKeyViolation
+      ? { success: false, error: `No se puede eliminar: la constructora tiene registros asociados. ${IN_USE_HINT}` }
+      : { success: false, error: `No se pudo eliminar la constructora: ${error.message}` };
+  }
+  if (!data) return { success: false, error: "La constructora no existe." };
+  return { success: true };
 }

@@ -10,3 +10,6 @@ export type ActionFormResult<TValues> =
 export function actionFailure<TValues>(message: string): ActionFormResult<TValues> {
   return { success: false, message, fieldErrors: {} };
 }
+
+/** What a Server Action without a form returns (toggle, delete…). */
+export type ActionResult = { success: true } | { success: false; error: string };
