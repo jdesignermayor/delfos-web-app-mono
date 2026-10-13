@@ -1,0 +1,87 @@
+/**
+ * Fiducias (`trust_companies` table): list, read and update.
+ * Server-only — uses the service-role client. Callers must authorize the
+ * caller and pass their constructora scope.
+ */
+import type { TrustCompanyField, TrustCompanyInput } from "@/lib/validation/trust-company";
+import { createAdminClient } from "@/supabase/admin";
+
+/** Postgres `unique_violation`. */
+const UNIQUE_VIOLATION = "23505";
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type TrustCompanyRow = {
+  id: string;
+  name: string;
+  nit: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  description: string | null;
+  updatedAt: string | null;
+};
+
+/** One row of the fiducias list (`/dashboard/fiducias`). */
+export type TrustCompanyListItem = Pick<TrustCompanyRow, "id" | "name" | "nit" | "phone" | "email">;
+
+export type SaveTrustCompanyResult =
+  | { success: true; trustCompanyId: string }
+  | { success: false; error: string; field?: TrustCompanyField };
+
+/** Parses a route segment into a fiducia id (a UUID), or `null` when it isn't one. */
+export function parseTrustCompanyId(value: unknown): string | null {
+  return typeof value === "string" && UUID_REGEX.test(value) ? value : null;
+}
+
+/**
+ * Fiducias visible to a constructora scope, newest first: the shared catalog
+ * plus the constructora's own rows, or every row when `developerScope` is
+ * `null` (superadmin). Throws when the query fails.
+ */
+export async function listTrustCompanies(developerScope: number | null): Promise<TrustCompanyListItem[]> {
+  const admin = createAdminClient();
+  let query = admin
+    .from("trust_companies")
+    .select("id, name, nit, phone, email")
+    .order("created_at", { ascending: false });
+  if (developerScope !== null) query = query.or(`developer_id.is.null,developer_id.eq.${developerScope}`);
+
+  const { data, error } = await query;
+  if (error) throw new Error(`No se pudieron cargar las fiducias: ${error.message}`);
+  return data;
+}
+
+export async function getTrustCompany(trustCompanyId: string): Promise<TrustCompanyRow | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("trust_companies")
+    .select("id, name, nit, phone, email, address, description, updated_at")
+    .eq("id", trustCompanyId)
+    .maybeSingle();
+
+  if (!data) return null;
+  const { updated_at: updatedAt, ...row } = data;
+  return { ...row, updatedAt };
+}
+
+export async function updateTrustCompany(
+  trustCompanyId: string,
+  input: TrustCompanyInput,
+): Promise<SaveTrustCompanyResult> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("trust_companies")
+    .update({ ...input, updated_at: new Date().toISOString() })
+    .eq("id", trustCompanyId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    // `nit` is the only unique column besides the id.
+    return error.code === UNIQUE_VIOLATION
+      ? { success: false, error: "Ya existe una fiducia con este NIT.", field: "nit" }
+      : { success: false, error: `No se pudo actualizar la fiducia: ${error.message}` };
+  }
+  if (!data) return { success: false, error: "La fiducia no existe." };
+  return { success: true, trustCompanyId: data.id };
+}

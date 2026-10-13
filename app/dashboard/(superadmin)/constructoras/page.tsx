@@ -1,17 +1,23 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { Card, buttonVariants } from "@heroui/react";
 
 import { ArrowRightIcon } from "@/components/icons";
-import { getEntities } from "@/app/actions/entities";
-import { DeveloperEnabledSwitch } from "@/components/dashboard/constructoras/developer-enabled-switch";
-import type { Tables } from "@/supabase/types";
+import { ConstructorasTable } from "@/components/dashboard/constructoras/constructoras-table";
+import { developerQueries } from "@/lib/developers/developer-queries";
+import { listDevelopers } from "@/lib/developers/developers";
 
 export const metadata: Metadata = { title: "Constructoras" };
 
 export default async function ConstructorasPage() {
-  const result = await getEntities("developers");
-  const constructoras = result.success ? (result.data as Tables<"developers">[]) : [];
+  // Prefetch on the server so the table renders with data; the browser
+  // cache takes over from there. `queryFn` is overridden because the
+  // client one fetches a relative URL that only resolves in the browser.
+  // A failed fetch isn't dehydrated: the table retries in the browser and
+  // shows the error there.
+  const queryClient = new QueryClient();
+  await queryClient.query({ ...developerQueries.list(), queryFn: listDevelopers }).catch(() => undefined);
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -27,46 +33,9 @@ export default async function ConstructorasPage() {
       </div>
 
       <Card className="p-5">
-        {constructoras.length === 0 ? (
-          <p className="text-center text-muted">No hay constructoras registradas</p>
-        ) : (
-          <div className="-mx-5 overflow-x-auto px-5">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="border-b border-separator text-left text-xs uppercase tracking-wider text-muted">
-                  <th className="py-2 pr-4 font-medium">Nombre</th>
-                  <th className="py-2 pr-4 font-medium">NIT</th>
-                  <th className="py-2 pr-4 font-medium">Teléfono</th>
-                  <th className="py-2 pr-4 font-medium">Email</th>
-                  <th className="py-2 pr-4 font-medium">Estado</th>
-                  <th className="py-2 pl-4 text-right font-medium">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-separator">
-                {constructoras.map((item) => (
-                  <tr key={item.id} className="hover:bg-surface-secondary/60">
-                    <td className="py-3 pr-4 font-medium">{item.name}</td>
-                    <td className="py-3 pr-4 text-muted">{item.nit || "-"}</td>
-                    <td className="py-3 pr-4 text-muted">{item.phone || "-"}</td>
-                    <td className="py-3 pr-4 text-muted">{item.email || "-"}</td>
-                    <td className="py-3 pr-4">
-                      <DeveloperEnabledSwitch
-                        developerId={item.id}
-                        developerName={item.name}
-                        isEnabled={item.is_enabled}
-                      />
-                    </td>
-                    <td className="py-3 pl-4 text-right">
-                      <Link href={`/dashboard/constructoras/${item.id}`} className="text-sm text-accent hover:underline">
-                        Editar
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <HydrationBoundary state={dehydrate(queryClient)}>
+          <ConstructorasTable />
+        </HydrationBoundary>
       </Card>
     </div>
   );

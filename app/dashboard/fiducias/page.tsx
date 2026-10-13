@@ -1,20 +1,30 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { Card, buttonVariants } from "@heroui/react";
 
 import { ArrowRightIcon } from "@/components/icons";
-import { getEntities } from "@/app/actions/entities";
+import { FiduciasTable } from "@/components/dashboard/fiducias/fiducias-table";
 import { requireDashboardUser } from "@/lib/auth/dal";
-import { isSuperadmin } from "@/lib/auth/permissions";
-import type { Tables } from "@/supabase/types";
+import { canAccessEntity, developerScope } from "@/lib/auth/permissions";
+import { listTrustCompanies } from "@/lib/trust-companies/trust-companies";
+import { trustCompanyQueries } from "@/lib/trust-companies/trust-company-queries";
 
 export const metadata: Metadata = { title: "Fiducias" };
 
-export default async function FidiciasPage() {
+export default async function FiduciasPage() {
   const user = await requireDashboardUser();
-  const canEdit = isSuperadmin(user);
-  const result = await getEntities("trust_companies");
-  const fiducias = result.success ? (result.data as Tables<"trust_companies">[]) : [];
+  const canEdit = canAccessEntity(user, "trust_companies", "modify");
+
+  // Prefetch on the server so the table renders with data; the browser
+  // cache takes over from there. `queryFn` is overridden because the
+  // client one fetches a relative URL that only resolves in the browser.
+  // A failed fetch isn't dehydrated: the table retries in the browser and
+  // shows the error there.
+  const queryClient = new QueryClient();
+  await queryClient
+    .query({ ...trustCompanyQueries.list(), queryFn: () => listTrustCompanies(developerScope(user)) })
+    .catch(() => undefined);
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -30,42 +40,9 @@ export default async function FidiciasPage() {
       </div>
 
       <Card className="p-5">
-        {fiducias.length === 0 ? (
-          <p className="text-center text-muted">No hay fiducias registradas</p>
-        ) : (
-          <div className="-mx-5 overflow-x-auto px-5">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead>
-                <tr className="border-b border-separator text-left text-xs uppercase tracking-wider text-muted">
-                  <th className="py-2 pr-4 font-medium">Nombre</th>
-                  <th className="py-2 pr-4 font-medium">NIT</th>
-                  <th className="py-2 pr-4 font-medium">Teléfono</th>
-                  <th className="py-2 pr-4 font-medium">Email</th>
-                  <th className="py-2 pl-4 text-right font-medium">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-separator">
-                {fiducias.map((item) => (
-                  <tr key={item.id} className="hover:bg-surface-secondary/60">
-                    <td className="py-3 pr-4 font-medium">{item.name}</td>
-                    <td className="py-3 pr-4 text-muted">{item.nit || "-"}</td>
-                    <td className="py-3 pr-4 text-muted">{item.phone || "-"}</td>
-                    <td className="py-3 pr-4 text-muted">{item.email || "-"}</td>
-                    <td className="py-3 pl-4 text-right">
-                      {canEdit ? (
-                        <Link href={`/dashboard/fiducias/${item.id}`} className="text-sm text-accent hover:underline">
-                          Editar
-                        </Link>
-                      ) : (
-                        <span className="text-xs text-muted">Solo lectura</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <HydrationBoundary state={dehydrate(queryClient)}>
+          <FiduciasTable canEdit={canEdit} />
+        </HydrationBoundary>
       </Card>
     </div>
   );
