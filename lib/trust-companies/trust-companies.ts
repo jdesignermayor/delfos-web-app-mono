@@ -4,11 +4,11 @@
  * caller and pass their constructora scope.
  */
 import type { TrustCompanyField, TrustCompanyInput } from "@/lib/validation/trust-company";
+import { parseUuid } from "@/lib/validation/uuid";
 import { createAdminClient } from "@/supabase/admin";
 
 /** Postgres `unique_violation`. */
 const UNIQUE_VIOLATION = "23505";
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type TrustCompanyRow = {
   id: string;
@@ -29,9 +29,7 @@ export type SaveTrustCompanyResult =
   | { success: false; error: string; field?: TrustCompanyField };
 
 /** Parses a route segment into a fiducia id (a UUID), or `null` when it isn't one. */
-export function parseTrustCompanyId(value: unknown): string | null {
-  return typeof value === "string" && UUID_REGEX.test(value) ? value : null;
-}
+export const parseTrustCompanyId = parseUuid;
 
 /**
  * Fiducias visible to a constructora scope, newest first: the shared catalog

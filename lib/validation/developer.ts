@@ -1,4 +1,5 @@
 import {
+  hasErrors,
   parseCompanyFields,
   type CompanyField,
   type CompanyFormValues,
@@ -30,7 +31,7 @@ export function parseDeveloperForm(
 ): DeveloperParseResult {
   const { data, errors } = parseCompanyFields(values, { phoneRequired: true, addressRequired: true });
 
-  if (Object.keys(errors).length > 0 || data.phone === null || data.address === null) {
+  if (hasErrors(errors) || data.phone === null || data.address === null) {
     return { success: false, errors };
   }
   return {

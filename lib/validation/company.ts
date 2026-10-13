@@ -1,30 +1,34 @@
 import { isValidEmail, normalizeEmail } from "@/lib/validation/email";
 
 /**
- * Fields shared by every company-like catalog (constructoras, fiducias…):
- * name, NIT, contact details and a description. Each entity's validator
- * composes `parseCompanyFields` and adds its own fields on top.
+ * Fields shared by the catalogs (constructoras, fiducias, zonas comunes…).
+ * "Contact" fields are a name plus contact details and a description; a
+ * "company" adds its NIT. Each entity's validator composes one of these and
+ * adds its own fields on top.
  */
 
-export type CompanyField = "name" | "nit" | "phone" | "email" | "address" | "description";
+export type ContactField = "name" | "phone" | "email" | "address" | "description";
+export type CompanyField = ContactField | "nit";
 
+export type ContactFieldErrors = Partial<Record<ContactField, string>>;
 export type CompanyFieldErrors = Partial<Record<CompanyField, string>>;
 
-/** What a company form holds: every field as typed. */
+/** What a form holds: every field as typed. */
+export type ContactFormValues = Record<ContactField, string>;
 export type CompanyFormValues = Record<CompanyField, string>;
 
-/** Validated company fields. Optional ones are `null` when left blank. */
-export type CompanyInput = {
+/** Validated fields. Optional ones are `null` when left blank. */
+export type ContactInput = {
   name: string;
-  nit: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
   description: string | null;
 };
+export type CompanyInput = ContactInput & { nit: string | null };
 
 /** Which optional fields an entity requires (they're `NOT NULL` in its table). */
-export type CompanyRules = {
+export type ContactRules = {
   phoneRequired?: boolean;
   addressRequired?: boolean;
 };
@@ -45,28 +49,23 @@ const asText = (value: unknown) => (typeof value === "string" ? value : "");
 const collapseSpaces = (value: string) => value.trim().replace(/\s+/g, " ");
 
 /**
- * Validates the shared company fields and returns every error at once.
- * Takes `unknown` values because Server Action arguments come from the
- * client and can't be trusted to match the TypeScript type.
+ * Validates the contact fields and returns every error at once. Takes
+ * `unknown` values because Server Action arguments come from the client and
+ * can't be trusted to match the TypeScript type.
  */
-export function parseCompanyFields(
-  values: Partial<Record<CompanyField, unknown>>,
-  { phoneRequired = false, addressRequired = false }: CompanyRules = {},
-): { data: CompanyInput; errors: CompanyFieldErrors } {
+export function parseContactFields(
+  values: Partial<Record<ContactField, unknown>>,
+  { phoneRequired = false, addressRequired = false }: ContactRules = {},
+): { data: ContactInput; errors: ContactFieldErrors } {
   const name = collapseSpaces(asText(values.name));
-  const nit = asText(values.nit).replace(/\s+/g, "");
   const phone = asText(values.phone).trim();
   const email = normalizeEmail(asText(values.email));
   const address = collapseSpaces(asText(values.address));
   const description = asText(values.description).trim();
 
-  const errors: CompanyFieldErrors = {};
+  const errors: ContactFieldErrors = {};
   if (!name) errors.name = "Ingresa el nombre.";
   else if (name.length > COMPANY_LIMITS.name) errors.name = `Máximo ${COMPANY_LIMITS.name} caracteres.`;
-
-  if (nit && (!NIT_REGEX.test(nit) || nit.length > COMPANY_LIMITS.nit)) {
-    errors.nit = "Ingresa un NIT válido (ej. 900.123.456-7).";
-  }
 
   if (!phone) {
     if (phoneRequired) errors.phone = "Ingresa el teléfono.";
@@ -89,7 +88,6 @@ export function parseCompanyFields(
   return {
     data: {
       name,
-      nit: nit || null,
       phone: phone || null,
       email: email || null,
       address: address || null,
@@ -99,14 +97,39 @@ export function parseCompanyFields(
   };
 }
 
-/** A stored company row (nullable columns) as form values. */
-export function toCompanyFormValues(row: { [K in CompanyField]: string | null }): CompanyFormValues {
+/** The contact fields plus an optional NIT. */
+export function parseCompanyFields(
+  values: Partial<Record<CompanyField, unknown>>,
+  rules: ContactRules = {},
+): { data: CompanyInput; errors: CompanyFieldErrors } {
+  const contact = parseContactFields(values, rules);
+  const errors: CompanyFieldErrors = { ...contact.errors };
+  const nit = asText(values.nit).replace(/\s+/g, "");
+
+  if (nit && (!NIT_REGEX.test(nit) || nit.length > COMPANY_LIMITS.nit)) {
+    errors.nit = "Ingresa un NIT válido (ej. 900.123.456-7).";
+  }
+
+  return { data: { ...contact.data, nit: nit || null }, errors };
+}
+
+/** Whether a field-error map has any errors. */
+export function hasErrors(errors: Partial<Record<string, string>>): boolean {
+  return Object.keys(errors).length > 0;
+}
+
+/** A stored row (nullable columns) as contact form values. */
+export function toContactFormValues(row: { [K in ContactField]: string | null }): ContactFormValues {
   return {
     name: row.name ?? "",
-    nit: row.nit ?? "",
     phone: row.phone ?? "",
     email: row.email ?? "",
     address: row.address ?? "",
     description: row.description ?? "",
   };
+}
+
+/** A stored row (nullable columns) as company form values. */
+export function toCompanyFormValues(row: { [K in CompanyField]: string | null }): CompanyFormValues {
+  return { ...toContactFormValues(row), nit: row.nit ?? "" };
 }

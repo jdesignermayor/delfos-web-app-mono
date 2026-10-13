@@ -1,4 +1,5 @@
 import {
+  hasErrors,
   parseCompanyFields,
   type CompanyField,
   type CompanyFieldErrors,
@@ -21,5 +22,5 @@ export function parseTrustCompanyForm(
   values: Partial<Record<keyof TrustCompanyFormValues, unknown>>,
 ): TrustCompanyParseResult {
   const { data, errors } = parseCompanyFields(values);
-  return Object.keys(errors).length > 0 ? { success: false, errors } : { success: true, data };
+  return hasErrors(errors) ? { success: false, errors } : { success: true, data };
 }

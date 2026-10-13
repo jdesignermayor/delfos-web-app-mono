@@ -13,4 +13,9 @@ export const queryKeys = {
     list: () => [...queryKeys.trustCompanies.all, "list"] as const,
     detail: (trustCompanyId: string) => [...queryKeys.trustCompanies.all, trustCompanyId] as const,
   },
+  commonAreas: {
+    all: ["common-areas"] as const,
+    list: () => [...queryKeys.commonAreas.all, "list"] as const,
+    detail: (commonAreaId: string) => [...queryKeys.commonAreas.all, commonAreaId] as const,
+  },
 };
