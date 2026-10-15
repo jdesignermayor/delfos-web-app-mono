@@ -6,7 +6,8 @@ import { Plus } from "lucide-react";
 
 import { ProjectOverview } from "@/components/dashboard/home/project-overview";
 import { computeProjectStats } from "@/components/dashboard/home/project-stats";
-import { requireDashboardUser } from "@/lib/auth/dal";
+import { ViewerHome } from "@/components/dashboard/home/viewer-home";
+import { requireAccountUser } from "@/lib/auth/dal";
 import { scopeToDeveloper } from "@/lib/auth/scope-query";
 import { needsOnboarding } from "@/lib/onboarding";
 import { createClient } from "@/supabase/server";
@@ -17,7 +18,8 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const user = await requireDashboardUser();
+  const user = await requireAccountUser();
+  if (user.role === "viewer") return <ViewerHome name={user.name} />;
   // A constructora without properties starts at the onboarding guide.
   if (await needsOnboarding(user)) redirect("/dashboard/onboarding");
 

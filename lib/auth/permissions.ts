@@ -33,6 +33,21 @@ export function canAccessDashboard(user: CurrentUser | null): user is DashboardU
   return user.role === "superadmin" || user.role === "admin";
 }
 
+/** A self-registered visitor: only gets the account home and their profile. */
+export type ViewerUser = CurrentUser & { role: "viewer" };
+
+/** Anyone allowed into the account area under `/dashboard`: dashboard users and viewers. */
+export type AccountUser = DashboardUser | ViewerUser;
+
+export function isViewer(user: CurrentUser | null): user is ViewerUser {
+  return user?.role === "viewer";
+}
+
+export function canAccessAccount(user: CurrentUser | null): user is AccountUser {
+  if (canAccessDashboard(user)) return true;
+  return isViewer(user) && signInDenialReason(user) === null;
+}
+
 /**
  * The constructora whose data this user is limited to, or `null` when they
  * can see everything (superadmin).

@@ -87,7 +87,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   return (
     <div
-      className="light flex min-h-[100dvh] flex-col bg-white text-foreground lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden"
+      className="light flex min-h-[100dvh] flex-col bg-white text-foreground pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden"
       style={{ colorScheme: "light" }}
     >
       <SearchModeProvider

@@ -37,7 +37,7 @@ export function SetPasswordForm({ tokenHash }: { tokenHash: string }) {
         return;
       }
       toast.success("Contraseña creada", "Ya puedes usar tu nueva contraseña.");
-      router.replace(result.hasDashboardAccess ? "/dashboard" : "/");
+      router.replace(result.hasAccountAccess ? "/dashboard" : "/");
     });
   }
 

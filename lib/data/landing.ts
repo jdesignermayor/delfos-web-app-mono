@@ -43,10 +43,14 @@ export const getLandingStats = cache(async (): Promise<LandingStats | null> => {
   };
 });
 
+/** Most photos a carousel card cycles through. */
+const CARD_IMAGE_LIMIT = 6;
+
 type FeaturedRow = {
   id: number;
   uuid: string;
   title: string;
+  additional_images: string[] | null;
   image: string | null;
   price: number | string;
   property_type: string | null;
@@ -63,12 +67,19 @@ function toCardType(propertyType: string | null): PropertyType {
   return CARD_TYPES.find((type) => type === propertyType) ?? "apartamento";
 }
 
+/** Photos the card's slideshow cycles through; capped, since a card only shows a few. */
+function cardImages(row: FeaturedRow): string[] | undefined {
+  if (!row.additional_images?.length) return undefined;
+  return [row.image, ...row.additional_images].filter((src): src is string => Boolean(src)).slice(0, CARD_IMAGE_LIMIT);
+}
+
 /** Maps a DB row to the subset of `Property` a carousel card renders. */
 function toFeaturedProperty(row: FeaturedRow): Property {
   return {
     slug: canonicalSlug(row),
     title: row.title,
     image: row.image ?? undefined,
+    images: cardImages(row),
     price: Number(row.price),
     operation: "comprar",
     type: toCardType(row.property_type),
@@ -87,7 +98,7 @@ function toFeaturedProperty(row: FeaturedRow): Property {
 export async function getFeaturedProperties(): Promise<Property[]> {
   const { data, error } = await createPublicClient({ revalidate: 300, tags: [PROPERTIES_CACHE_TAG] })
     .from("properties")
-    .select("id, uuid, title, image, price, property_type, seo")
+    .select("id, uuid, title, image, additional_images, price, property_type, seo")
     .order("created_at", { ascending: false })
     .limit(FEATURED_LIMIT);
 

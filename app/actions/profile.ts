@@ -3,7 +3,7 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-import { getDashboardUser } from "@/lib/auth/dal";
+import { getAccountUser } from "@/lib/auth/dal";
 import { USER_PROFILES_CACHE_TAG } from "@/lib/cache-tags";
 import { imageToAvatar } from "@/lib/image-to-webp";
 import {
@@ -45,7 +45,7 @@ export type ProfileActionResult =
   | { success: false; message: string | null; fieldErrors: ProfileFieldErrors };
 
 export async function updateProfileAction(values: ProfileFormValues): Promise<ProfileActionResult> {
-  const user = await getDashboardUser();
+  const user = await getAccountUser();
   if (!user) return { success: false, message: "Tu sesión expiró. Ingresa de nuevo.", fieldErrors: {} };
 
   const parsed = parseProfileForm(values);
@@ -76,7 +76,7 @@ export type AvatarActionResult = { success: true; url: string | null } | { succe
  * with a server-generated name and removes the previous one.
  */
 export async function uploadAvatarAction(formData: FormData): Promise<AvatarActionResult> {
-  const user = await getDashboardUser();
+  const user = await getAccountUser();
   if (!user) return { success: false, error: "Tu sesión expiró. Ingresa de nuevo." };
 
   const file = formData.get("file");
@@ -111,7 +111,7 @@ export async function uploadAvatarAction(formData: FormData): Promise<AvatarActi
 }
 
 export async function removeAvatarAction(): Promise<AvatarActionResult> {
-  const user = await getDashboardUser();
+  const user = await getAccountUser();
   if (!user) return { success: false, error: "Tu sesión expiró. Ingresa de nuevo." };
 
   const admin = createAdminClient();
@@ -136,7 +136,7 @@ export type PasswordActionResult =
  * never touches the request cookies.
  */
 export async function changePasswordAction(values: PasswordFormValues): Promise<PasswordActionResult> {
-  const user = await getDashboardUser();
+  const user = await getAccountUser();
   if (!user?.email) return { success: false, message: "Tu sesión expiró. Ingresa de nuevo.", fieldErrors: {} };
 
   const parsed = parsePasswordForm(values);

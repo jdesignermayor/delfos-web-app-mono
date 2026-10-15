@@ -11,7 +11,7 @@ const TAB_ICONS = {
   proyecto: MapPinHouseIcon,
 } as const;
 
-/** Desktop shows underlined tabs in the header; mobile shows compact pills in their own row. */
+/** Desktop shows underlined tabs with icons in the header; mobile shows plain text chips under the search box. */
 const VARIANTS = {
   desktop: {
     iconSize: 22,
@@ -20,10 +20,10 @@ const VARIANTS = {
     inactive: "border-transparent text-muted hover:border-separator hover:text-foreground",
   },
   mobile: {
-    iconSize: 18,
-    base: "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-    active: "bg-surface-secondary text-foreground",
-    inactive: "text-muted hover:bg-surface-secondary hover:text-foreground",
+    iconSize: null,
+    base: "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+    active: "border-foreground bg-foreground text-background",
+    inactive: "border-separator text-muted hover:border-foreground hover:text-foreground",
   },
 } as const;
 
@@ -43,7 +43,7 @@ export function SearchModeTabs({ variant }: { variant: keyof typeof VARIANTS }) 
         aria-current={active ? "true" : undefined}
         className={`${styles.base} ${active ? styles.active : styles.inactive}`}
       >
-        <Icon size={styles.iconSize} />
+        {styles.iconSize ? <Icon size={styles.iconSize} /> : null}
         {tab.label}
       </button>
     );

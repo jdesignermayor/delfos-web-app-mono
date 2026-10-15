@@ -2,108 +2,144 @@
 
 import { redirect } from "next/navigation";
 
-import { canAccessDashboard, signInDenialReason } from "@/lib/auth/permissions";
+import { canAccessAccount, signInDenialReason } from "@/lib/auth/permissions";
+import {
+  createTokenForUnconfirmedUser,
+  createUnconfirmedUser,
+  deleteAuthUser,
+  findRoleId,
+  isEmailRegistered,
+  saveUserProfile,
+  type PendingSignUp,
+} from "@/lib/auth/user-accounts";
+import { sendViewerConfirmationEmail } from "@/lib/email/viewer-confirmation";
+import { createRateLimiter } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/request-ip";
 import { isValidEmail, normalizeEmail } from "@/lib/validation/email";
 import { PASSWORD_REGEX } from "@/lib/validation/profile";
-import { createAdminClient } from "@/supabase/admin";
+import {
+  parseRegisterForm,
+  type RegisterField,
+  type RegisterFormValues,
+} from "@/lib/validation/register";
 import { getUserProfile, type RoleName } from "@/supabase/roles";
 import { createClient } from "@/supabase/server";
 
-export type RegisterField = "fullName" | "email" | "phone" | "password";
+export type { RegisterField } from "@/lib/validation/register";
 
+/**
+ * Sign-up never says whether an email already has an account: every successful attempt, new or
+ * existing email, gets the same "check your inbox" answer. Only format errors are
+ * specific, since they reveal nothing about stored data.
+ */
 export type RegisterResult =
   | { success: true; needsEmailConfirmation: boolean }
   | { success: false; error: string; field?: RegisterField };
 
-/** Looks up `public.users` with the service-role client so RLS can't hide a match. */
-export async function checkEmailExists(email: string): Promise<boolean> {
-  const normalized = normalizeEmail(email);
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("users")
-    .select("id")
-    .eq("email", normalized)
-    .maybeSingle();
+/** Public sign-up only ever creates viewers; other roles are invited from the dashboard. */
+const SELF_SIGNUP_ROLE: RoleName = "viewer";
 
-  if (error) throw error;
-  return data !== null;
+const REGISTER_FAILED = "No pudimos crear tu cuenta. Intenta de nuevo.";
+const TOO_MANY_ATTEMPTS = "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.";
+/** The answer for an email that may or may not be registered: indistinguishable on purpose. */
+const CHECK_YOUR_INBOX: RegisterResult = { success: true, needsEmailConfirmation: true };
+
+const signUpLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60_000 });
+const signInLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
+
+/**
+ * For an email that already has an account: re-sends the confirmation link if it was never
+ * confirmed, and otherwise does nothing. Either way the caller sees the same answer.
+ */
+async function resendConfirmationIfPending(email: string): Promise<RegisterResult> {
+  try {
+    const pending = await createTokenForUnconfirmedUser(email);
+    if (pending) await sendViewerConfirmationEmail({ email, name: pending.name, tokenHash: pending.tokenHash });
+  } catch {
+    // Swallowed on purpose: a different answer here would reveal that the email is registered.
+  }
+  return CHECK_YOUR_INBOX;
 }
 
-export async function registerAccount(input: {
-  fullName: string;
-  email: string;
-  phone: string;
-  password: string;
-}): Promise<RegisterResult> {
-  const fullName = input.fullName.trim();
-  const email = normalizeEmail(input.email);
-  const phone = input.phone.trim();
-  const password = input.password;
+/**
+ * Registers a visitor with email and password as a `viewer`. The role is fixed here on the
+ * server, never taken from the form, so sign-up can't be used to obtain dashboard access.
+ */
+export async function registerViewerAccount(input: RegisterFormValues): Promise<RegisterResult> {
+  if (!signUpLimiter.tryConsume(await getClientIp())) return { success: false, error: TOO_MANY_ATTEMPTS };
 
-  if (!fullName) {
-    return { success: false, error: "Ingresa tu nombre completo.", field: "fullName" };
-  }
-  if (!isValidEmail(email)) {
-    return { success: false, error: "Ingresa un correo válido.", field: "email" };
-  }
-  if (!phone) {
-    return { success: false, error: "Ingresa tu teléfono.", field: "phone" };
-  }
-  if (password.length < 6) {
-    return {
-      success: false,
-      error: "La contraseña debe tener al menos 6 caracteres.",
-      field: "password",
-    };
-  }
+  const parsed = parseRegisterForm(input);
+  if (!parsed.success) return parsed;
+  const { fullName, email, phone, password } = parsed.data;
 
-  let exists: boolean;
+  let roleId: string | null;
   try {
-    exists = await checkEmailExists(email);
+    if (await isEmailRegistered(email)) return resendConfirmationIfPending(email);
+    roleId = await findRoleId(SELF_SIGNUP_ROLE);
   } catch {
-    return {
-      success: false,
-      error: "No pudimos validar el correo. Intenta de nuevo.",
-      field: "email",
-    };
+    return { success: false, error: REGISTER_FAILED };
   }
-  if (exists) {
-    return { success: false, error: "Ya existe una cuenta con este correo.", field: "email" };
+  if (!roleId) return { success: false, error: REGISTER_FAILED };
+
+  let signUp: PendingSignUp;
+  try {
+    signUp = await createUnconfirmedUser({ email, password, metadata: { full_name: fullName, phone } });
+  } catch {
+    return { success: false, error: REGISTER_FAILED };
   }
+  if (signUp.status === "exists") return resendConfirmationIfPending(email);
+
+  try {
+    await saveUserProfile({ id: signUp.userId, email, name: fullName, phone, roleId });
+    const sent = await sendViewerConfirmationEmail({ email, name: fullName, tokenHash: signUp.tokenHash });
+    if (!sent.success) throw new Error(sent.error);
+  } catch {
+    // Without a profile or the email the account could never be activated: undo it so the email can try again.
+    await deleteAuthUser(signUp.userId);
+    return { success: false, error: REGISTER_FAILED };
+  }
+
+  return CHECK_YOUR_INBOX;
+}
+
+export type ConfirmEmailResult = { success: true; hasAccountAccess: boolean } | { success: false; error: string };
+
+/**
+ * Activates a viewer's account from the emailed `/auth/confirm` link and signs them in. The
+ * single-use token is only exchanged here, on click, so mail scanners that pre-open links can't burn it.
+ */
+export async function confirmEmailAction(input: { tokenHash: string }): Promise<ConfirmEmailResult> {
+  const tokenHash = typeof input?.tokenHash === "string" ? input.tokenHash : "";
+  if (!tokenHash) return { success: false, error: "El enlace no es válido." };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName, phone } },
-  });
-
-  if (error) {
-    return { success: false, error: error.message, field: "email" };
+  const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "email" });
+  if (error || !data.user) {
+    return { success: false, error: "El enlace venció o ya fue usado. Intenta iniciar sesión o regístrate de nuevo." };
   }
 
-  const userId = data.user?.id;
-  if (userId) {
-    const admin = createAdminClient();
-    await admin.from("users").upsert(
-      { id: userId, email, name: fullName, phone },
-      { onConflict: "id" },
-    );
+  const user = await getUserProfile(data.user, { fresh: true });
+  const denialReason = signInDenialReason(user);
+  if (denialReason) {
+    await supabase.auth.signOut();
+    return { success: false, error: denialReason };
   }
 
-  return { success: true, needsEmailConfirmation: data.session === null };
+  return { success: true, hasAccountAccess: canAccessAccount(user) };
 }
 
 export type SignInResult =
-  | { success: true; role: RoleName | null; hasDashboardAccess: boolean }
+  | { success: true; role: RoleName | null; hasAccountAccess: boolean }
   | { success: false; error: string };
 
 export async function signInAccount(input: {
   email: string;
   password: string;
 }): Promise<SignInResult> {
-  const email = normalizeEmail(input.email);
-  const password = input.password;
+  if (!signInLimiter.tryConsume(await getClientIp())) return { success: false, error: TOO_MANY_ATTEMPTS };
+
+  const email = normalizeEmail(String(input.email ?? ""));
+  const password = String(input.password ?? "");
 
   if (!isValidEmail(email)) {
     return { success: false, error: "Ingresa un correo válido." };
@@ -114,6 +150,10 @@ export async function signInAccount(input: {
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  // Supabase only reports this after checking the password, so it tells nothing to a stranger.
+  if (error?.code === "email_not_confirmed") {
+    return { success: false, error: "Confirma tu correo para ingresar. Revisa tu bandeja de entrada." };
+  }
   if (error || !data.user) {
     return { success: false, error: "Correo o contraseña incorrectos." };
   }
@@ -127,7 +167,7 @@ export async function signInAccount(input: {
     return { success: false, error: denialReason };
   }
 
-  return { success: true, role: user.role, hasDashboardAccess: canAccessDashboard(user) };
+  return { success: true, role: user.role, hasAccountAccess: canAccessAccount(user) };
 }
 
 export async function signOutAccount(): Promise<never> {
@@ -139,7 +179,7 @@ export async function signOutAccount(): Promise<never> {
 export type SetPasswordField = "password" | "confirmPassword";
 
 export type SetPasswordResult =
-  | { success: true; hasDashboardAccess: boolean }
+  | { success: true; hasAccountAccess: boolean }
   | { success: false; error: string; field?: SetPasswordField };
 
 /**
@@ -195,5 +235,5 @@ export async function setPasswordWithTokenAction(input: {
     return { success: false, error: `Tu contraseña quedó guardada, pero no puedes ingresar: ${denialReason}` };
   }
 
-  return { success: true, hasDashboardAccess: canAccessDashboard(user) };
+  return { success: true, hasAccountAccess: canAccessAccount(user) };
 }

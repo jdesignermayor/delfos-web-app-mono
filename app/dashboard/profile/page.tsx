@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { AvatarUploader } from "@/components/dashboard/profile/avatar-uploader";
 import { PasswordForm } from "@/components/dashboard/profile/password-form";
 import { ProfileForm } from "@/components/dashboard/profile/profile-form";
-import { requireDashboardUser } from "@/lib/auth/dal";
+import { requireAccountUser } from "@/lib/auth/dal";
 import { createAdminClient } from "@/supabase/admin";
 
 export const metadata: Metadata = { title: "Mi perfil" };
@@ -28,7 +28,7 @@ function Section({ title, description, children }: { title: string; description:
 }
 
 export default async function ProfilePage() {
-  const user = await requireDashboardUser();
+  const user = await requireAccountUser();
   // Fresh read (not the cached session profile) so the form shows what was just saved.
   const { data: profile } = await createAdminClient()
     .from("users")

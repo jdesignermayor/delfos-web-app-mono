@@ -2,6 +2,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
 
+import { CardSlideshow } from "@/components/marketing/card-slideshow";
 import { formatPrice, TYPE_LABELS, type Property } from "@/components/marketing/properties";
 import { formatRange } from "@/lib/typology-ranges";
 
@@ -78,29 +79,14 @@ export function PropertyListingCard({
         className={
           isPopup
             ? "relative h-[212px] w-full bg-[#eef2f6]"
-            : `relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#eef2f6] transition-shadow ${
+            : `relative aspect-square w-full overflow-hidden rounded-xl sm:aspect-[4/3] bg-[#eef2f6] transition-shadow ${
                 active ? "ring-2 ring-[#222222]" : ""
               }`
         }
       >
         {images.length > 0 ? (
-          <Link href={href} className="block size-full overflow-hidden">
-            <div
-              className="flex h-full transition-transform duration-300 ease-out"
-              style={{ transform: `translateX(-${index * 100}%)` }}
-            >
-              {images.map((src, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={src + i}
-                  src={src}
-                  alt={name}
-                  loading={i === 0 ? "eager" : "lazy"}
-                  draggable={false}
-                  className="h-full w-full flex-none object-cover"
-                />
-              ))}
-            </div>
+          <Link href={href} className="relative block size-full overflow-hidden">
+            <CardSlideshow images={images} alt={name} optimized={false} eager index={index} onIndexChangeAction={setIndex} />
           </Link>
         ) : (
           <Link
@@ -178,7 +164,7 @@ export function PropertyListingCard({
         }
       >
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="truncate font-semibold text-[#222222]">{name}</h3>
+          <h3 className="truncate font-bold text-[#222222]">{name}</h3>
           <span className="shrink-0 text-[0.87em] text-[#222222]">
             {TYPE_LABELS[property.type]}
           </span>
@@ -194,7 +180,7 @@ export function PropertyListingCard({
           <p className="text-[0.87em] text-[#6a6a6a]">Estrato {property.stratum}</p>
         ) : null}
         <p className="mt-1 text-[#222222]">
-          <span className="font-semibold">{formatPrice(property)} COP</span>
+          <span className="font-bold">{formatPrice(property)} COP</span>
           {property.type === "proyecto" ? <span className="text-[#6a6a6a]"> desde</span> : null}
         </p>
         {isPopup ? (

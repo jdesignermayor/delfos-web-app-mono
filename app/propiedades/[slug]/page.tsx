@@ -248,6 +248,8 @@ export default async function PropertyDetailPage({
       </main>
 
       <SiteFooter />
+      {/* Room for the mobile tab bar, so it doesn't cover the footer. */}
+      <div aria-hidden className="h-[calc(4rem+env(safe-area-inset-bottom))] md:hidden" />
     </SearchModeProvider>
   );
 }

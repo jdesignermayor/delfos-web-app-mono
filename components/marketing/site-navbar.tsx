@@ -10,6 +10,7 @@ import { CloseIcon, LogoMark, MenuIcon } from "@/components/icons";
 import { AccountActions, AccountSkeleton } from "@/components/marketing/account-actions";
 import { AuthModal } from "@/components/marketing/auth-modal";
 import { MiniSearchTrigger } from "@/components/marketing/mini-search-trigger";
+import { MobileTabBar } from "@/components/marketing/mobile-tab-bar";
 import { MobileLocationButton } from "@/components/marketing/mobile-location-button";
 import { HEADER_SEARCH_MOTION, HEADER_SWAP_MOTION } from "@/components/marketing/motion-presets";
 import { PropertySearch } from "@/components/marketing/property-search";
@@ -214,62 +215,68 @@ export function SiteNavbar({
   }
 
   return (
-    <header ref={navbarRef} className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl">
-      <div className="mx-auto grid h-18 w-full max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-4 px-4 sm:px-6">
-        <Link
-          href="/"
-          className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight"
-          onClick={closeMenu}
-        >
-          <LogoMark />
-          <span className="hidden sm:inline">Delfos</span>
-        </Link>
-
-        <div className="hidden min-w-0 items-center justify-center md:flex">
-          <DesktopHeaderCenter
-            alwaysShowSearch={alwaysShowSearch}
-            takeoverOpen={takeover.isOpen}
-            onOpenTakeover={takeover.open}
-          />
-        </div>
-
-        <div className="hidden items-center gap-2 md:flex">
-          <Suspense fallback={<AccountSkeleton />}>
-            <AccountActions userPromise={userPromise} onLogin={authModal.open} />
-          </Suspense>
-        </div>
-
-        <div className="col-start-3 flex items-center gap-2 md:hidden">
-          <Button
-            variant="ghost"
-            size="sm"
-            isIconOnly
-            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-            aria-expanded={menuOpen}
-            onPress={() => setMenuOpen((isOpen) => !isOpen)}
+    <>
+      <header ref={navbarRef} className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl">
+        <div className="mx-auto grid h-18 w-full max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-4 px-4 sm:px-6">
+          <Link
+            href="/"
+            className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight"
+            onClick={closeMenu}
           >
-            {menuOpen ? <CloseIcon /> : <MenuIcon />}
-          </Button>
+            <LogoMark />
+            <span className="hidden sm:inline">Delfos</span>
+          </Link>
+
+          <div className="hidden min-w-0 items-center justify-center md:flex">
+            <DesktopHeaderCenter
+              alwaysShowSearch={alwaysShowSearch}
+              takeoverOpen={takeover.isOpen}
+              onOpenTakeover={takeover.open}
+            />
+          </div>
+
+          <div className="hidden items-center gap-2 md:flex">
+            <Suspense fallback={<AccountSkeleton />}>
+              <AccountActions userPromise={userPromise} onLogin={authModal.open} />
+            </Suspense>
+          </div>
+
+          <div className="col-start-3 flex items-center gap-2 md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              isIconOnly
+              aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+              aria-expanded={menuOpen}
+              onPress={() => setMenuOpen((isOpen) => !isOpen)}
+            >
+              {menuOpen ? <CloseIcon /> : <MenuIcon />}
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {alwaysShowSearch ? <SearchTakeoverPanel takeover={takeover} searchFilters={searchFilters} /> : null}
+        {alwaysShowSearch ? <SearchTakeoverPanel takeover={takeover} searchFilters={searchFilters} /> : null}
 
-      <div className="border-t border-separator px-4 py-2 md:hidden">
-        <nav className="flex items-center justify-center gap-1">
-          <SearchModeTabs variant="mobile" />
-        </nav>
-      </div>
+        <div className="flex flex-col gap-3 border-t border-separator px-4 py-3 md:hidden">
+          <MobileLocationButton />
+          <nav className="no-scrollbar flex items-center gap-2 overflow-x-auto">
+            <SearchModeTabs variant="mobile" />
+          </nav>
+        </div>
 
-      <div className="border-t border-separator px-4 py-3 md:hidden">
-        <MobileLocationButton />
-      </div>
+        {menuOpen ? <MobileMenu userPromise={userPromise} onLogin={loginFromMenu} onClose={closeMenu} /> : null}
 
-      {menuOpen ? <MobileMenu userPromise={userPromise} onLogin={loginFromMenu} onClose={closeMenu} /> : null}
+        {alwaysShowSearch ? <SearchTakeoverBackdrop isOpen={takeover.isOpen} onClose={takeover.close} /> : null}
 
-      {alwaysShowSearch ? <SearchTakeoverBackdrop isOpen={takeover.isOpen} onClose={takeover.close} /> : null}
+        <AuthModal state={authModal} />
+      </header>
 
-      <AuthModal state={authModal} />
-    </header>
+      {/* Outside the header: its backdrop-blur would make it the containing block of this fixed bar. */}
+      <MobileTabBar
+        userPromise={userPromise}
+        onLoginAction={authModal.open}
+        onOpenAccountAction={() => setMenuOpen(true)}
+      />
+    </>
   );
 }

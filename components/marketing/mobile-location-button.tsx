@@ -38,12 +38,12 @@ export function MobileLocationButton() {
         onClick={() => setOpen((isOpen) => !isOpen)}
         aria-label="Buscar por ubicación"
         aria-expanded={open}
-        className={`flex w-full items-center gap-3 rounded-full border bg-white px-4 py-3 text-left text-foreground shadow-[0_2px_10px_-4px_rgba(15,23,42,0.18)] transition-colors ${
+        className={`flex w-full items-center gap-3 rounded-full border bg-white px-5 py-4 text-left text-foreground shadow-[0_2px_10px_-4px_rgba(15,23,42,0.18)] transition-colors ${
           open ? "border-foreground" : "border-separator"
         }`}
       >
-        <SearchIcon className="size-5 shrink-0 text-muted" />
-        <span className="truncate text-sm font-medium">{ubicacion || "Barrio, proyecto o ciudad"}</span>
+        <SearchIcon className="size-6 shrink-0 text-foreground" />
+        <span className="truncate text-base font-medium">{ubicacion || "Barrio, proyecto o ciudad"}</span>
       </button>
 
       <AnimatePresence>

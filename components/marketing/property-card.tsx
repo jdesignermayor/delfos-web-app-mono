@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useState, type MouseEvent } from "react";
@@ -8,11 +7,11 @@ import { HeartIcon } from "lucide-animated";
 import { useOverlayState } from "@heroui/react";
 
 import { BuildingIcon } from "@/components/icons";
+import { CardSlideshow } from "@/components/marketing/card-slideshow";
 import { FavoritesLoginPrompt } from "@/components/marketing/favorites-login-prompt";
 import { formatPrice, type Property } from "@/components/marketing/properties";
 import { useFavoriteToggle } from "@/hooks/use-favorite-toggle";
 import { propertyItem, trackEvent } from "@/lib/analytics";
-import { LISTING_IMAGE_QUALITY } from "@/lib/image-quality";
 
 /**
  * The sign-in modal is only needed after a signed-out visitor taps the heart,
@@ -27,32 +26,6 @@ type AnalyticsList = { id: string; name: string };
 /** Tinted gradient shown behind cards without a photo. */
 function placeholderBackground(hue: number) {
   return { background: `linear-gradient(135deg, oklch(0.93 0.05 ${hue}), oklch(0.82 0.09 ${hue}))` };
-}
-
-/** Photo with a pulsing placeholder underneath; the photo fades in once decoded. */
-function CardPhoto({ src, alt, sizes, eager }: { src: string; alt: string; sizes: string; eager: boolean }) {
-  const [loaded, setLoaded] = useState(false);
-  return (
-    <>
-      {loaded ? null : <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-surface-secondary" />}
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        sizes={sizes}
-        quality={LISTING_IMAGE_QUALITY}
-        loading={eager ? "eager" : "lazy"}
-        // An image that finished before hydration never fires onLoad, so check `complete` too.
-        ref={(img) => {
-          if (img?.complete && img.naturalWidth > 0) setLoaded(true);
-        }}
-        onLoad={() => setLoaded(true)}
-        className={`object-cover transition-[opacity,transform] duration-300 group-hover:scale-105 ${
-          loaded ? "opacity-100" : "opacity-0"
-        }`}
-      />
-    </>
-  );
 }
 
 function FavoriteButton({ isFavorite, onToggle }: { isFavorite: boolean; onToggle: () => void }) {
@@ -110,6 +83,7 @@ export function PropertyCard({
 }) {
   const { isFavorite, toggleFavorite, loginPrompt, closeLoginPrompt } = useFavoriteToggle({ onLoginRequired });
   const authModal = useOverlayState();
+  const images = property.images?.length ? property.images : property.image ? [property.image] : [];
   const [authMounted, setAuthMounted] = useState(false);
 
   function continueToLogin() {
@@ -133,10 +107,10 @@ export function PropertyCard({
           className={`relative aspect-square w-full overflow-hidden rounded-2xl transition-shadow ${
             active ? "ring-2 ring-accent" : ""
           }`}
-          style={property.image ? undefined : placeholderBackground(property.hue)}
+          style={images.length > 0 ? undefined : placeholderBackground(property.hue)}
         >
-          {property.image ? (
-            <CardPhoto src={property.image} alt={property.title} sizes={sizes} eager={eager} />
+          {images.length > 0 ? (
+            <CardSlideshow images={images} alt={property.title} sizes={sizes} eager={eager} />
           ) : (
             <BuildingIcon className="absolute -bottom-6 -right-4 size-40 text-white/25" />
           )}
@@ -144,8 +118,8 @@ export function PropertyCard({
         </div>
 
         <div className="mt-3">
-          <h3 className="truncate font-medium text-foreground">{property.title}</h3>
-          <p className="mt-0.5 text-sm text-muted">Desde {formatPrice(property)}</p>
+          <h3 className="truncate font-bold text-foreground">{property.title}</h3>
+          <p className="mt-0.5 text-sm font-semibold text-muted">Desde {formatPrice(property)}</p>
         </div>
       </Link>
 

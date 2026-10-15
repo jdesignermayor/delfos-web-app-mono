@@ -49,6 +49,16 @@ const NAV_BY_ROLE: Partial<Record<RoleName, NavSection[]>> = {
       items: [{ label: "Fiducias", href: "/dashboard/fiducias", icon: ShieldIcon }],
     },
   ],
+  // Self-registered visitors: nothing to manage yet, just their home and profile.
+  viewer: [
+    {
+      title: "Overview",
+      items: [
+        { label: "Inicio", href: "/dashboard", icon: GridIcon },
+        { label: "Mi perfil", href: "/dashboard/profile", icon: UsersIcon },
+      ],
+    },
+  ],
 };
 
 /** Sidebar sections available to a given role — empty for roles with no dashboard access. */

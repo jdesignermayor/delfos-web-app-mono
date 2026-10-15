@@ -1,25 +1,17 @@
 "use server";
 
 /**
- * Every transactional email the platform sends lives here: the Resend
- * client, the sender, rendering and one Server Action per email.
- *
- * `sendEmail` is deliberately NOT exported — every exported function of a
- * "use server" file is callable from the browser, so only specific,
- * authorized actions are exposed, never a generic "send anything" endpoint.
+ * One Server Action per transactional email an authorized user can trigger.
+ * Sending itself lives in `lib/email/send-email.ts` (server-only), so no
+ * generic "send anything" endpoint is ever exposed to the browser.
  * Templates live in `/emails` (React Email components).
  */
-import type { ReactElement } from "react";
-import { render } from "react-email";
-import { Resend } from "resend";
-
 import { AdminWelcomeEmail } from "@/emails/admin-welcome-email";
 import { getSuperadmin } from "@/lib/auth/dal";
+import { sendEmail, type EmailResult } from "@/lib/email/send-email";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { getAdminUser } from "@/lib/users/admin-users";
 import { createAdminClient } from "@/supabase/admin";
-
-export type EmailResult = { success: true; id: string | null } | { success: false; error: string };
 
 /**
  * Lifetime of password links, in hours. Must match Supabase → Authentication
@@ -27,50 +19,6 @@ export type EmailResult = { success: true; id: string | null } | { success: fals
  * the token; this value is only shown in the email.
  */
 const PASSWORD_LINK_EXPIRY_HOURS = Number(process.env.AUTH_LINK_EXPIRY_HOURS) || 24;
-
-/**
- * Sender for every email: the product's main address (its domain must be
- * verified in Resend). EMAIL_FROM overrides it per environment.
- */
-const EMAIL_FROM = process.env.EMAIL_FROM || `${SITE_NAME} <alejandromejia@godelfos.co>`;
-
-let resendClient: Resend | null = null;
-
-function getResend() {
-  if (!process.env.RESEND_API_KEY) return null;
-  resendClient ??= new Resend(process.env.RESEND_API_KEY);
-  return resendClient;
-}
-
-/** Renders a React Email template to HTML + plain text and sends it through Resend. */
-async function sendEmail({
-  to,
-  subject,
-  template,
-}: {
-  to: string;
-  subject: string;
-  template: ReactElement;
-}): Promise<EmailResult> {
-  const resend = getResend();
-  if (!resend) {
-    console.error("[email] RESEND_API_KEY no está configurada.");
-    return { success: false, error: "El envío de correos no está configurado." };
-  }
-
-  try {
-    const [html, text] = await Promise.all([render(template), render(template, { plainText: true })]);
-    const { data, error } = await resend.emails.send({ from: EMAIL_FROM, to, subject, html, text });
-    if (error) {
-      console.error("[email] Resend rechazó el envío:", error);
-      return { success: false, error: "No se pudo enviar el correo." };
-    }
-    return { success: true, id: data?.id ?? null };
-  } catch (error) {
-    console.error("[email] Error enviando el correo:", error);
-    return { success: false, error: "No se pudo enviar el correo." };
-  }
-}
 
 /**
  * One-time link to `/auth/set-password`. Supabase creates a recovery token

@@ -11,7 +11,7 @@ import {
   type UseOverlayStateReturn,
 } from "@heroui/react";
 
-import { registerAccount, signInAccount, type RegisterField } from "@/app/actions/auth";
+import { registerViewerAccount, signInAccount, type RegisterField } from "@/app/actions/auth";
 import { GoogleIcon } from "@/components/icons";
 import { rememberLastEmail } from "@/lib/auth/client-session";
 
@@ -202,11 +202,9 @@ export function AuthModal({ state }: { state: UseOverlayStateReturn }) {
       }
       rememberLastEmail(email);
       state.close();
-      if (result.hasDashboardAccess) {
+      if (result.hasAccountAccess) {
         router.push("/dashboard");
       } else {
-        // No dedicated account area for other roles yet — at least refresh
-        // server-rendered data so the session takes effect immediately.
         router.refresh();
       }
     });
@@ -216,17 +214,19 @@ export function AuthModal({ state }: { state: UseOverlayStateReturn }) {
     const { credentials } = form;
     form.clearErrors();
     startTransition(async () => {
-      const result = await registerAccount(credentials);
+      const result = await registerViewerAccount(credentials);
       if (!result.success) {
         form.fail(result.error, result.field ?? null);
         return;
       }
       rememberLastEmail(credentials.email);
       if (result.needsEmailConfirmation) {
-        form.setSuccessMessage("Cuenta creada. Revisa tu correo para confirmarla.");
+        // Same wording whether the email was new or already registered, so it reveals neither.
+        form.setSuccessMessage("Si el correo es válido, te enviamos un enlace para activar tu cuenta. Revisa tu bandeja de entrada.");
         return;
       }
       state.close();
+      router.push("/dashboard");
     });
   }
 

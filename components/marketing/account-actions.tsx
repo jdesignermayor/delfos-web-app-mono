@@ -6,7 +6,7 @@ import { Button, buttonVariants } from "@heroui/react";
 import { CircleUserRound } from "lucide-react";
 
 import { signOutAccount } from "@/app/actions/auth";
-import { canAccessDashboard } from "@/lib/auth/permissions";
+import { canAccessAccount, isViewer } from "@/lib/auth/permissions";
 import type { CurrentUser } from "@/supabase/roles";
 
 export function AccountSkeleton({ fullWidth = false }: { fullWidth?: boolean }) {
@@ -58,13 +58,13 @@ export function AccountActions({
 
   return (
     <>
-      {canAccessDashboard(user) ? (
+      {canAccessAccount(user) ? (
         <Link
           href="/dashboard"
           onClick={onNavigate}
           className={buttonVariants({ variant: "ghost", size: "sm", fullWidth })}
         >
-          Dashboard
+          {isViewer(user) ? "Mi cuenta" : "Dashboard"}
         </Link>
       ) : null}
       <SignOutButton fullWidth={fullWidth} />
