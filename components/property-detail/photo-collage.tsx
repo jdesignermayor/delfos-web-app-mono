@@ -3,6 +3,7 @@ import Image from "next/image";
 import { BuildingIcon } from "@/components/icons";
 import type { Property } from "@/components/marketing/properties";
 import { GalleryHeroVideo } from "@/components/property-detail/gallery-video";
+import { LISTING_IMAGE_QUALITY } from "@/lib/image-quality";
 
 function Tile({
   property,
@@ -45,6 +46,7 @@ function Tile({
           alt={property.title}
           fill
           sizes={sizes}
+          quality={LISTING_IMAGE_QUALITY}
           loading="eager"
           fetchPriority={hero ? "high" : undefined}
           className="object-cover transition-[filter] duration-200 group-hover:brightness-90"

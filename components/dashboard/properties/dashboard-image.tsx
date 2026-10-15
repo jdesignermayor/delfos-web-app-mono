@@ -4,10 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import { ImageOff } from "lucide-react";
 
+import { DASHBOARD_IMAGE_QUALITY } from "@/lib/image-quality";
 import { IMAGE_PLACEHOLDER } from "@/lib/image-placeholder";
-
-/** Dashboard previews only need to be recognizable; must be listed in `images.qualities`. */
-const DASHBOARD_IMAGE_QUALITY = 40;
 
 /**
  * Low-quality preview image for the dashboard. Fills its (relatively

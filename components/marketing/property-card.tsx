@@ -12,6 +12,7 @@ import { FavoritesLoginPrompt } from "@/components/marketing/favorites-login-pro
 import { formatPrice, type Property } from "@/components/marketing/properties";
 import { useFavoriteToggle } from "@/hooks/use-favorite-toggle";
 import { propertyItem, trackEvent } from "@/lib/analytics";
+import { LISTING_IMAGE_QUALITY } from "@/lib/image-quality";
 
 /**
  * The sign-in modal is only needed after a signed-out visitor taps the heart,
@@ -39,6 +40,7 @@ function CardPhoto({ src, alt, sizes, eager }: { src: string; alt: string; sizes
         alt={alt}
         fill
         sizes={sizes}
+        quality={LISTING_IMAGE_QUALITY}
         loading={eager ? "eager" : "lazy"}
         // An image that finished before hydration never fires onLoad, so check `complete` too.
         ref={(img) => {

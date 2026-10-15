@@ -9,10 +9,9 @@ const nextConfig: NextConfig = {
   // cached queries, so the extra wait before the first byte is minimal.
   htmlLimitedBots: /.*/,
   images: {
-    // 75 is Next's default (public pages); 40 is for dashboard previews,
-    // which only need to be recognizable. Keep in sync with
-    // `DASHBOARD_IMAGE_QUALITY`.
-    qualities: [40, 75],
+    // 90 for public listing photos, 75 (Next's default) for everything else,
+    // 40 for dashboard previews. Keep in sync with `lib/image-quality.ts`.
+    qualities: [40, 75, 90],
     // Uploaded photos get unique, never-reused names (`…-<uuid>.webp`), so an
     // optimized copy never goes stale: keep it 31 days instead of re-fetching
     // the original from Supabase and re-encoding it every few hours.

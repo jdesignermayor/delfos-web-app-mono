@@ -3,7 +3,11 @@ import sharp from "sharp";
 
 /** Longest side, in pixels, that uploaded property photos are resized down to. */
 const MAX_DIMENSION = 2560;
-const WEBP_QUALITY = 82;
+/**
+ * This file is the master copy: `next/image` re-encodes it for every visitor,
+ * so it's kept close to visually lossless to avoid stacking artifacts.
+ */
+const WEBP_QUALITY = 88;
 
 function isHeic(file: File) {
   const type = file.type.toLowerCase();

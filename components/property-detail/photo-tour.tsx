@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 
 import { PropertyActions } from "@/components/property-detail/favorite-share-bar";
 import { BackgroundVideo, youtubeThumbnail } from "@/components/property-detail/gallery-video";
+import { LISTING_IMAGE_QUALITY } from "@/lib/image-quality";
 
 const DESKTOP_QUERY = "(min-width: 640px)";
 
@@ -325,6 +326,7 @@ const StackedPhotos = memo(function StackedPhotos(
               alt={`${title} — foto ${index + 1}`}
               fill
               sizes="(min-width: 896px) 848px, calc(100vw - 48px)"
+              quality={LISTING_IMAGE_QUALITY}
               // The tour opens at the top, so the first photo is visible straight away.
               loading={index === 0 ? "eager" : "lazy"}
               className="object-cover"
@@ -374,6 +376,7 @@ const PhotoCarousel = memo(function PhotoCarousel(props: PhotoListProps) {
               alt={`${title} — foto ${index + 1}`}
               fill
               sizes="100vw"
+              quality={LISTING_IMAGE_QUALITY}
               loading={index === 0 ? "eager" : "lazy"}
               className="object-cover"
             />
