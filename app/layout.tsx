@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins, Geist_Mono } from "next/font/google";
+import { FavoritesProvider } from "@/components/marketing/favorites-provider";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
@@ -49,7 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ToastProvider>
-          {children}
+          <FavoritesProvider>{children}</FavoritesProvider>
         </ToastProvider>
       </body>
     </html>

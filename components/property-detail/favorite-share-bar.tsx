@@ -28,8 +28,21 @@ function usePropertyActions() {
  * every PropertyActions (the top bar and the photo tour header) stays in sync
  * without mounting its own copy of the modals.
  */
-export function PropertyActionsProvider({ title, children }: { title: string; children: ReactNode }) {
-  const { isFavorite: saved, toggleFavorite: toggleSaved, loginPrompt, closeLoginPrompt } = useFavoriteToggle();
+export function PropertyActionsProvider({
+  title,
+  propertyUuid,
+  children,
+}: {
+  title: string;
+  propertyUuid?: string;
+  children: ReactNode;
+}) {
+  const {
+    isFavorite: saved,
+    toggleFavorite: toggleSaved,
+    loginPrompt,
+    closeLoginPrompt,
+  } = useFavoriteToggle({ propertyUuid });
   const authModal = useOverlayState();
 
   function continueToLogin() {
@@ -49,7 +62,7 @@ export function PropertyActionsProvider({ title, children }: { title: string; ch
         />
       ) : null}
 
-      <AuthModal state={authModal} />
+      <AuthModal state={authModal} stayOnPage />
     </PropertyActionsContext.Provider>
   );
 }

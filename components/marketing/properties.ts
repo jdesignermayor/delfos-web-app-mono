@@ -12,6 +12,8 @@ export type PropertyType = "apartamento" | "casa" | "apartaestudio" | "proyecto"
 
 export type Property = {
   slug: string;
+  /** The listing's DB uuid, used to save it as a favorite. Sample listings don't have one. */
+  uuid?: string;
   title: string;
   /** Development / project name, when the listing belongs to one. */
   projectName?: string;

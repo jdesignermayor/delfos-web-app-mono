@@ -49,14 +49,11 @@ const NAV_BY_ROLE: Partial<Record<RoleName, NavSection[]>> = {
       items: [{ label: "Fiducias", href: "/dashboard/fiducias", icon: ShieldIcon }],
     },
   ],
-  // Self-registered visitors: nothing to manage yet, just their home and profile.
+  // Self-registered visitors: just their home (saved properties). The profile stays in the sidebar footer.
   viewer: [
     {
       title: "Overview",
-      items: [
-        { label: "Inicio", href: "/dashboard", icon: GridIcon },
-        { label: "Mi perfil", href: "/dashboard/profile", icon: UsersIcon },
-      ],
+      items: [{ label: "Inicio", href: "/dashboard", icon: GridIcon }],
     },
   ],
 };

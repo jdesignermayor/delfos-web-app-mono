@@ -42,6 +42,7 @@ function FavoriteButton({ isFavorite, onToggle }: { isFavorite: boolean; onToggl
       onClick={handleClick}
       className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full backdrop-blur-sm bg-white/20 text-white transition-all hover:bg-white/30"
       aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+      aria-pressed={isFavorite}
     >
       <HeartIcon size={20} className={`transition-colors ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
     </button>
@@ -81,7 +82,10 @@ export function PropertyCard({
   onDeactivate?: () => void;
   onLoginRequired?: () => void;
 }) {
-  const { isFavorite, toggleFavorite, loginPrompt, closeLoginPrompt } = useFavoriteToggle({ onLoginRequired });
+  const { isFavorite, canFavorite, toggleFavorite, loginPrompt, closeLoginPrompt } = useFavoriteToggle({
+    propertyUuid: property.uuid,
+    onLoginRequired,
+  });
   const authModal = useOverlayState();
   const images = property.images?.length ? property.images : property.image ? [property.image] : [];
   const [authMounted, setAuthMounted] = useState(false);
@@ -114,7 +118,7 @@ export function PropertyCard({
           ) : (
             <BuildingIcon className="absolute -bottom-6 -right-4 size-40 text-white/25" />
           )}
-          <FavoriteButton isFavorite={isFavorite} onToggle={toggleFavorite} />
+          {canFavorite ? <FavoriteButton isFavorite={isFavorite} onToggle={toggleFavorite} /> : null}
         </div>
 
         <div className="mt-3">
@@ -131,7 +135,7 @@ export function PropertyCard({
         />
       ) : null}
 
-      {authMounted ? <AuthModal state={authModal} /> : null}
+      {authMounted ? <AuthModal state={authModal} stayOnPage /> : null}
     </>
   );
 }

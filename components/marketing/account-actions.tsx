@@ -6,6 +6,7 @@ import { Button, buttonVariants } from "@heroui/react";
 import { CircleUserRound } from "lucide-react";
 
 import { signOutAccount } from "@/app/actions/auth";
+import { useFavorites } from "@/components/marketing/favorites-provider";
 import { canAccessAccount, isViewer } from "@/lib/auth/permissions";
 import type { CurrentUser } from "@/supabase/roles";
 
@@ -20,13 +21,19 @@ export function AccountSkeleton({ fullWidth = false }: { fullWidth?: boolean }) 
 
 function SignOutButton({ fullWidth }: { fullWidth: boolean }) {
   const [isPending, startTransition] = useTransition();
+  const favorites = useFavorites();
   return (
     <Button
       variant="outline"
       size="sm"
       fullWidth={fullWidth}
       isDisabled={isPending}
-      onPress={() => startTransition(async () => { await signOutAccount(); })}
+      onPress={() =>
+        startTransition(async () => {
+          favorites?.clear();
+          await signOutAccount();
+        })
+      }
     >
       {isPending ? "Saliendo…" : "Cerrar sesión"}
     </Button>

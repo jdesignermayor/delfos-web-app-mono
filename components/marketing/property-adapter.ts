@@ -145,6 +145,7 @@ export function toProperty(row: PropertyRow): Property {
 
   return {
     slug: row.uuid,
+    uuid: row.uuid,
     title: row.title,
     projectName: row.project_name ?? undefined,
     neighborhood: row.neighborhood ?? row.commune ?? row.city ?? locationArea ?? "",

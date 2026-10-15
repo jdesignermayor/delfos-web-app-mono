@@ -77,6 +77,7 @@ function cardImages(row: FeaturedRow): string[] | undefined {
 function toFeaturedProperty(row: FeaturedRow): Property {
   return {
     slug: canonicalSlug(row),
+    uuid: row.uuid,
     title: row.title,
     image: row.image ?? undefined,
     images: cardImages(row),

@@ -2,27 +2,37 @@
 
 import { useState } from "react";
 
-import { getLastEmail, hasClientSession } from "@/lib/auth/client-session";
+import { useFavorites } from "@/components/marketing/favorites-provider";
+import { getLastEmail } from "@/lib/auth/client-session";
 
 /**
- * Saved/unsaved flag for a listing. Signed-out visitors get a login prompt
- * instead (with the email they last used on this device, if any).
+ * Saved/unsaved state of one listing, backed by the page's `FavoritesProvider`. Signed-out
+ * visitors get a login prompt instead (with the email they last used on this device, if any).
  */
-export function useFavoriteToggle({ onLoginRequired }: { onLoginRequired?: () => void } = {}) {
-  const [isFavorite, setIsFavorite] = useState(false);
+export function useFavoriteToggle({
+  propertyUuid,
+  onLoginRequired,
+}: { propertyUuid?: string; onLoginRequired?: () => void } = {}) {
+  const favorites = useFavorites();
   const [loginPrompt, setLoginPrompt] = useState<{ lastEmail: string | null } | null>(null);
 
+  const isFavorite = Boolean(propertyUuid && favorites?.isFavorite(propertyUuid));
+
   function toggleFavorite() {
-    if (!hasClientSession()) {
+    // Still loading who's signed in: ignore the tap rather than guess.
+    if (favorites?.status === "loading") return;
+    if (!favorites || favorites.status === "signed-out") {
       setLoginPrompt({ lastEmail: getLastEmail() });
       onLoginRequired?.();
       return;
     }
-    setIsFavorite((value) => !value);
+    if (propertyUuid) void favorites.setFavorite(propertyUuid, !isFavorite);
   }
 
   return {
     isFavorite,
+    /** Whether this listing can be saved at all (sample listings have no uuid). */
+    canFavorite: Boolean(propertyUuid),
     toggleFavorite,
     loginPrompt,
     closeLoginPrompt: () => setLoginPrompt(null),

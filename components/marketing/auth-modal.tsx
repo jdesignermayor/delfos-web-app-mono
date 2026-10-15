@@ -13,6 +13,7 @@ import {
 
 import { registerViewerAccount, signInAccount, type RegisterField } from "@/app/actions/auth";
 import { GoogleIcon } from "@/components/icons";
+import { useFavorites } from "@/components/marketing/favorites-provider";
 import { rememberLastEmail } from "@/lib/auth/client-session";
 
 type Step = "email" | "signup";
@@ -175,8 +176,16 @@ function SignupForm({
   );
 }
 
-export function AuthModal({ state }: { state: UseOverlayStateReturn }) {
+export function AuthModal({
+  state,
+  stayOnPage = false,
+}: {
+  state: UseOverlayStateReturn;
+  /** Sign in without leaving the page (e.g. to save a favorite) instead of opening the account. */
+  stayOnPage?: boolean;
+}) {
   const router = useRouter();
+  const favorites = useFavorites();
   const [step, setStep] = useState<Step>("email");
   const form = useAuthForm();
   const { reset } = form;
@@ -201,8 +210,9 @@ export function AuthModal({ state }: { state: UseOverlayStateReturn }) {
         return;
       }
       rememberLastEmail(email);
+      favorites?.reload();
       state.close();
-      if (result.hasAccountAccess) {
+      if (result.hasAccountAccess && !stayOnPage) {
         router.push("/dashboard");
       } else {
         router.refresh();

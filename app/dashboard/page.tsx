@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const user = await requireAccountUser();
-  if (user.role === "viewer") return <ViewerHome name={user.name} />;
+  if (user.role === "viewer") return <ViewerHome userId={user.id} name={user.name} />;
   // A constructora without properties starts at the onboarding guide.
   if (await needsOnboarding(user)) redirect("/dashboard/onboarding");
 

@@ -131,7 +131,7 @@ export default async function PropertyDetailPage({
       <main className="w-full bg-white">
         <BrandTheme colors={property.brandColors}>
           <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
-            <PropertyActionsProvider title={property.title}>
+            <PropertyActionsProvider title={property.title} propertyUuid={property.uuid}>
               <FavoriteShareBar />
 
               <div className="mt-4">
