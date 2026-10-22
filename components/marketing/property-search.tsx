@@ -126,7 +126,7 @@ function SearchSegment({
         disabled={disabled}
         aria-expanded={active}
         className={`group flex min-w-0 flex-1 items-center gap-3 rounded-full text-left transition-[background-color,box-shadow] disabled:cursor-default ${
-          compact ? "px-2.5 py-1.5" : "px-3 py-2.5"
+          compact ? "px-2.5 py-1.5" : "px-3 py-2.5 md:py-1.5"
         } ${
           active
             ? "bg-white shadow-[0_8px_24px_-10px_rgba(15,23,42,0.4)] ring-1 ring-separator"
@@ -134,11 +134,11 @@ function SearchSegment({
         }`}
       >
         <span
-          className={`flex ${compact ? "size-7" : "size-10"} shrink-0 items-center justify-center rounded-full transition-colors ${
+          className={`flex ${compact ? "size-7" : "size-10 md:size-9"} shrink-0 items-center justify-center rounded-full transition-colors ${
             active || value ? "bg-accent text-accent-foreground" : "bg-accent-soft text-accent"
           }`}
         >
-          <Icon className={compact ? "size-3.5" : "size-5"} />
+          <Icon className={compact ? "size-3.5" : "size-5 md:size-[18px]"} />
         </span>
         <span className="flex min-w-0 flex-col">
           <span className={`${compact ? "text-[11px]" : "text-xs"} font-semibold text-foreground`}>{label}</span>
@@ -157,16 +157,16 @@ function SearchSegment({
 
 function SearchSubmitButton({ compact }: { compact: boolean }) {
   return (
-    <div className={`flex shrink-0 ${compact ? "p-1" : "p-1.5"} md:p-0 md:pl-1`}>
+    <div className={`flex shrink-0 ${compact ? "p-1" : "p-1.5"} md:p-0 ${compact ? "md:pl-1" : "md:pl-2 md:pr-0.5"}`}>
       <button
         type="submit"
         aria-label="Buscar"
         className={`flex w-full items-center justify-center gap-2 rounded-full bg-accent font-semibold text-accent-foreground shadow-lg shadow-accent/30 transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.97] ${
-          compact ? "h-10 md:w-10" : "h-12 px-6 text-sm md:w-auto"
+          compact ? "h-10 md:w-10" : "h-12 px-6 text-sm md:h-10 md:w-10 md:px-0 md:shadow-md md:shadow-accent/25"
         }`}
       >
-        <SearchIcon className={compact ? "size-4" : "size-5"} />
-        {compact ? <span className="md:hidden">Buscar</span> : "Buscar"}
+        <SearchIcon className={compact ? "size-4" : "size-5 md:size-[18px]"} />
+        <span className="md:hidden">Buscar</span>
       </button>
     </div>
   );
@@ -288,7 +288,7 @@ export function PropertySearch({
   }
 
   return (
-    <div ref={containerRef} className={`relative w-full ${compact ? "max-w-2xl" : "mx-auto max-w-4xl"}`}>
+    <div ref={containerRef} className={`relative w-full ${compact ? "max-w-2xl" : "mx-auto max-w-3xl"}`}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -303,7 +303,7 @@ export function PropertySearch({
               : "shadow-[0_18px_50px_-24px_rgba(15,23,42,0.35)]"
           }`}
         >
-          <div className={`flex flex-col gap-1 p-1.5 md:flex-row md:items-center ${compact ? "md:p-1" : "md:p-2"}`}>
+          <div className={`flex flex-col gap-1 p-1.5 md:flex-row md:items-center ${compact ? "md:p-1" : "md:p-1.5"}`}>
             {segments.map((segment, index) => (
               <SearchSegment
                 key={segment.field}
