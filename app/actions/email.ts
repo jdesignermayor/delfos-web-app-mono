@@ -9,32 +9,9 @@
 import { AdminWelcomeEmail } from "@/emails/admin-welcome-email";
 import { getSuperadmin } from "@/lib/auth/dal";
 import { sendEmail, type EmailResult } from "@/lib/email/send-email";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { createSetPasswordUrl, PASSWORD_LINK_EXPIRY_HOURS } from "@/lib/email/set-password-link";
+import { SITE_NAME } from "@/lib/site";
 import { getAdminUser } from "@/lib/users/admin-users";
-import { createAdminClient } from "@/supabase/admin";
-
-/**
- * Lifetime of password links, in hours. Must match Supabase → Authentication
- * → Email → "Email OTP Expiration" (seconds), which is what actually expires
- * the token; this value is only shown in the email.
- */
-const PASSWORD_LINK_EXPIRY_HOURS = Number(process.env.AUTH_LINK_EXPIRY_HOURS) || 24;
-
-/**
- * One-time link to `/auth/set-password`. Supabase creates a recovery token
- * (without sending its own email) and we point it at our page, which
- * exchanges it for a session only when the form is submitted.
- */
-async function createSetPasswordUrl(email: string): Promise<string | null> {
-  const { data, error } = await createAdminClient().auth.admin.generateLink({ type: "recovery", email });
-  const tokenHash = data?.properties?.hashed_token;
-  if (error || !tokenHash) {
-    console.error("[email] No se pudo generar el enlace de contraseña:", error);
-    return null;
-  }
-  const params = new URLSearchParams({ token_hash: tokenHash, type: "recovery" });
-  return `${SITE_URL}/auth/set-password?${params}`;
-}
 
 // --- Actions -----------------------------------------------------------------
 

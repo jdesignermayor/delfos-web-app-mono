@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { canAccessAccount, signInDenialReason } from "@/lib/auth/permissions";
 import {
@@ -12,6 +13,7 @@ import {
   saveUserProfile,
   type PendingSignUp,
 } from "@/lib/auth/user-accounts";
+import { sendPasswordResetEmail } from "@/lib/email/password-reset";
 import { sendViewerConfirmationEmail } from "@/lib/email/viewer-confirmation";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
@@ -46,6 +48,7 @@ const CHECK_YOUR_INBOX: RegisterResult = { success: true, needsEmailConfirmation
 
 const signUpLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60_000 });
 const signInLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
+const passwordResetLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60_000 });
 
 /**
  * For an email that already has an account: re-sends the confirmation link if it was never
@@ -176,6 +179,31 @@ export async function signOutAccount(): Promise<never> {
   redirect("/");
 }
 
+export type RequestPasswordResetResult = { success: true } | { success: false; error: string };
+
+/**
+ * "Forgot password": emails a reset link to `/auth/set-password`. Like sign-up, it never says
+ * whether the email has an account, and the lookup and send run after the response so the
+ * timing doesn't tell either.
+ */
+export async function requestPasswordResetAction(input: { email: string }): Promise<RequestPasswordResetResult> {
+  if (!passwordResetLimiter.tryConsume(await getClientIp())) return { success: false, error: TOO_MANY_ATTEMPTS };
+
+  const email = normalizeEmail(String(input?.email ?? ""));
+  if (!isValidEmail(email)) return { success: false, error: "Ingresa un correo válido." };
+
+  after(async () => {
+    try {
+      const sent = await sendPasswordResetEmail(email);
+      if (sent && !sent.success) console.error("[auth] No se pudo enviar el correo de recuperación:", sent.error);
+    } catch (error) {
+      console.error("[auth] Error enviando el correo de recuperación:", error);
+    }
+  });
+
+  return { success: true };
+}
+
 export type SetPasswordField = "password" | "confirmPassword";
 
 export type SetPasswordResult =
@@ -210,7 +238,7 @@ export async function setPasswordWithTokenAction(input: {
   if (error || !data.user) {
     return {
       success: false,
-      error: "El enlace venció o ya fue usado. Pide al administrador que te envíe uno nuevo.",
+      error: "El enlace venció o ya fue usado. Solicita uno nuevo con «¿Olvidaste tu contraseña?» al iniciar sesión.",
     };
   }
 

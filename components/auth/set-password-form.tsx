@@ -10,8 +10,8 @@ import { PasswordChecklist } from "@/components/auth/password-checklist";
 import { useToast } from "@/components/providers/toast-provider";
 import { PASSWORD_MAX_LENGTH, PASSWORD_REGEX } from "@/lib/validation/profile";
 
-/** New password + confirmation for an emailed `/auth/set-password` link. */
-export function SetPasswordForm({ tokenHash }: { tokenHash: string }) {
+/** New password + confirmation for an emailed `/auth/set-password` link (welcome or reset). */
+export function SetPasswordForm({ tokenHash, isReset = false }: { tokenHash: string; isReset?: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const [password, setPassword] = useState("");
@@ -36,7 +36,7 @@ export function SetPasswordForm({ tokenHash }: { tokenHash: string }) {
         else setMessage(result.error);
         return;
       }
-      toast.success("Contraseña creada", "Ya puedes usar tu nueva contraseña.");
+      toast.success(isReset ? "Contraseña actualizada" : "Contraseña creada", "Ya puedes usar tu nueva contraseña.");
       router.replace(result.hasAccountAccess ? "/dashboard" : "/");
     });
   }
@@ -98,7 +98,7 @@ export function SetPasswordForm({ tokenHash }: { tokenHash: string }) {
       ) : null}
 
       <Button type="submit" variant="primary" fullWidth isDisabled={isPending || !canSubmit}>
-        {isPending ? "Guardando…" : "Crear contraseña e ingresar"}
+        {isPending ? "Guardando…" : isReset ? "Guardar contraseña e ingresar" : "Crear contraseña e ingresar"}
       </Button>
     </form>
   );

@@ -11,12 +11,23 @@ import {
   type UseOverlayStateReturn,
 } from "@heroui/react";
 
-import { registerViewerAccount, signInAccount, type RegisterField } from "@/app/actions/auth";
+import {
+  registerViewerAccount,
+  requestPasswordResetAction,
+  signInAccount,
+  type RegisterField,
+} from "@/app/actions/auth";
 import { GoogleIcon } from "@/components/icons";
 import { useFavorites } from "@/components/marketing/favorites-provider";
 import { rememberLastEmail } from "@/lib/auth/client-session";
 
-type Step = "email" | "signup";
+type Step = "email" | "signup" | "forgot";
+
+const STEP_TITLES: Record<Step, string> = {
+  email: "Inicia sesión",
+  signup: "Crea tu cuenta",
+  forgot: "Recupera tu contraseña",
+};
 
 type Credentials = { fullName: string; email: string; phone: string; password: string };
 
@@ -35,6 +46,10 @@ type FieldConfig = {
 const LOGIN_FIELDS: FieldConfig[] = [
   { name: "email", type: "email", label: "Correo electrónico", placeholder: "tu@correo.com" },
   { name: "password", type: "password", label: "Contraseña", placeholder: "Tu contraseña" },
+];
+
+const FORGOT_FIELDS: FieldConfig[] = [
+  { name: "email", type: "email", label: "Correo electrónico", placeholder: "tu@correo.com" },
 ];
 
 const SIGNUP_FIELDS: FieldConfig[] = [
@@ -116,15 +131,24 @@ function LoginForm({
   isPending,
   onSubmit,
   onSignUp,
+  onForgotPassword,
 }: {
   form: AuthForm;
   isPending: boolean;
   onSubmit: () => void;
   onSignUp: () => void;
+  onForgotPassword: () => void;
 }) {
   return (
     <form className="flex flex-col gap-4" onSubmit={submitWith(onSubmit)}>
       <CredentialFields fields={LOGIN_FIELDS} form={form} />
+      <button
+        type="button"
+        onClick={onForgotPassword}
+        className="-mt-2 self-end text-sm font-medium text-accent hover:underline"
+      >
+        ¿Olvidaste tu contraseña?
+      </button>
       <FormError message={form.formError} />
 
       <Button type="submit" variant="primary" fullWidth isDisabled={isPending}>
@@ -135,6 +159,39 @@ function LoginForm({
         ¿No tienes cuenta?{" "}
         <button type="button" onClick={onSignUp} className="font-medium text-accent hover:underline">
           Regístrate
+        </button>
+      </p>
+    </form>
+  );
+}
+
+function ForgotPasswordForm({
+  form,
+  isPending,
+  onSubmit,
+  onBack,
+}: {
+  form: AuthForm;
+  isPending: boolean;
+  onSubmit: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <form className="flex flex-col gap-4" onSubmit={submitWith(onSubmit)}>
+      <p className="text-sm text-muted">
+        Escribe el correo de tu cuenta y te enviaremos un enlace para crear una nueva contraseña.
+      </p>
+      <CredentialFields fields={FORGOT_FIELDS} form={form} />
+      <FormError message={form.formError} />
+      {form.successMessage ? <p className="text-sm text-success">{form.successMessage}</p> : null}
+
+      <Button type="submit" variant="primary" fullWidth isDisabled={isPending}>
+        {isPending ? "Enviando…" : "Enviar enlace"}
+      </Button>
+
+      <p className="text-center text-sm text-muted">
+        <button type="button" onClick={onBack} className="font-medium text-accent hover:underline">
+          Volver a iniciar sesión
         </button>
       </p>
     </form>
@@ -240,9 +297,26 @@ export function AuthModal({
     });
   }
 
-  function goToSignUp() {
+  function handleForgotPassword() {
+    const { email } = form.credentials;
     form.clearErrors();
-    setStep("signup");
+    form.setSuccessMessage(null);
+    startTransition(async () => {
+      const result = await requestPasswordResetAction({ email });
+      if (!result.success) {
+        form.fail(result.error, "email");
+        return;
+      }
+      rememberLastEmail(email);
+      // Same wording whether the email has an account or not, so it reveals neither.
+      form.setSuccessMessage("Si el correo tiene una cuenta, te enviamos un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada.");
+    });
+  }
+
+  function goTo(next: Step) {
+    form.clearErrors();
+    form.setSuccessMessage(null);
+    setStep(next);
   }
 
   return (
@@ -257,12 +331,25 @@ export function AuthModal({
       <Modal.Container size="md" placement="top">
         <Modal.Dialog>
           <Modal.Header>
-            <Modal.Heading>{step === "email" ? "Inicia sesión" : "Crea tu cuenta"}</Modal.Heading>
+            <Modal.Heading>{STEP_TITLES[step]}</Modal.Heading>
           </Modal.Header>
 
           <Modal.Body>
             {step === "email" ? (
-              <LoginForm form={form} isPending={isPending} onSubmit={handleLogin} onSignUp={goToSignUp} />
+              <LoginForm
+                form={form}
+                isPending={isPending}
+                onSubmit={handleLogin}
+                onSignUp={() => goTo("signup")}
+                onForgotPassword={() => goTo("forgot")}
+              />
+            ) : step === "forgot" ? (
+              <ForgotPasswordForm
+                form={form}
+                isPending={isPending}
+                onSubmit={handleForgotPassword}
+                onBack={() => goTo("email")}
+              />
             ) : (
               <SignupForm form={form} isPending={isPending} onSubmit={handleRegister} onGoogle={() => state.close()} />
             )}
