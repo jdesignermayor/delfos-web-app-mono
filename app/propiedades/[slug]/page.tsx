@@ -35,6 +35,7 @@ import { PropertyVideo } from "@/components/property-detail/property-video";
 import { JsonLd } from "@/components/seo/json-ld";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { TrackPropertyView } from "@/components/analytics/track-property-view";
+import { RecordRecentView } from "@/components/property-detail/record-recent-view";
 import { buildPropertyJsonLd, buildPropertyMetadata, propertyPath, youtubeId } from "@/lib/property-seo";
 import { formatRange } from "@/lib/typology-ranges";
 
@@ -126,6 +127,7 @@ export default async function PropertyDetailPage({
           neighborhood: property.neighborhood,
         }}
       />
+      <RecordRecentView propertyUuid={property.uuid} />
       <SiteNavbar alwaysShowSearch userPromise={getCurrentUser()} />
 
       <main className="w-full bg-white">

@@ -5,8 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/supabase/types";
 
 /**
- * `property_favorites` reads and writes. Takes the signed-in user's own Supabase client, so Row
- * Level Security (only your own rows) applies on top of the `userId` filters.
+ * `property_favorites` and `property_recent_views` reads and writes. Takes the signed-in user's own
+ * Supabase client, so Row Level Security (only your own rows) applies on top of the `userId` filters.
  */
 type Client = SupabaseClient<Database>;
 
@@ -43,5 +43,28 @@ export async function removeFavorite(supabase: Client, userId: string, propertyI
     .delete()
     .eq("user_id", userId)
     .eq("property_id", propertyId);
+  if (error) throw error;
+}
+
+/** Uuids of the properties this user opened most recently, newest first. */
+export async function listRecentViewPropertyUuids(supabase: Client, userId: string, limit: number): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("property_recent_views")
+    .select("property:properties!property_id(uuid)")
+    .eq("user_id", userId)
+    .order("viewed_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data.flatMap((row) => (row.property ? [row.property.uuid] : []));
+}
+
+/** Records that the user opened a property now; opening it again only refreshes the time. */
+export async function recordRecentView(supabase: Client, userId: string, propertyId: number): Promise<void> {
+  const { error } = await supabase
+    .from("property_recent_views")
+    .upsert(
+      { user_id: userId, property_id: propertyId, viewed_at: new Date().toISOString() },
+      { onConflict: "user_id,property_id" },
+    );
   if (error) throw error;
 }

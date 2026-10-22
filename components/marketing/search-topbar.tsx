@@ -17,7 +17,7 @@ export function SearchTopbar() {
             <span className="hidden sm:inline">Buscar</span>
           </span>
           <Link
-            href="/search?favoritos=1"
+            href="/favoritos"
             className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface-secondary hover:text-foreground"
           >
             <HeartIcon className="size-4" />

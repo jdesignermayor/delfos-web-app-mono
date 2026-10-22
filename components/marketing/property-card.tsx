@@ -4,6 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useState, type MouseEvent } from "react";
 import { HeartIcon } from "lucide-animated";
+import { X } from "lucide-react";
 import { useOverlayState } from "@heroui/react";
 
 import { BuildingIcon } from "@/components/icons";
@@ -49,6 +50,25 @@ function FavoriteButton({ isFavorite, onToggle }: { isFavorite: boolean; onToggl
   );
 }
 
+function RemoveButton({ onRemove }: { onRemove: () => void }) {
+  function handleClick(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    onRemove();
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-foreground text-white shadow-md transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      aria-label="Quitar de favoritos"
+    >
+      <X className="size-5" strokeWidth={2.5} />
+    </button>
+  );
+}
+
 function trackSelectItem(property: Property, list: AnalyticsList, index: number | undefined) {
   trackEvent("select_item", {
     item_list_id: list.id,
@@ -63,6 +83,7 @@ export function PropertyCard({
   onActivate,
   onDeactivate,
   onLoginRequired,
+  onRemove,
   eager = false,
   sizes = "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw",
   analyticsList,
@@ -81,6 +102,8 @@ export function PropertyCard({
   onActivate?: () => void;
   onDeactivate?: () => void;
   onLoginRequired?: () => void;
+  /** Edit mode (e.g. on /favoritos): an X that removes the card replaces the heart. */
+  onRemove?: () => void;
 }) {
   const { isFavorite, canFavorite, toggleFavorite, loginPrompt, closeLoginPrompt } = useFavoriteToggle({
     propertyUuid: property.uuid,
@@ -118,7 +141,11 @@ export function PropertyCard({
           ) : (
             <BuildingIcon className="absolute -bottom-6 -right-4 size-40 text-white/25" />
           )}
-          {canFavorite ? <FavoriteButton isFavorite={isFavorite} onToggle={toggleFavorite} /> : null}
+          {onRemove ? (
+            <RemoveButton onRemove={onRemove} />
+          ) : canFavorite ? (
+            <FavoriteButton isFavorite={isFavorite} onToggle={toggleFavorite} />
+          ) : null}
         </div>
 
         <div className="mt-3">

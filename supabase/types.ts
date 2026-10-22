@@ -403,6 +403,32 @@ export type Database = {
           },
         ]
       }
+      property_recent_views: {
+        Row: {
+          property_id: number
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          property_id: number
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          property_id?: number
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_recent_views_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       real_estate_agencies: {
         Row: {
           address: string | null

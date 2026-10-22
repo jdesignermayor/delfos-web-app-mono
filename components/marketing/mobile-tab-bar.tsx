@@ -2,7 +2,7 @@
 
 import { Suspense, use, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { CircleUserRound } from "lucide-react";
 
 import { HeartIcon, SearchIcon } from "@/components/icons";
@@ -27,13 +27,12 @@ function TabLink({ href, isActive, icon, label }: { href: string; isActive: bool
 /** Search and favourites tabs; reads the URL to highlight the current one. */
 function NavigationTabs({ favoritesTab }: { favoritesTab?: boolean }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const onSearch = pathname === "/search";
-  const onFavorites = onSearch && searchParams.has("favoritos");
+  const onFavorites = pathname === "/favoritos" || pathname.startsWith("/favoritos/");
 
   return favoritesTab ? (
     <TabLink
-      href="/search?favoritos=1"
+      href="/favoritos"
       isActive={onFavorites}
       icon={<HeartIcon className="size-6" />}
       label="Favoritos"
@@ -41,7 +40,7 @@ function NavigationTabs({ favoritesTab }: { favoritesTab?: boolean }) {
   ) : (
     <TabLink
       href="/search"
-      isActive={onSearch && !onFavorites}
+      isActive={onSearch}
       icon={<SearchIcon className="size-6" />}
       label="Buscar"
     />
