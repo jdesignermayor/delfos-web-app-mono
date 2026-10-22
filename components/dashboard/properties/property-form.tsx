@@ -24,7 +24,8 @@ import {
 import { LocationPicker } from "@/components/location-picker";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { ExtractBrandColorsButton } from "@/components/dashboard/properties/extract-brand-colors-button";
-import { TypologiesEditor, type Typology } from "@/components/dashboard/properties/typologies-editor";
+import { TowerCard } from "@/components/dashboard/properties/tower-card";
+import type { Typology } from "@/components/dashboard/properties/typologies-editor";
 import { TagMultiSelect } from "@/components/dashboard/tag-multi-select";
 import {
   EMPTY_SEO,
@@ -38,9 +39,13 @@ import { type Amenity, parseAmenities } from "@/lib/amenities";
 import { parseBrandColors } from "@/lib/brand-colors";
 import { buildSeoTexts } from "@/lib/seo-autofill";
 import type { Tables } from "@/supabase/types";
+import type { TowerStatusOption } from "@/lib/data/property-form-options";
+import { towerKey, towerKeys } from "@/lib/towers/tower-keys";
 
 export type PropertyRecord = Tables<"properties"> & {
   developers: { id: number; name: string } | null;
+  /** Saved "Estado de la torre" per tower (`property_towers`). */
+  property_towers?: Pick<Tables<"property_towers">, "tower_number" | "status_id">[];
 };
 
 type FieldKind =
@@ -61,6 +66,7 @@ type PropertyFormValues = Omit<
   | "amenities"
   | "typologies"
   | "towerDetails"
+  | "towerStatuses"
   | "additionalImages"
   | "latitude"
   | "longitude"
@@ -117,6 +123,7 @@ const TEXT_FIELDS: (keyof PropertyFormValues)[] = [
   "projectName",
   "projectUrl",
   "towerCount",
+  "isFeatured",
   "constructionCompany",
   "builderId",
   "sellerId",
@@ -138,6 +145,7 @@ const EMPTY_STATE: PropertyFormValues = Object.fromEntries(
   TEXT_FIELDS.map((name) => [name, ""]),
 ) as unknown as PropertyFormValues;
 EMPTY_STATE.propertyType = "apartamento";
+EMPTY_STATE.isFeatured = "No";
 
 function toInitialValues(property: PropertyRecord): PropertyFormValues {
   const str = (value: string | number | null | undefined) =>
@@ -158,6 +166,7 @@ function toInitialValues(property: PropertyRecord): PropertyFormValues {
     developerId: str(property.developer_id),
     projectName: property.project_name ?? "",
     projectUrl: property.project_url ?? "",
+    isFeatured: property.is_featured ? "Sí" : "No",
     towerCount: str(property.tower_count),
     constructionCompany: property.construction_company ?? "",
     builderId: str(property.builder_id),
@@ -188,6 +197,12 @@ const HOUSING_TYPE_OPTIONS = [
   { value: "", label: "Sin especificar" },
   { value: "VIS", label: "VIS" },
   { value: "No VIS", label: "No VIS" },
+];
+
+/** "Propiedad destacada" is a plain yes/no (no "Sin especificar"), "No" by default. */
+const FEATURED_OPTIONS = [
+  { value: "No", label: "No" },
+  { value: "Sí", label: "Sí, mostrar en Propiedades destacadas" },
 ];
 
 const BOOLEAN_OPTIONS = [
@@ -244,6 +259,7 @@ function buildSteps(
               kind: "select",
               options: developerOptions(developers, lockedDeveloper),
             },
+            { name: "isFeatured", label: "Propiedad destacada", kind: "select", options: FEATURED_OPTIONS },
             {
               name: "description",
               label: "Descripción",
@@ -470,6 +486,7 @@ export function PropertyForm({
   realEstateAgencies,
   trustCompanies,
   commonAreas,
+  towerStatuses: towerStatusOptions,
   lockedDeveloper = null,
   property,
   onSaved,
@@ -479,6 +496,8 @@ export function PropertyForm({
   realEstateAgencies: { id: string; name: string }[];
   trustCompanies: { id: string; name: string }[];
   commonAreas: { id: string; name: string }[];
+  /** `tower_statuses` rows for the "Estado de la torre" select. */
+  towerStatuses: TowerStatusOption[];
   /** Constructora admins can only save properties under their own constructora. */
   lockedDeveloper?: { id: number; name: string } | null;
   /** When provided, the form edits this property instead of creating a new one. */
@@ -520,6 +539,12 @@ export function PropertyForm({
   const [towerDetails, setTowerDetails] = useState<Record<string, TowerDetail>>(() =>
     parseTowerDetails(property?.tower_details),
   );
+  // Status id per tower; towers without a saved one start on the catalog's default status.
+  const [towerStatuses, setTowerStatuses] = useState<Record<string, string>>(() =>
+    Object.fromEntries((property?.property_towers ?? []).map((tower) => [towerKey(tower.tower_number), tower.status_id])),
+  );
+  const defaultTowerStatusId = (towerStatusOptions.find((status) => status.isDefault) ?? towerStatusOptions[0])?.id ?? "";
+  const towerStatusOf = (towerKey: string) => towerStatuses[towerKey] ?? defaultTowerStatusId;
   const [images, setImages] = useState<PickedImage[]>(() =>
     (property?.additional_images ?? []).map(existingImage),
   );
@@ -803,7 +828,7 @@ export function PropertyForm({
       }
       commitUploads();
 
-      const towerKeys = Array.from({ length: Number(values.towerCount) || 0 }, (_, i) => `tower-${i + 1}`);
+      const keys = towerKeys(Number(values.towerCount) || 0);
       const payload: CreatePropertyInput = {
         ...values,
         image: imageUrl,
@@ -811,9 +836,10 @@ export function PropertyForm({
         longitude: coordinates?.lng ?? null,
         amenities,
         // Only the visible towers are saved, so lowering the count drops the extra towers' data.
-        typologies: Object.fromEntries(towerKeys.flatMap((key) => (towerTypologies[key] ? [[key, towerTypologies[key]]] : []))),
+        typologies: Object.fromEntries(keys.flatMap((key) => (towerTypologies[key] ? [[key, towerTypologies[key]]] : []))),
         // Every visible tower is saved with defaults, even if its fields were never touched.
-        towerDetails: Object.fromEntries(towerKeys.map((key) => [key, { ...EMPTY_TOWER_DETAIL, ...towerDetails[key] }])),
+        towerDetails: Object.fromEntries(keys.map((key) => [key, { ...EMPTY_TOWER_DETAIL, ...towerDetails[key] }])),
+        towerStatuses: Object.fromEntries(keys.map((key) => [key, towerStatusOf(key)])),
         additionalImages,
         seo: seoPayload,
         brandColors: isEditing ? undefined : brandColors,
@@ -1107,78 +1133,18 @@ export function PropertyForm({
                   <p className="mb-4 text-xs font-medium uppercase tracking-wider text-muted">
                     Tipologías por torre <span className="text-danger">*</span>
                   </p>
-                  {Array.from({ length: Number(values.towerCount) }, (_, i) => (
-                    <div key={`tower-${i + 1}`} className="mb-6 rounded-lg border border-separator p-4">
-                      <h3 className="mb-4 text-sm font-semibold">Torre {i + 1}</h3>
-                      <div className="mb-4 grid gap-4 sm:grid-cols-3">
-                        <div>
-                          <label
-                            htmlFor={`${formId}-tower-${i + 1}-trash-chute`}
-                            className="mb-1.5 block text-sm font-medium"
-                          >
-                            Cuenta con shut de basura
-                          </label>
-                          <select
-                            id={`${formId}-tower-${i + 1}-trash-chute`}
-                            className={fieldClassName()}
-                            value={towerDetails[`tower-${i + 1}`]?.hasTrashChute ? "Sí" : "No"}
-                            onChange={(e) =>
-                              setTowerDetail(`tower-${i + 1}`, { hasTrashChute: e.target.value === "Sí" })
-                            }
-                          >
-                            <option value="No">No</option>
-                            <option value="Sí">Sí</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label
-                            htmlFor={`${formId}-tower-${i + 1}-delivery-date`}
-                            className="mb-1.5 block text-sm font-medium"
-                          >
-                            Fecha de entrega
-                          </label>
-                          <input
-                            id={`${formId}-tower-${i + 1}-delivery-date`}
-                            type="date"
-                            className={fieldClassName()}
-                            value={towerDetails[`tower-${i + 1}`]?.deliveryDate ?? ""}
-                            onChange={(e) =>
-                              setTowerDetail(`tower-${i + 1}`, { deliveryDate: e.target.value || null })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <label
-                            htmlFor={`${formId}-tower-${i + 1}-elevators`}
-                            className="mb-1.5 block text-sm font-medium"
-                          >
-                            Cantidad de ascensores
-                          </label>
-                          <input
-                            id={`${formId}-tower-${i + 1}-elevators`}
-                            type="number"
-                            min={0}
-                            step={1}
-                            className={fieldClassName()}
-                            value={towerDetails[`tower-${i + 1}`]?.elevatorCount ?? 0}
-                            onChange={(e) =>
-                              setTowerDetail(`tower-${i + 1}`, {
-                                elevatorCount: Math.max(0, Math.trunc(Number(e.target.value) || 0)),
-                              })
-                            }
-                          />
-                        </div>
-                      </div>
-                      <TypologiesEditor
-                        typologies={towerTypologies[`tower-${i + 1}`] || []}
-                        onChange={(newTypologies) => {
-                          setTowerTypologies((prev) => ({
-                            ...prev,
-                            [`tower-${i + 1}`]: newTypologies,
-                          }));
-                        }}
-                      />
-                    </div>
+                  {towerKeys(Number(values.towerCount)).map((key, index) => (
+                    <TowerCard
+                      key={key}
+                      towerNumber={index + 1}
+                      statusOptions={towerStatusOptions}
+                      statusId={towerStatusOf(key)}
+                      onStatusChange={(statusId) => setTowerStatuses((prev) => ({ ...prev, [key]: statusId }))}
+                      detail={{ ...EMPTY_TOWER_DETAIL, ...towerDetails[key] }}
+                      onDetailChange={(patch) => setTowerDetail(key, patch)}
+                      typologies={towerTypologies[key] ?? []}
+                      onTypologiesChange={(typologies) => setTowerTypologies((prev) => ({ ...prev, [key]: typologies }))}
+                    />
                   ))}
                 </div>
               ) : null}

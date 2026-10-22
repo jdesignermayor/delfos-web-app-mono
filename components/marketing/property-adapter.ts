@@ -6,6 +6,7 @@ import type {
   PropertySeo,
   PropertyType,
   Tower,
+  TowerStatus,
   Typology,
 } from "@/components/marketing/properties";
 import { createPublicClient } from "@/supabase/public";
@@ -13,6 +14,9 @@ import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
 import type { Json, Tables } from "@/supabase/types";
 import { parseAmenities } from "@/lib/amenities";
 import { BRAND_COLOR_KEYS, parseBrandColors } from "@/lib/brand-colors";
+import { towerKey, towerNumberOf } from "@/lib/towers/tower-keys";
+import { isSalesSuccessStatus } from "@/lib/towers/tower-status-rules";
+import { youtubeId } from "@/lib/property-seo";
 import { typologyRanges } from "@/lib/typology-ranges";
 
 const TYPE_BY_PROPERTY_TYPE: Record<string, PropertyType> = {
@@ -22,11 +26,25 @@ const TYPE_BY_PROPERTY_TYPE: Record<string, PropertyType> = {
   proyecto: "proyecto",
 };
 
-/** The Constructora (`developer_id`) joined onto each row, for its name and contact phone. */
-const PROPERTY_SELECT = "*, developer:developers!developer_id(name, phone)";
+/** Each tower's status (`property_towers` → `tower_statuses`). */
+const TOWER_STATUSES_SELECT = "property_towers(tower_number, status:tower_statuses(id, name, shows_details))";
+
+/**
+ * Columns `listingSummary` reads, for queries that only need a card (the landing carousel)
+ * instead of the full row.
+ */
+export const LISTING_SUMMARY_SELECT = `neighborhood, commune, city, location, typologies, housing_type, delivery_date, ${TOWER_STATUSES_SELECT}`;
+
+/** The Constructora (`developer_id`) joined onto each row, for its name and contact phone, and each tower's status. */
+const PROPERTY_SELECT = `*, developer:developers!developer_id(name, phone), ${TOWER_STATUSES_SELECT}`;
+
+type PropertyTowerRow = Pick<Tables<"property_towers">, "tower_number"> & {
+  status: Pick<Tables<"tower_statuses">, "id" | "name" | "shows_details"> | null;
+};
 
 type PropertyRow = Tables<"properties"> & {
   developer?: Pick<Tables<"developers">, "name" | "phone"> | null;
+  property_towers?: PropertyTowerRow[];
 };
 
 type JsonObject = { [key: string]: Json | undefined };
@@ -50,24 +68,56 @@ function toBoolean(value: Json | undefined): boolean | undefined {
 
 const text = (value: string | null | undefined) => value?.trim() || undefined;
 
+/** Each tower's status by tower number. */
+function towerStatuses(rows: PropertyTowerRow[] | undefined): Map<number, TowerStatus> {
+  return new Map(
+    (rows ?? []).flatMap((row) =>
+      row.status ? [[row.tower_number, { id: row.status.id, name: row.status.name, showsDetails: row.status.shows_details }]] : [],
+    ),
+  );
+}
+
+/**
+ * `properties.typologies` without the towers whose status hides their details, so they don't
+ * count towards the listing's bedroom/bathroom/area ranges either.
+ */
+function visibleTypologies(typologies: Json, statuses: Map<number, TowerStatus>): Json {
+  if (!isObject(typologies)) return typologies;
+  return Object.fromEntries(
+    Object.entries(typologies).filter(([key]) => statuses.get(towerNumberOf(key))?.showsDetails !== false),
+  );
+}
+
 /**
  * Merges `typologies` (`{ "tower-1": Typology[] }`) and `tower_details`
  * (`{ "tower-1": { deliveryDate, elevatorCount, hasTrashChute } }`) into one
  * list of towers, ordered by number. Towers past `towerCount` are leftovers from
- * when the count was higher, so they're dropped.
+ * when the count was higher, so they're dropped. A tower whose status hides its details keeps
+ * only its number and status: the rest never leaves the server.
  */
-function parseTowers(typologies: Json, towerDetails: Json, towerCount: number | null): Tower[] {
+function parseTowers(
+  typologies: Json,
+  towerDetails: Json,
+  towerCount: number | null,
+  statuses: Map<number, TowerStatus>,
+): Tower[] {
   const keys = new Set([
     ...(isObject(typologies) ? Object.keys(typologies) : []),
     ...(isObject(towerDetails) ? Object.keys(towerDetails) : []),
+    ...[...statuses.keys()].map(towerKey),
   ]);
 
   return [...keys]
     .map((key): Tower => {
+      const number = towerNumberOf(key);
+      const status = statuses.get(number);
+      if (status && !status.showsDetails) return { number, status, typologies: [] };
+
       const rawTypologies = isObject(typologies) ? typologies[key] : undefined;
       const info = isObject(towerDetails) ? towerDetails[key] : undefined;
       return {
-        number: Number(key.replace(/\D/g, "")) || 0,
+        number,
+        status,
         deliveryDate: isObject(info) && typeof info.deliveryDate === "string" ? info.deliveryDate || undefined : undefined,
         elevatorCount: isObject(info) ? toNumber(info.elevatorCount) : undefined,
         hasTrashChute: isObject(info) ? toBoolean(info.hasTrashChute) : undefined,
@@ -99,7 +149,7 @@ function parseSeo(value: Json | undefined): PropertySeo {
   return { meta: platform("meta"), google: platform("google"), youtube: platform("youtube"), linkedin: platform("linkedin") };
 }
 
-function toDetails(row: PropertyRow): PropertyDetails {
+function toDetails(row: PropertyRow, statuses: Map<number, TowerStatus>): PropertyDetails {
   return {
     developer: row.developer
       ? { name: row.developer.name, phone: text(row.developer.phone) }
@@ -110,7 +160,7 @@ function toDetails(row: PropertyRow): PropertyDetails {
     constructionBank: text(row.construction_bank),
     deliveryDate: text(row.delivery_date),
     towerCount: row.tower_count ?? undefined,
-    towers: parseTowers(row.typologies, row.tower_details, row.tower_count),
+    towers: parseTowers(row.typologies, row.tower_details, row.tower_count, statuses),
     financing: {
       initialFeePercentage: row.initial_fee_percentage ?? undefined,
       initialFeeAmount: toNumber(row.initial_fee_amount),
@@ -133,26 +183,25 @@ function toBrandColors(value: Json): Property["brandColors"] {
   return BRAND_COLOR_KEYS.some((key) => colors[key]) ? colors : undefined;
 }
 
-/** Maps a real `properties` row from Supabase onto the marketing site's mock `Property` shape. */
-export function toProperty(row: PropertyRow): Property {
-  const images = row.additional_images?.length
-    ? [row.image, ...row.additional_images]
-    : undefined;
-  const amenities = parseAmenities(row.amenities).map((a) => a.name.trim());
-  const ranges = typologyRanges(row.typologies);
+export type ListingSummaryRow = Pick<
+  Tables<"properties">,
+  "neighborhood" | "commune" | "city" | "location" | "typologies" | "housing_type" | "delivery_date"
+> & { property_towers?: PropertyTowerRow[] };
+
+/**
+ * What every card shows besides title, photo and price: where it is, its typology ranges, VIS,
+ * off-plan status and the "Éxito en ventas" tag. Shared by the full `toProperty` and the
+ * landing's lighter card query, so both cards read the same.
+ */
+export function listingSummary(row: ListingSummaryRow) {
+  const statuses = towerStatuses(row.property_towers);
+  const ranges = typologyRanges(visibleTypologies(row.typologies, statuses));
   // Rows created without city/neighbourhood still have `location` ("La Estrella, Antioquia").
   const [locationArea, locationRegion] = (row.location ?? "").split(",").map((part) => part.trim());
 
   return {
-    slug: row.uuid,
-    uuid: row.uuid,
-    title: row.title,
-    projectName: row.project_name ?? undefined,
     neighborhood: row.neighborhood ?? row.commune ?? row.city ?? locationArea ?? "",
     city: row.city ?? locationRegion ?? "",
-    operation: "comprar",
-    type: TYPE_BY_PROPERTY_TYPE[row.property_type ?? ""] ?? "apartamento",
-    price: Number(row.price),
     beds: ranges.bedrooms,
     baths: ranges.bathrooms,
     area: ranges.area,
@@ -160,6 +209,26 @@ export function toProperty(row: PropertyRow): Property {
     affordable: /^\s*vi[sp]\b/i.test(row.housing_type ?? ""),
     // A delivery date still ahead means the project is off-plan.
     status: row.delivery_date && new Date(row.delivery_date) > new Date() ? "Sobre planos" : "Listo para estrenar",
+    salesSuccess: [...statuses.values()].some((status) => isSalesSuccessStatus(status.id)) || undefined,
+  } satisfies Partial<Property>;
+}
+
+/** Maps a real `properties` row from Supabase onto the marketing site's mock `Property` shape. */
+export function toProperty(row: PropertyRow): Property {
+  const images = row.additional_images?.length
+    ? [row.image, ...row.additional_images]
+    : undefined;
+  const amenities = parseAmenities(row.amenities).map((a) => a.name.trim());
+
+  return {
+    slug: row.uuid,
+    uuid: row.uuid,
+    title: row.title,
+    projectName: row.project_name ?? undefined,
+    ...listingSummary(row),
+    operation: "comprar",
+    type: TYPE_BY_PROPERTY_TYPE[row.property_type ?? ""] ?? "apartamento",
+    price: Number(row.price),
     hue: (row.id * 47) % 360,
     lat: row.latitude ?? undefined,
     lng: row.longitude ?? undefined,
@@ -169,8 +238,9 @@ export function toProperty(row: PropertyRow): Property {
     amenities: amenities.length ? amenities : undefined,
     address: row.address || undefined,
     stratum: row.stratum || undefined,
-    details: toDetails(row),
+    details: toDetails(row, towerStatuses(row.property_towers)),
     seo: parseSeo(row.seo),
+    videoId: youtubeId(parseSeo(row.seo).youtube.videoUrl) ?? undefined,
     brandColors: toBrandColors(row.brand_colors),
     createdAt: row.created_at ?? undefined,
     updatedAt: row.updated_at ?? row.created_at ?? undefined,

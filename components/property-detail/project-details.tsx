@@ -7,6 +7,7 @@ import {
   type Property,
   type PropertyDetails,
   type Tower,
+  type TowerStatus,
   type Typology,
 } from "@/components/marketing/properties";
 import { formatRange } from "@/lib/typology-ranges";
@@ -110,15 +111,49 @@ function TypologyRow({ typology }: { typology: Typology }) {
   );
 }
 
+/** The tower's sale status ("En Preventas", "Vendida completamente"…), as stored in `tower_statuses`. */
+function TowerStatusBadge({ status }: { status: TowerStatus }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+        status.showsDetails ? "brand-rule border-separator text-foreground" : "border-separator bg-surface-secondary text-muted"
+      }`}
+    >
+      {status.name}
+    </span>
+  );
+}
+
+const TOWER_ICON_CLASS =
+  "brand-tile flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-foreground";
+
+/** A tower whose status hides its details: number and status only, nothing to expand. */
+function LockedTowerItem({ tower, status }: { tower: Tower; status: TowerStatus }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-separator p-4" aria-disabled="true">
+      <span className={`${TOWER_ICON_CLASS} opacity-60`}>
+        <BuildingIcon className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold text-foreground">Torre {tower.number}</span>
+        <span className="mt-0.5 block text-sm text-muted">Información disponible próximamente</span>
+      </span>
+      <TowerStatusBadge status={status} />
+    </div>
+  );
+}
+
 /** Collapsible tower: a one-line summary, expanding to its features and typologies. */
 function TowerItem({ tower }: { tower: Tower }) {
   const delivery = formatDeliveryShort(tower.deliveryDate);
   const area = areaRange(tower.typologies);
 
+  if (tower.status && !tower.status.showsDetails) return <LockedTowerItem tower={tower} status={tower.status} />;
+
   return (
     <details className="group rounded-2xl border border-separator open:bg-surface/40">
       <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
-        <span className="brand-tile flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-foreground">
+        <span className={TOWER_ICON_CLASS}>
           <BuildingIcon className="size-5" />
         </span>
         <span className="min-w-0 flex-1">
@@ -136,6 +171,7 @@ function TowerItem({ tower }: { tower: Tower }) {
             {area ? <span>{area}</span> : null}
           </span>
         </span>
+        {tower.status ? <TowerStatusBadge status={tower.status} /> : null}
         <ChevronDown className="size-5 shrink-0 text-muted transition-transform group-open:rotate-180" />
       </summary>
 

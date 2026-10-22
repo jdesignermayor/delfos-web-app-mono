@@ -12,6 +12,8 @@ import { normalizeWebsiteUrl } from "@/lib/url";
 import { getDashboardUser } from "@/lib/auth/dal";
 import { canManageProperty, developerScope, type DashboardUser } from "@/lib/auth/permissions";
 import type { Typology } from "@/components/dashboard/properties/typologies-editor";
+import { listTowerStatusIds, replacePropertyTowers } from "@/lib/towers/property-towers-repository";
+import { towerKeys } from "@/lib/towers/tower-keys";
 
 /** Per-tower attributes stored in `properties.tower_details`. */
 export type TowerDetail = {
@@ -47,6 +49,8 @@ export type CreatePropertyInput = {
    */
   brandColors?: BrandColors;
   towerCount: string;
+  /** "Propiedad destacada": "Sí" shows it in the landing's "Propiedades destacadas". */
+  isFeatured: string;
   constructionCompany: string;
   builderId: string;
   sellerId: string;
@@ -66,6 +70,8 @@ export type CreatePropertyInput = {
   typologies: Record<string, Typology[]>;
   /** Per-tower attributes (trash chute, delivery date, elevators) keyed by `tower-${n}`. */
   towerDetails: Record<string, TowerDetail>;
+  /** "Estado de la torre": a `tower_statuses.id` per tower, keyed by `tower-${n}`. Saved in `property_towers`. */
+  towerStatuses: Record<string, string>;
   additionalImages: string[];
   /** Per-platform SEO/ads fields (`{ meta: { ogTitle, … }, google: {…}, … }`); empty values are dropped. */
   seo: Record<string, Record<string, string>>;
@@ -98,6 +104,7 @@ const REQUIRED_FIELDS: Array<
       | "amenities"
       | "typologies"
       | "towerDetails"
+      | "towerStatuses"
       | "additionalImages"
       | "latitude"
       | "longitude"
@@ -156,6 +163,7 @@ function buildPropertyRow(input: CreatePropertyInput) {
     project_name: input.projectName.trim() || null,
     project_url: normalizeWebsiteUrl(input.projectUrl ?? ""),
     tower_count: input.towerCount ? Number(input.towerCount) : null,
+    is_featured: input.isFeatured === "Sí",
     construction_company: input.constructionCompany.trim() || null,
     builder_id: input.builderId ? Number(input.builderId) : null,
     seller_id: input.sellerId ? Number(input.sellerId) : null,
@@ -179,6 +187,40 @@ function buildPropertyRow(input: CreatePropertyInput) {
 }
 
 type PropertyRow = ReturnType<typeof buildPropertyRow>;
+
+/** The status id the form sent for each tower, in tower order (index 0 = tower 1). */
+function towerStatusIds(input: CreatePropertyInput): string[] {
+  const count = Number(input.towerCount);
+  const keys = Number.isInteger(count) && count > 0 ? towerKeys(count) : [];
+  return keys.map((key) => input.towerStatuses?.[key] ?? "");
+}
+
+/** Every tower needs a status, and it must be one of the `tower_statuses` rows. */
+async function validateTowerStatuses(input: CreatePropertyInput): Promise<string | null> {
+  const statusIds = towerStatusIds(input);
+  if (statusIds.length === 0) return null;
+
+  let known: Set<string>;
+  try {
+    known = await listTowerStatusIds();
+  } catch {
+    return "No se pudieron validar los estados de las torres.";
+  }
+  const missing = statusIds.findIndex((id) => !known.has(id));
+  return missing === -1 ? null : `Selecciona el estado de la Torre ${missing + 1}.`;
+}
+
+/** Saves each tower's status; the error message, or null when it worked. */
+async function saveTowerStatuses(propertyId: number, input: CreatePropertyInput): Promise<string | null> {
+  try {
+    await replacePropertyTowers(propertyId, towerStatusIds(input));
+    return null;
+  } catch (error) {
+    // Supabase rejects with a plain `{ message }` object, not always an `Error`.
+    const message = (error as { message?: unknown } | null)?.message;
+    return typeof message === "string" ? message : "Error desconocido";
+  }
+}
 
 const UNAUTHORIZED = "No tienes permiso para realizar esta acción.";
 
@@ -223,7 +265,7 @@ export async function createProperty(input: CreatePropertyInput): Promise<Create
     return { success: false, error: UNAUTHORIZED };
   }
 
-  const validationError = validateInput(input);
+  const validationError = validateInput(input) ?? (await validateTowerStatuses(input));
   if (validationError) {
     return { success: false, error: validationError };
   }
@@ -241,9 +283,13 @@ export async function createProperty(input: CreatePropertyInput): Promise<Create
   if (error) {
     return { success: false, error: error.message };
   }
+  const towersError = await saveTowerStatuses(data.id, input);
   revalidateTag(PROPERTIES_CACHE_TAG, "max");
   // Dashboard lists, stats and detail pages (and their client-side cache).
   revalidatePath("/dashboard", "layout");
+  if (towersError) {
+    return { success: false, error: `La propiedad se creó, pero no se guardó el estado de las torres: ${towersError}` };
+  }
   return { success: true, id: data.id };
 }
 
@@ -256,7 +302,7 @@ export async function updateProperty(
     return { success: false, error: UNAUTHORIZED };
   }
 
-  const validationError = validateInput(input);
+  const validationError = validateInput(input) ?? (await validateTowerStatuses(input));
   if (validationError) {
     return { success: false, error: validationError };
   }
@@ -268,9 +314,13 @@ export async function updateProperty(
   if (error) {
     return { success: false, error: error.message };
   }
+  const towersError = await saveTowerStatuses(id, input);
   revalidateTag(PROPERTIES_CACHE_TAG, "max");
   // Dashboard lists, stats and detail pages (and their client-side cache).
   revalidatePath("/dashboard", "layout");
+  if (towersError) {
+    return { success: false, error: `No se pudo guardar el estado de las torres: ${towersError}` };
+  }
   return { success: true, id };
 }
 

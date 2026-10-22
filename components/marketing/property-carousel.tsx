@@ -9,6 +9,11 @@ import { TrackPropertyList } from "@/components/analytics/track-property-view";
 
 /** Card width per breakpoint; shared with the skeleton so nothing shifts when listings arrive. */
 const SLIDE_CLASS = "w-[58%] shrink-0 snap-start sm:w-[38%] lg:w-[26%] xl:w-[20%]";
+const SLIDE_SIZES = "(min-width: 1280px) 20vw, (min-width: 1024px) 26vw, (min-width: 640px) 38vw, 58vw";
+/** "Propiedades destacadas": much bigger cards, as tall as the viewport allows (see `PropertyCard`). */
+const HIGHLIGHTED_SLIDE_CLASS = "shrink-0 snap-start";
+/** The card is at most 44rem tall at 3:4, so never wider than 33rem. */
+const HIGHLIGHTED_SLIDE_SIZES = "528px";
 /** At most this many cards are on screen at load (xl shows 5 + a peek), so only they load eagerly. */
 const EAGER_CARDS = 6;
 /** How far (px) one arrow press scrolls the track — about two cards on desktop. */
@@ -32,11 +37,14 @@ export function PropertyCarousel({
   title,
   properties,
   analyticsListId,
+  highlighted = false,
 }: {
   title: string;
   properties: Property[];
   /** When set, the list's impressions and card clicks are reported to GA4 under this id. */
   analyticsListId?: string;
+  /** "Propiedades destacadas": bigger cards with the details over the photo. */
+  highlighted?: boolean;
 }) {
   const analyticsList = analyticsListId ? { id: analyticsListId, name: title } : undefined;
   const trackRef = useRef<HTMLDivElement>(null);
@@ -62,16 +70,20 @@ export function PropertyCarousel({
 
       <div
         ref={trackRef}
-        className="no-scrollbar mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto sm:gap-4 scroll-smooth pb-2"
+        className={`no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto sm:gap-4 scroll-smooth pb-2 ${
+          // Highlighted: room for the hover ring, which the scrolling track would otherwise clip.
+          highlighted ? "-mx-2 mt-4 px-2 pt-2 sm:gap-5" : "mt-6"
+        }`}
       >
         {properties.map((property, index) => (
-          <div key={property.slug} className={SLIDE_CLASS}>
+          <div key={property.slug} className={highlighted ? HIGHLIGHTED_SLIDE_CLASS : SLIDE_CLASS}>
             <PropertyCard
               property={property}
               analyticsList={analyticsList}
               index={index}
               eager={index < EAGER_CARDS}
-              sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 26vw, (min-width: 640px) 38vw, 58vw"
+              variant={highlighted ? "highlighted" : "default"}
+              sizes={highlighted ? HIGHLIGHTED_SLIDE_SIZES : SLIDE_SIZES}
             />
           </div>
         ))}

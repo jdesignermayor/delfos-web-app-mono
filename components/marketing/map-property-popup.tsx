@@ -128,7 +128,7 @@ export function PropertyListingCard({
                 className={circleButton}
               >
                 <Heart
-                  className={`size-4 ${isFavorite ? "fill-[#ff385c] text-[#ff385c]" : ""}`}
+                  className={`size-4 ${isFavorite ? "fill-accent text-accent" : ""}`}
                   strokeWidth={2.25}
                 />
               </button>

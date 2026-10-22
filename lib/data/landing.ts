@@ -1,7 +1,9 @@
 import { cache } from "react";
 
 import { PROPERTIES, type Property, type PropertyType } from "@/components/marketing/properties";
+import { LISTING_SUMMARY_SELECT, listingSummary, type ListingSummaryRow } from "@/components/marketing/property-adapter";
 import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
+import { youtubeId } from "@/lib/property-seo";
 import { createPublicClient } from "@/supabase/public";
 
 export type LandingStats = {
@@ -14,6 +16,7 @@ export type LandingStats = {
 
 const CARD_TYPES: PropertyType[] = ["apartamento", "casa", "apartaestudio", "proyecto"];
 const FEATURED_LIMIT = 12;
+const HIGHLIGHTED_LIMIT = 12;
 
 function deliveryYear(deliveryDate: string | null): number | null {
   return deliveryDate ? Number(deliveryDate.slice(0, 4)) : null;
@@ -46,7 +49,7 @@ export const getLandingStats = cache(async (): Promise<LandingStats | null> => {
 /** Most photos a carousel card cycles through. */
 const CARD_IMAGE_LIMIT = 6;
 
-type FeaturedRow = {
+type FeaturedRow = ListingSummaryRow & {
   id: number;
   uuid: string;
   title: string;
@@ -58,9 +61,16 @@ type FeaturedRow = {
 };
 
 /** The SEO slug when set, so cards link to (and Google sees) the canonical URL. */
+type CardSeo = { google?: { slug?: string }; youtube?: { videoUrl?: string } } | null;
+
 function canonicalSlug(row: Pick<FeaturedRow, "uuid" | "seo">): string {
-  const seo = row.seo as { google?: { slug?: string } } | null;
+  const seo = row.seo as CardSeo;
   return seo?.google?.slug?.trim() || row.uuid;
+}
+
+/** The project's YouTube video id from its SEO step, if it has one. */
+function cardVideoId(row: Pick<FeaturedRow, "seo">): string | undefined {
+  return youtubeId((row.seo as CardSeo)?.youtube?.videoUrl) ?? undefined;
 }
 
 function toCardType(propertyType: string | null): PropertyType {
@@ -85,10 +95,8 @@ function toFeaturedProperty(row: FeaturedRow): Property {
     operation: "comprar",
     type: toCardType(row.property_type),
     hue: (row.id * 47) % 360,
-    neighborhood: "",
-    city: "",
-    affordable: false,
-    status: "Listo para estrenar",
+    videoId: cardVideoId(row),
+    ...listingSummary(row),
   };
 }
 
@@ -97,12 +105,25 @@ function toFeaturedProperty(row: FeaturedRow): Property {
  * typologies or sales-room data. Falls back to the sample catalogue when the DB is empty.
  */
 export async function getFeaturedProperties(): Promise<Property[]> {
-  const { data, error } = await createPublicClient({ revalidate: 300, tags: [PROPERTIES_CACHE_TAG] })
-    .from("properties")
-    .select("id, uuid, title, image, additional_images, price, property_type, seo")
-    .order("created_at", { ascending: false })
-    .limit(FEATURED_LIMIT);
+  const { data, error } = await cardsQuery().limit(FEATURED_LIMIT);
 
   if (error || !data?.length) return PROPERTIES;
   return data.map(toFeaturedProperty);
+}
+
+/**
+ * Properties marked "Propiedad destacada" in the dashboard (`properties.is_featured`), newest
+ * first, for the landing's "Propiedades destacadas". Empty when none is marked.
+ */
+export async function getHighlightedProperties(): Promise<Property[]> {
+  const { data, error } = await cardsQuery().eq("is_featured", true).limit(HIGHLIGHTED_LIMIT);
+  return error || !data ? [] : data.map(toFeaturedProperty);
+}
+
+/** Newest listings with only the columns a card needs; cached and refreshed when a property is saved. */
+function cardsQuery() {
+  return createPublicClient({ revalidate: 300, tags: [PROPERTIES_CACHE_TAG] })
+    .from("properties")
+    .select(`id, uuid, title, image, additional_images, price, property_type, seo, ${LISTING_SUMMARY_SELECT}`)
+    .order("created_at", { ascending: false });
 }

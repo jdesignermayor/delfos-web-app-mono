@@ -109,5 +109,5 @@ export function budgetChoices(options: { value: string; label: string }[]): Choi
 }
 
 export function budgetHint(operation: Operation) {
-  return operation === "arrendar" ? "Canon mensual máximo" : "Precio total máximo";
+  return operation === "arrendar" ? "Canon mensual máximo" : "Rango de precio total";
 }

@@ -5,10 +5,15 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { BedIcon, HomeIcon, MapPinIcon, SearchIcon, WalletIcon } from "@/components/icons";
+import { BudgetRangePanel } from "@/components/marketing/budget-range-panel";
 import { LocationFields } from "@/components/marketing/location-fields";
 import { DROPDOWN_MOTION } from "@/components/marketing/motion-presets";
 import {
   BUDGET_OPTIONS,
+  BUDGET_RANGE,
+  budgetRangeLabel,
+  budgetRangeParam,
+  parseBudgetRange,
   TYPE_LABELS,
   type Operation,
   type PropertyFilters,
@@ -187,20 +192,29 @@ export function PropertySearch({
   useClickOutside(containerRef, () => setActiveField(null));
 
   const budgetOperation = budgetOperationFor(mode);
+  // Buying uses the price-range slider; renting keeps the monthly-rent buckets.
+  const usesBudgetRange = budgetOperation === "comprar";
   const budgetOptions = BUDGET_OPTIONS.filter((option) => option.operation === budgetOperation);
-  // A budget bucket only applies while its operation is selected; otherwise it
-  // falls back to "no budget" without needing to reset state in an effect.
-  const activeBudget = budgetOptions.some((option) => option.value === draft.presupuesto) ? draft.presupuesto : "";
-  const budgetLabel = budgetOptions.find((option) => option.value === activeBudget)?.label ?? "";
+  const budgetRange = parseBudgetRange(draft.presupuesto) ?? { min: BUDGET_RANGE.min, max: BUDGET_RANGE.max };
+  // A budget only applies while its operation is selected; otherwise it falls
+  // back to "no budget" without needing to reset state in an effect.
+  const activeBudget = usesBudgetRange
+    ? budgetRangeParam(budgetRange)
+    : budgetOptions.some((option) => option.value === draft.presupuesto)
+      ? draft.presupuesto
+      : "";
+  const budgetLabel = usesBudgetRange
+    ? budgetRangeLabel(budgetRange)
+    : (budgetOptions.find((option) => option.value === activeBudget)?.label ?? "");
 
   const segments = buildSegments({ draft, mode, compact, budgetLabel });
 
-  function runSearch(location = draft.ubicacion) {
+  function runSearch() {
     onSearchAction?.();
     router.push(
       buildSearchHref({
         mode,
-        location,
+        location: draft.ubicacion,
         tipo: draft.tipo,
         habitaciones: draft.habitaciones,
         presupuesto: activeBudget,
@@ -219,10 +233,6 @@ export function PropertySearch({
     setActiveField(null);
   }
 
-  function pickLocation(location: string) {
-    select("ubicacion", location);
-    runSearch(location);
-  }
 
   function renderPanel(field: Field) {
     switch (field) {
@@ -231,7 +241,8 @@ export function PropertySearch({
           <LocationFields
             value={draft.ubicacion}
             onValueChangeAction={(value) => setDraft((current) => ({ ...current, ubicacion: value }))}
-            onPickAction={pickLocation}
+            // Picking a place only fills the field; the search runs when the visitor presses "Buscar".
+            onPickAction={(location) => select("ubicacion", location)}
           />
         );
       case "tipo":
@@ -257,7 +268,13 @@ export function PropertySearch({
           />
         );
       case "presupuesto":
-        return (
+        return usesBudgetRange ? (
+          <BudgetRangePanel
+            hint={budgetHint(budgetOperation)}
+            value={budgetRange}
+            onChangeAction={(range) => setDraft((current) => ({ ...current, presupuesto: budgetRangeParam(range) }))}
+          />
+        ) : (
           <ChoicePanel
             title="Presupuesto"
             hint={budgetHint(budgetOperation)}

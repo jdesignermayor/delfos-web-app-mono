@@ -50,6 +50,10 @@ export type Property = {
   stratum?: number;
   /** Project, financing and sales-room data. Only real (DB) listings have it. */
   details?: PropertyDetails;
+  /** YouTube id of the project video (SEO step), played inside "Propiedades destacadas" cards. */
+  videoId?: string;
+  /** "Éxito en ventas" tag on the card: a tower has the sales-success status id (`lib/towers/tower-status-rules.ts`). */
+  salesSuccess?: boolean;
   /** Project palette extracted from its website; tints the detail page. Only set when at least one color exists. */
   brandColors?: BrandColors;
   /** SEO/ads fields from the dashboard's SEO step. Only real (DB) listings have it. */
@@ -77,9 +81,19 @@ export type Typology = {
   hasBalcony?: boolean;
 };
 
+/** A `tower_statuses` row: "En Preventas", "Pendiente", … */
+export type TowerStatus = {
+  id: string;
+  name: string;
+  /** When false the tower is listed with its status only: no dates, features or typologies. */
+  showsDetails: boolean;
+};
+
 export type Tower = {
   /** 1-based tower number, from the `tower-N` key. */
   number: number;
+  /** From `property_towers`; absent for towers saved before statuses existed. */
+  status?: TowerStatus;
   /** ISO date (YYYY-MM-DD). */
   deliveryDate?: string;
   elevatorCount?: number;
@@ -415,6 +429,55 @@ export const BUDGET_OPTIONS: { value: string; label: string; operation: Operatio
   { value: "arriendo-4000", label: "Hasta $4M / mes", operation: "arrendar" },
 ];
 
+/**
+ * "Comprar" budget slider, in millions of COP. An end left at its limit means "no limit" on that
+ * side, so the full range is the same as no budget at all.
+ */
+export const BUDGET_RANGE = { min: 100, max: 1000, step: 50 } as const;
+
+export type BudgetRange = { min: number; max: number };
+
+const MILLION = 1_000_000;
+
+/** `presupuesto=200-600` (millions) → `{ min: 200, max: 600 }`; null for anything else, e.g. a rent bucket. */
+export function parseBudgetRange(value: string | undefined): BudgetRange | null {
+  const match = value?.match(/^(\d+)-(\d+)$/);
+  if (!match) return null;
+  const clamp = (n: number) => Math.min(BUDGET_RANGE.max, Math.max(BUDGET_RANGE.min, n));
+  const [min, max] = [clamp(Number(match[1])), clamp(Number(match[2]))].sort((a, b) => a - b);
+  return { min, max };
+}
+
+/** The `presupuesto` param for a slider range; "" when it spans the whole slider (no budget). */
+export function budgetRangeParam({ min, max }: BudgetRange): string {
+  return min <= BUDGET_RANGE.min && max >= BUDGET_RANGE.max ? "" : `${min}-${max}`;
+}
+
+const millions = (value: number) => `$${value.toLocaleString("es-CO")}M`;
+
+/** "$200M – $600M", "Desde $200M", "Hasta $600M", or "" for the whole slider. */
+export function budgetRangeLabel({ min, max }: BudgetRange): string {
+  const hasMin = min > BUDGET_RANGE.min;
+  const hasMax = max < BUDGET_RANGE.max;
+  if (hasMin && hasMax) return `${millions(min)} – ${millions(max)}`;
+  if (hasMin) return `Desde ${millions(min)}`;
+  if (hasMax) return `Hasta ${millions(max)}`;
+  return "";
+}
+
+/** Price bounds in COP for `presupuesto`: a slider range ("200-600") or a rent bucket ("arriendo-1500"). */
+function budgetBounds(presupuesto: string | undefined): { min: number; max: number } | null {
+  const range = parseBudgetRange(presupuesto);
+  if (range) {
+    return {
+      min: range.min > BUDGET_RANGE.min ? range.min * MILLION : 0,
+      max: range.max < BUDGET_RANGE.max ? range.max * MILLION : Infinity,
+    };
+  }
+  const cap = presupuesto ? BUDGET_MAX[presupuesto] : undefined;
+  return cap ? { min: 0, max: cap } : null;
+}
+
 export function getPropertyBySlug(slug: string): Property | undefined {
   return PROPERTIES.find((property) => property.slug === slug);
 }
@@ -438,7 +501,7 @@ export function filterProperties(
 ): Property[] {
   const tokens = normalizeText(filters.ubicacion ?? "").split(/[\s,]+/).filter(Boolean);
   const minBeds = filters.habitaciones ? Number.parseInt(filters.habitaciones, 10) : 0;
-  const budgetCap = filters.presupuesto ? BUDGET_MAX[filters.presupuesto] : undefined;
+  const budget = budgetBounds(filters.presupuesto);
   const minBaths = filters.banos ? Number.parseInt(filters.banos, 10) : 0;
   const areaBucket = AREA_OPTIONS.find((option) => option.value === filters.area);
   const stratum = filters.estrato ? Number.parseInt(filters.estrato, 10) : 0;
@@ -452,7 +515,7 @@ export function filterProperties(
     if (filters.asequible === "si" && !property.affordable) return false;
     // A project matches when at least one of its typologies has enough bedrooms.
     if (minBeds && (!property.beds || property.beds.max < minBeds)) return false;
-    if (budgetCap && property.price > budgetCap) return false;
+    if (budget && (property.price < budget.min || property.price > budget.max)) return false;
     if (minBaths && (!property.baths || property.baths.max < minBaths)) return false;
     // A project matches when any of its typologies falls in the bucket.
     if (areaBucket && (!property.area || property.area.max < areaBucket.min || property.area.min >= areaBucket.max)) {

@@ -227,6 +227,11 @@ export function SiteNavbar({
             <span className="hidden sm:inline">Delfos</span>
           </Link>
 
+          {/* Phones: the search sits right in the middle of the bar, between the logo and the menu. */}
+          <div className="min-w-0 md:hidden">
+            <MobileLocationButton />
+          </div>
+
           <div className="hidden min-w-0 items-center justify-center md:flex">
             <DesktopHeaderCenter
               alwaysShowSearch={alwaysShowSearch}
@@ -257,8 +262,7 @@ export function SiteNavbar({
 
         {alwaysShowSearch ? <SearchTakeoverPanel takeover={takeover} searchFilters={searchFilters} /> : null}
 
-        <div className="flex flex-col gap-3 border-t border-separator px-4 py-3 md:hidden">
-          <MobileLocationButton />
+        <div className="border-t border-separator px-4 py-3 md:hidden">
           <nav className="no-scrollbar flex items-center gap-2 overflow-x-auto">
             <SearchModeTabs variant="mobile" />
           </nav>

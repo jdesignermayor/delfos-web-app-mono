@@ -14,8 +14,8 @@ const TAB_ICONS = {
 /** Desktop shows underlined tabs with icons in the header; mobile shows plain text chips under the search box. */
 const VARIANTS = {
   desktop: {
-    iconSize: 22,
-    base: "flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-colors",
+    iconSize: 18,
+    base: "flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-[13px] font-semibold transition-colors",
     active: "border-foreground text-foreground",
     inactive: "border-transparent text-muted hover:border-separator hover:text-foreground",
   },

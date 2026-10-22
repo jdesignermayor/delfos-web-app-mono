@@ -231,6 +231,7 @@ export type Database = {
           initial_fee_amount: string | null
           initial_fee_percentage: number | null
           is_favorite: boolean | null
+          is_featured: boolean
           latitude: number | null
           location: string
           longitude: number | null
@@ -279,6 +280,7 @@ export type Database = {
           initial_fee_amount?: string | null
           initial_fee_percentage?: number | null
           is_favorite?: boolean | null
+          is_featured?: boolean
           latitude?: number | null
           location: string
           longitude?: number | null
@@ -327,6 +329,7 @@ export type Database = {
           initial_fee_amount?: string | null
           initial_fee_percentage?: number | null
           is_favorite?: boolean | null
+          is_featured?: boolean
           latitude?: number | null
           location?: string
           longitude?: number | null
@@ -399,6 +402,48 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_towers: {
+        Row: {
+          created_at: string
+          id: string
+          property_id: number
+          status_id: string
+          tower_number: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          property_id: number
+          status_id: string
+          tower_number: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          property_id?: number
+          status_id?: string
+          tower_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_towers_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_towers_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "tower_statuses"
             referencedColumns: ["id"]
           },
         ]
@@ -489,6 +534,36 @@ export type Database = {
           name?: string
           permissions?: Json
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      tower_statuses: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          shows_details: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          shows_details?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          shows_details?: boolean
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }

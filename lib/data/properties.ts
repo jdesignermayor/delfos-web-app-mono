@@ -17,7 +17,7 @@ export const getDashboardProperty = cache(async (id: number) => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("properties")
-    .select("*, developers!developer_id(id, name, address, phone)")
+    .select("*, developers!developer_id(id, name, address, phone), property_towers(tower_number, status_id)")
     .eq("id", id)
     .maybeSingle();
 

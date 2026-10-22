@@ -4,6 +4,7 @@ import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { CtaSection } from "@/components/marketing/cta-section";
 import { FeaturedCarouselSection } from "@/components/marketing/featured-carousel-section";
 import { HeroSection } from "@/components/marketing/hero-section";
+import { HighlightedPropertiesSection } from "@/components/marketing/highlighted-properties-section";
 import { OptionsSection } from "@/components/marketing/options-section";
 import { PublishSection } from "@/components/marketing/publish-section";
 import { SearchModeProvider } from "@/components/marketing/search-mode-context";
@@ -32,6 +33,7 @@ export default function LandingPage() {
 
         <main className="flex-1">
           <HeroSection />
+          <HighlightedPropertiesSection />
           <FeaturedCarouselSection />
           <OptionsSection />
           <SuggestedPropertiesSection />

@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 
+import { FittedPhoto } from "@/components/marketing/fitted-photo";
 import { LISTING_IMAGE_QUALITY } from "@/lib/image-quality";
 
 /** How long each photo stays before the next one fades in (phones: one card cycles alone). */
 const SLIDE_INTERVAL_MS = 5000;
 /** Wider screens: how long a card holds its turn before fading and passing it to the next card. */
 const RELAY_INTERVAL_MS = 2500;
+/** A card that was just hovered (pinned) takes its first turn this fast, so it reacts at once. */
+const PINNED_FIRST_TURN_MS = 300;
 /** Slow, smooth crossfade plus a gentle zoom that runs while the photo is on screen. */
 const SLIDE_TRANSITION = "opacity 1200ms ease-in-out, transform 6000ms ease-out";
 
@@ -33,11 +36,13 @@ const VISIBLE_RATIO = 0.6;
  * Only one slideshow plays at a time. On phones it's the first card (top-most, then left-most)
  * that is mostly on screen. On wider screens the turn passes along: each visible card fades to
  * its next photo once, then hands over to the next visible card in reading order, looping back.
- * Every slideshow registers its element here; one shared observer tracks them all.
+ * Every slideshow registers its element here; one shared observer tracks them all. A hovered
+ * card can pin the turn: it alone plays until the pointer leaves.
  */
 const visibleCards = new Set<Element>();
 const activeListeners = new Set<() => void>();
 let activeCard: Element | null = null;
+let pinnedCard: Element | null = null;
 let cardObserver: IntersectionObserver | null = null;
 
 const RELAY_QUERY = "(min-width: 768px)";
@@ -59,15 +64,16 @@ function setActiveCard(card: Element | null) {
   activeListeners.forEach((notify) => notify());
 }
 
-/** After scrolling: in relay mode the current card keeps its turn while still visible. */
+/** After scrolling: a pinned card keeps the turn; in relay mode so does the current one while visible. */
 function pickActiveCard() {
+  if (pinnedCard) return setActiveCard(pinnedCard);
   if (activeCard && visibleCards.has(activeCard) && isRelayMode()) return;
   setActiveCard(visibleCardsInOrder()[0] ?? null);
 }
 
 /** Relay mode: the card that just changed photo hands the turn to the next visible card. */
 function passTurn(from: Element | null) {
-  if (!from || from !== activeCard) return;
+  if (!from || from !== activeCard || from === pinnedCard) return;
   const ordered = visibleCardsInOrder();
   setActiveCard(ordered[(ordered.indexOf(from) + 1) % ordered.length] ?? null);
 }
@@ -87,6 +93,17 @@ function observeCard(card: Element) {
   return () => {
     cardObserver?.unobserve(card);
     visibleCards.delete(card);
+    pickActiveCard();
+  };
+}
+
+/** Gives `card` the turn for as long as it's pinned (hovered); returns the unpin. */
+function pinCard(card: Element) {
+  pinnedCard = card;
+  setActiveCard(card);
+  return () => {
+    if (pinnedCard !== card) return;
+    pinnedCard = null;
     pickActiveCard();
   };
 }
@@ -118,7 +135,9 @@ function useIsActiveCard<T extends Element>(enabled: boolean) {
  * A card's photos stacked on top of each other: they crossfade slowly from one to the next while
  * this card holds the turn (see `pickActiveCard` / `passTurn`); the rest hold still. Only the
  * current photo and the next one are mounted, so waiting cards download a single image.
- * Pass `index` / `onIndexChangeAction` to drive it from outside (arrows, dots).
+ * Pass `index` / `onIndexChangeAction` to drive it from outside (arrows, dots), and
+ * `onTurnAction` / `paused` to spend a turn on something else (a video) without other cards moving,
+ * and `pinned` to keep the turn (e.g. while hovered).
  */
 export function CardSlideshow({
   images,
@@ -128,6 +147,11 @@ export function CardSlideshow({
   optimized = true,
   index: controlledIndex,
   onIndexChangeAction,
+  onTurnAction,
+  paused = false,
+  pinned = false,
+  onTurnEndAction,
+  fitLandscape = false,
 }: {
   images: string[];
   alt: string;
@@ -138,6 +162,19 @@ export function CardSlideshow({
   optimized?: boolean;
   index?: number;
   onIndexChangeAction?: (index: number) => void;
+  /**
+   * Called when this card's turn comes, before it moves to the next photo. Returning true means
+   * the caller used the turn (e.g. started a video): the card keeps the turn and stays put.
+   */
+  onTurnAction?: () => boolean;
+  /** Holds the turn without moving, so no other card moves either. Resuming hands the turn on. */
+  paused?: boolean;
+  /** Holds the turn (e.g. while the card is hovered): only this card plays, every other one waits. */
+  pinned?: boolean;
+  /** This card just lost the turn (another card was hovered or took over). */
+  onTurnEndAction?: () => void;
+  /** Tall frames: show landscape photos whole over a blurred copy instead of blowing them up. */
+  fitLandscape?: boolean;
 }) {
   const [ownIndex, setOwnIndex] = useState(0);
   const index = controlledIndex ?? ownIndex;
@@ -146,25 +183,53 @@ export function CardSlideshow({
   const [furthest, setFurthest] = useState(0);
   const [firstLoaded, setFirstLoaded] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
-  const canPlay = !reducedMotion && images.length > 1;
+  // A caller that spends turns on something else takes part even with a single photo.
+  const canPlay = !reducedMotion && (images.length > 1 || Boolean(onTurnAction));
   const [containerRef, isPlaying] = useIsActiveCard<HTMLDivElement>(canPlay);
-  const autoplay = canPlay && isPlaying;
+  const autoplay = canPlay && isPlaying && !paused;
 
   // Mount photos up to one past the furthest shown, so the next fade has its image ready.
   if (index > furthest) setFurthest(index);
 
+  /** This card's turn: let the caller use it, or move to the next photo and hand the turn on. */
+  const takeTurn = useEffectEvent((relay: boolean) => {
+    if (onTurnAction?.()) return;
+    setIndex((index + 1) % images.length);
+    if (relay) passTurn(containerRef.current);
+  });
+
+  // Set when the card gets pinned; its next turn comes right away instead of after the interval.
+  const freshlyPinned = useRef(false);
+
   useEffect(() => {
     if (!autoplay) return;
     const relay = isRelayMode();
-    const timer = setTimeout(
-      () => {
-        setIndex((index + 1) % images.length);
-        if (relay) passTurn(containerRef.current);
-      },
-      relay ? RELAY_INTERVAL_MS : SLIDE_INTERVAL_MS,
-    );
+    const delay = freshlyPinned.current ? PINNED_FIRST_TURN_MS : relay ? RELAY_INTERVAL_MS : SLIDE_INTERVAL_MS;
+    freshlyPinned.current = false;
+    const timer = setTimeout(() => takeTurn(relay), delay);
     return () => clearTimeout(timer);
-  }, [autoplay, index, images.length, setIndex, containerRef]);
+  }, [autoplay, index]);
+
+  useEffect(() => {
+    const card = containerRef.current;
+    if (!pinned || !card) return;
+    freshlyPinned.current = true;
+    return pinCard(card);
+  }, [pinned, containerRef]);
+
+  const endTurn = useEffectEvent(() => onTurnEndAction?.());
+  const wasPlaying = useRef(isPlaying);
+  useEffect(() => {
+    if (wasPlaying.current && !isPlaying) endTurn();
+    wasPlaying.current = isPlaying;
+  }, [isPlaying]);
+
+  // Resuming after a pause (the video ended) hands the turn on, so the next card goes first.
+  const wasPaused = useRef(paused);
+  useEffect(() => {
+    if (wasPaused.current && !paused && isRelayMode()) passTurn(containerRef.current);
+    wasPaused.current = paused;
+  }, [paused, containerRef]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 overflow-hidden">
@@ -179,7 +244,17 @@ export function CardSlideshow({
         };
         const onFirstLoad = i === 0 ? () => setFirstLoaded(true) : undefined;
 
-        return optimized ? (
+        return optimized && fitLandscape ? (
+          <FittedPhoto
+            key={src + i}
+            src={src}
+            alt={isActive ? alt : ""}
+            sizes={sizes}
+            loading={eager && i === 0 ? "eager" : "lazy"}
+            onLoadAction={onFirstLoad}
+            style={style}
+          />
+        ) : optimized ? (
           <Image
             key={src + i}
             src={src}
