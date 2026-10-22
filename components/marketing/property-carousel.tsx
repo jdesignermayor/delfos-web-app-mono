@@ -8,8 +8,13 @@ import type { Property } from "@/components/marketing/properties";
 import { TrackPropertyList } from "@/components/analytics/track-property-view";
 
 /** Card width per breakpoint; shared with the skeleton so nothing shifts when listings arrive. */
-const SLIDE_CLASS = "w-[58%] shrink-0 snap-start sm:w-[38%] lg:w-[26%] xl:w-[20%]";
-const SLIDE_SIZES = "(min-width: 1280px) 20vw, (min-width: 1024px) 26vw, (min-width: 640px) 38vw, 58vw";
+const SLIDE_CLASS = "w-[58%] shrink-0 snap-start sm:w-[38%] lg:w-[22%] xl:w-[17%]";
+/**
+ * Twice the card's width: the square card crops landscape photos to fill it, so a photo fetched at
+ * the card's width would come too short to cover its height and get blown up (blurry). Next never
+ * serves a photo wider than its original, so small uploads cost nothing extra.
+ */
+const SLIDE_SIZES = "(min-width: 1280px) 34vw, (min-width: 1024px) 44vw, (min-width: 640px) 76vw, 116vw";
 /** "Propiedades destacadas": much bigger cards, as tall as the viewport allows (see `PropertyCard`). */
 const HIGHLIGHTED_SLIDE_CLASS = "shrink-0 snap-start";
 /** The card is at most 44rem tall at 3:4, so never wider than 33rem. */
@@ -71,8 +76,8 @@ export function PropertyCarousel({
       <div
         ref={trackRef}
         className={`no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto sm:gap-4 scroll-smooth pb-2 ${
-          // Highlighted: room for the hover ring, which the scrolling track would otherwise clip.
-          highlighted ? "-mx-2 mt-4 px-2 pt-2 sm:gap-5" : "mt-6"
+          // Room for the hover ring, which the scrolling track would otherwise clip.
+          highlighted ? "-mx-2 mt-4 px-2 pt-2 sm:gap-5" : "-mx-2 mt-4 px-2 pt-2"
         }`}
       >
         {properties.map((property, index) => (
@@ -83,6 +88,7 @@ export function PropertyCarousel({
               index={index}
               eager={index < EAGER_CARDS}
               variant={highlighted ? "highlighted" : "default"}
+              playOnHover={!highlighted}
               sizes={highlighted ? HIGHLIGHTED_SLIDE_SIZES : SLIDE_SIZES}
             />
           </div>

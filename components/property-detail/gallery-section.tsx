@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Images, MapPin, Sparkles } from "lucide-react";
+import { FileText, Images, MapPin, Sparkles } from "lucide-react";
 
 import { useSearchMode } from "@/components/marketing/search-mode-context";
 
 const ANCHORS = [
   { id: "fotos", label: "Fotos", icon: Images },
+  { id: "descripcion", label: "Descripción", icon: FileText },
   { id: "servicios", label: "Servicios", icon: Sparkles },
   { id: "ubicacion", label: "Ubicación", icon: MapPin },
 ];

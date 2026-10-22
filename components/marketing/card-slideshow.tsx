@@ -137,7 +137,8 @@ function useIsActiveCard<T extends Element>(enabled: boolean) {
  * current photo and the next one are mounted, so waiting cards download a single image.
  * Pass `index` / `onIndexChangeAction` to drive it from outside (arrows, dots), and
  * `onTurnAction` / `paused` to spend a turn on something else (a video) without other cards moving,
- * and `pinned` to keep the turn (e.g. while hovered).
+ * and `pinned` to keep the turn (e.g. while hovered). With `playOnlyWhenPinned` the card stays out
+ * of the relay and plays only while pinned.
  */
 export function CardSlideshow({
   images,
@@ -150,6 +151,8 @@ export function CardSlideshow({
   onTurnAction,
   paused = false,
   pinned = false,
+  playOnlyWhenPinned = false,
+  onTurnStartAction,
   onTurnEndAction,
   fitLandscape = false,
 }: {
@@ -171,7 +174,11 @@ export function CardSlideshow({
   paused?: boolean;
   /** Holds the turn (e.g. while the card is hovered): only this card plays, every other one waits. */
   pinned?: boolean;
-  /** This card just lost the turn (another card was hovered or took over). */
+  /** Never takes a turn on its own: it plays (zoom and photos) only while `pinned`, e.g. hovered. */
+  playOnlyWhenPinned?: boolean;
+  /** This card just got the turn (back), even while `paused`. */
+  onTurnStartAction?: () => void;
+  /** This card just lost the turn (another card was hovered or took over, or it scrolled away). */
   onTurnEndAction?: () => void;
   /** Tall frames: show landscape photos whole over a blurred copy instead of blowing them up. */
   fitLandscape?: boolean;
@@ -183,9 +190,11 @@ export function CardSlideshow({
   const [furthest, setFurthest] = useState(0);
   const [firstLoaded, setFirstLoaded] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
-  // A caller that spends turns on something else takes part even with a single photo.
-  const canPlay = !reducedMotion && (images.length > 1 || Boolean(onTurnAction));
-  const [containerRef, isPlaying] = useIsActiveCard<HTMLDivElement>(canPlay);
+  // A caller that spends turns on something else takes part even with a single photo, and so does a
+  // hover-only card (its single photo still zooms).
+  const canPlay = !reducedMotion && (images.length > 1 || Boolean(onTurnAction) || playOnlyWhenPinned);
+  // A hover-only card isn't registered in the relay; pinning still hands it the turn.
+  const [containerRef, isPlaying] = useIsActiveCard<HTMLDivElement>(canPlay && !playOnlyWhenPinned);
   const autoplay = canPlay && isPlaying && !paused;
 
   // Mount photos up to one past the furthest shown, so the next fade has its image ready.
@@ -217,10 +226,12 @@ export function CardSlideshow({
     return pinCard(card);
   }, [pinned, containerRef]);
 
+  const startTurn = useEffectEvent(() => onTurnStartAction?.());
   const endTurn = useEffectEvent(() => onTurnEndAction?.());
   const wasPlaying = useRef(isPlaying);
   useEffect(() => {
     if (wasPlaying.current && !isPlaying) endTurn();
+    else if (!wasPlaying.current && isPlaying) startTurn();
     wasPlaying.current = isPlaying;
   }, [isPlaying]);
 

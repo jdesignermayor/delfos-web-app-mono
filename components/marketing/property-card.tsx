@@ -166,6 +166,7 @@ function CardPhoto({
   media,
   fitLandscape = false,
   pinned = false,
+  playOnlyWhenPinned = false,
   children,
 }: {
   property: Property;
@@ -183,6 +184,8 @@ function CardPhoto({
   fitLandscape?: boolean;
   /** Keeps the slideshow's turn (see `CardSlideshow`), e.g. while the card is hovered. */
   pinned?: boolean;
+  /** The slideshow plays only while `pinned` (see `CardSlideshow`). */
+  playOnlyWhenPinned?: boolean;
   /** Laid over the photo, e.g. the details of a highlighted card. */
   children?: ReactNode;
 }) {
@@ -200,6 +203,7 @@ function CardPhoto({
             eager={eager}
             fitLandscape={fitLandscape}
             pinned={pinned}
+            playOnlyWhenPinned={playOnlyWhenPinned}
           />
         ))
       ) : (
@@ -238,6 +242,7 @@ export function PropertyCard({
   onRemove,
   variant = "default",
   reelMode = "idle",
+  playOnHover = false,
   eager = false,
   sizes = "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw",
   analyticsList,
@@ -266,6 +271,8 @@ export function PropertyCard({
   variant?: CardVariant;
   /** "reel" only: whether it plays (on screen), preloads its video (next) or stands still. */
   reelMode?: ReelMode;
+  /** "default" only: the photos stand still until the card is hovered, which also rings it. */
+  playOnHover?: boolean;
 }) {
   const { isFavorite, canFavorite, toggleFavorite, loginPrompt, closeLoginPrompt } = useFavoriteToggle({
     propertyUuid: property.uuid,
@@ -349,9 +356,13 @@ export function PropertyCard({
               ) : undefined
             }
           >
-            {/* Dark fade at the bottom so the white details read on any photo. */}
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-5 pb-5 pt-28">
-              <CardDetails property={property} overlay />
+            {/* Dark fade at the bottom so the white details read on any photo. Only the details
+                themselves catch clicks: the fade above them lets a click reach the video below
+                (which pauses it) instead of opening the project. */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-5 pb-5 pt-28">
+              <div className="pointer-events-auto">
+                <CardDetails property={property} overlay />
+              </div>
             </div>
           </CardPhoto>
         ) : (
@@ -361,9 +372,14 @@ export function PropertyCard({
               images={images}
               sizes={sizes}
               eager={eager}
-              className={`aspect-square ${active ? "ring-2 ring-accent" : ""}`}
+              className={`aspect-square ${
+                // Hover: the same ring as the highlighted cards; `active` (e.g. its map pin hovered) a thinner one.
+                playOnHover && hovered ? "ring-4 ring-accent ring-offset-2" : active ? "ring-2 ring-accent" : ""
+              }`}
               salesIconRef={salesIconRef}
               action={action}
+              pinned={playOnHover && hovered}
+              playOnlyWhenPinned={playOnHover}
             />
             <div className="mt-3">
               <CardDetails property={property} />

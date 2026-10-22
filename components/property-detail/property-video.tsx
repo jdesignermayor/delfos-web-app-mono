@@ -1,7 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
+
+import { sendCommand, useIsPlaying, useOutOfSight } from "@/components/property-detail/gallery-video";
+
+/**
+ * The real player, once the visitor pressed play. It pauses while out of their sight (scrolled
+ * away, another tab) and resumes on return — but only if it was playing when it left, so a video
+ * the visitor paused themselves stays paused.
+ */
+function PropertyVideoPlayer({ videoId, title }: { videoId: string; title: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const playingRef = useRef(false);
+  const resumeOnReturnRef = useRef(false);
+  const outOfSight = useOutOfSight(containerRef);
+
+  useIsPlaying(iframeRef, {
+    onPlay: () => {
+      playingRef.current = true;
+    },
+    onPause: () => {
+      playingRef.current = false;
+    },
+    onEnded: () => {
+      playingRef.current = false;
+    },
+  });
+
+  useEffect(() => {
+    if (outOfSight) {
+      if (!playingRef.current) return;
+      resumeOnReturnRef.current = true;
+      sendCommand(iframeRef.current, "pauseVideo");
+    } else if (resumeOnReturnRef.current) {
+      resumeOnReturnRef.current = false;
+      sendCommand(iframeRef.current, "playVideo");
+    }
+  }, [outOfSight]);
+
+  return (
+    <div ref={containerRef} className="absolute inset-0">
+      <iframe
+        ref={iframeRef}
+        // `enablejsapi` lets the page pause and resume it over `postMessage`.
+        src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1&enablejsapi=1`}
+        title={title}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className="absolute inset-0 size-full"
+      />
+    </div>
+  );
+}
 
 /**
  * YouTube promo video as a click-to-load facade: only the thumbnail loads with
@@ -14,13 +66,7 @@ export function PropertyVideo({ videoId, title }: { videoId: string; title: stri
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black">
       {playing ? (
-        <iframe
-          src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          className="absolute inset-0 size-full"
-        />
+        <PropertyVideoPlayer videoId={videoId} title={title} />
       ) : (
         <button
           type="button"

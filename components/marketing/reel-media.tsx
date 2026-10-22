@@ -3,6 +3,11 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import { FittedPhoto } from "@/components/marketing/fitted-photo";
+import {
+  VideoInterestPanel,
+  VideoPauseTarget,
+  type VideoInterruption,
+} from "@/components/marketing/video-interest-panel";
 import { BackgroundVideo, VideoPoster } from "@/components/property-detail/gallery-video";
 
 /** How long a photo stays before the reel slides to the next one. */
@@ -27,9 +32,11 @@ function buildSlides(images: string[], videoId: string | undefined): Slide[] {
 
 /**
  * Instagram-style media of a phone reel: the project video (first) and the photos side by side,
- * swiped left and right. The active reel also moves on by itself — the video to its end, each photo
- * for a few seconds — and back to the start after the last item. Leaving the reel stops everything
- * (its player is unmounted, its timers cleared) and rewinds it to its first slide.
+ * swiped left and right. The active reel also moves on by itself — each photo for a few seconds,
+ * and back to the start after the last item. Tapping the video pauses it rather than opening the
+ * project, and when it's paused or ends the card asks whether to open the project or carry on.
+ * Leaving the reel pauses it where it was — same slide, same point of the video (see
+ * `BackgroundVideo`) — and coming back carries on from there; nothing starts over.
  */
 export function ReelMedia({
   images,
@@ -50,6 +57,7 @@ export function ReelMedia({
   const trackRef = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(0);
   const [videoStarted, setVideoStarted] = useState(false);
+  const [interruption, setInterruption] = useState<VideoInterruption | null>(null);
   const active = mode === "active";
   const onVideo = slides[current]?.kind === "video";
 
@@ -66,33 +74,19 @@ export function ReelMedia({
     if (index === current) return;
     setCurrent(index);
     setVideoStarted(false);
+    setInterruption(null);
   }
 
   const next = useEffectEvent(() => goTo(current + 1));
-  const rewind = useEffectEvent(() => goTo(0, "instant"));
 
-  // Leaving the reel rewinds it, so coming back starts over from the video: the slide it tracks
-  // resets right away (during render, as React recommends), the track's scroll right after.
-  const [wasActive, setWasActive] = useState(active);
-  if (wasActive !== active) {
-    setWasActive(active);
-    if (!active) {
-      setCurrent(0);
-      setVideoStarted(false);
-    }
-  }
+  // Moves on by itself only while active and not waiting on the visitor: past a video that never
+  // started, and each photo after a pause. A swipe changes `current` and restarts the wait.
   useEffect(() => {
-    if (!active) rewind();
-  }, [active]);
-
-  // Moves on by itself only while active: the video once it ends (below) — or past one that never
-  // started — and each photo after a pause. A swipe changes `current` and restarts the wait.
-  useEffect(() => {
-    if (!active || slides.length < 2) return;
+    if (!active || interruption || slides.length < 2) return;
     if (onVideo && videoStarted) return;
     const timer = setTimeout(next, onVideo ? VIDEO_START_TIMEOUT_MS : PHOTO_MS);
     return () => clearTimeout(timer);
-  }, [active, current, onVideo, videoStarted, slides.length]);
+  }, [active, interruption, current, onVideo, videoStarted, slides.length]);
 
   return (
     <div className="absolute inset-0">
@@ -106,25 +100,27 @@ export function ReelMedia({
         {slides.map((slide, index) => (
           <div key={`${index}-${slide.kind}`} className="relative h-full w-full shrink-0 snap-center">
             {slide.kind === "video" ? (
-              // A player only while it's the slide on screen (playing) or the next reel's first
-              // slide (loading, paused); anywhere else just the poster, so nothing is left running.
-              // Swiping off the video unmounts it rather than relying on a "pause" command.
-              videoId && (mode === "preload" || (active && index === current)) ? (
+              // A player only while the video is the reel's slide and the reel is on screen (playing)
+              // or next to it (paused, buffered); anywhere else just the poster. An unmounted player
+              // isn't lost: the next one resumes where it was left.
+              videoId && index === current && mode !== "idle" ? (
                 <BackgroundVideo
                   videoId={videoId}
                   title={`${title} — video`}
                   loop={false}
-                  paused={!active}
+                  paused={!active || interruption !== null}
                   onPlay={() => setVideoStarted(true)}
-                  onEnded={() => goTo(current + 1)}
+                  onEnded={() => setInterruption("ended")}
                   // Below the heart, clear of the details at the bottom of the reel.
                   soundToggleClassName="right-3 top-14"
-                />
+                >
+                  {active ? <VideoPauseTarget onPause={() => setInterruption("paused")} /> : null}
+                </BackgroundVideo>
               ) : videoId ? (
                 <VideoPoster videoId={videoId} />
               ) : null
-            ) : active || index === 0 ? (
-              // Photos past the first only load once the reel is active.
+            ) : active || index === 0 || index === current ? (
+              // Photos past the first only load once the reel is active (or it was left on one).
               <FittedPhoto
                 src={slide.src}
                 alt={index === current ? title : ""}
@@ -147,6 +143,18 @@ export function ReelMedia({
             />
           ))}
         </div>
+      ) : null}
+
+      {/* Stays up when the reel is left, so coming back finds the video as it was: paused. */}
+      {onVideo && interruption ? (
+        <VideoInterestPanel
+          title={title}
+          interruption={interruption}
+          hasPhotos={slides.length > 1}
+          onResume={() => setInterruption(null)}
+          // Stays up while the track slides; landing on the photo clears it.
+          onShowPhotos={() => goTo(current + 1)}
+        />
       ) : null}
     </div>
   );

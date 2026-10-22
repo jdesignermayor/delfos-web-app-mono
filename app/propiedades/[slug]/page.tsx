@@ -145,7 +145,7 @@ export default async function PropertyDetailPage({
 
             <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
               <div className="flex flex-col gap-10">
-                <div>
+                <div id="descripcion" className="scroll-mt-32">
                   <h2 className="font-display text-sm font-semibold text-foreground">
                     {property.title}
                   </h2>
@@ -234,7 +234,8 @@ export default async function PropertyDetailPage({
                 {details ? <SalesRoomSection salesRoom={details.salesRoom} /> : null}
               </div>
 
-              <aside className="lg:sticky lg:top-24 lg:h-fit">
+              {/* Docks below the site header plus the section sub-nav (~4.5rem + ~3rem), not under them. */}
+              <aside className="lg:sticky lg:top-36 lg:h-fit">
                 <QuoteCard property={property} financing={details?.financing}>
                   <TalkToAgentButton
                     propertyTitle={property.title}
