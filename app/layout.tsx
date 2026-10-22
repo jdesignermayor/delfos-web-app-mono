@@ -40,6 +40,23 @@ export const metadata: Metadata = {
     "Delfos reúne vivienda nueva y usada para comprar o arrendar en Colombia, y permite a constructoras y propietarios publicar y administrar sus inmuebles.",
 };
 
+/**
+ * Development only. Some browser extensions (pdfFiller) stamp `data-pdffiller-skip` on every link
+ * before React hydrates, which floods the console with hydration-mismatch errors that have
+ * nothing to do with the app. This strips the attribute until hydration has settled.
+ */
+const STRIP_EXTENSION_ATTRIBUTES = `(() => {
+  const ATTR = "data-pdffiller-skip";
+  const strip = (el) => el.removeAttribute(ATTR);
+  const sweep = () => document.querySelectorAll("[" + ATTR + "]").forEach(strip);
+  const observer = new MutationObserver((records) => {
+    for (const record of records) if (record.target.hasAttribute?.(ATTR)) strip(record.target);
+    sweep();
+  });
+  observer.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: [ATTR], childList: true });
+  addEventListener("load", () => setTimeout(() => { sweep(); observer.disconnect(); }, 5000));
+})();`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -48,6 +65,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       data-scroll-behavior="smooth"
       className={`${poppins.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
+      {process.env.NODE_ENV === "development" ? (
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: STRIP_EXTENSION_ATTRIBUTES }} />
+        </head>
+      ) : null}
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ToastProvider>
           <FavoritesProvider>{children}</FavoritesProvider>
