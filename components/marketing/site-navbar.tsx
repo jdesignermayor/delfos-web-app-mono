@@ -262,12 +262,6 @@ export function SiteNavbar({
 
         {alwaysShowSearch ? <SearchTakeoverPanel takeover={takeover} searchFilters={searchFilters} /> : null}
 
-        <div className="border-t border-separator px-4 py-3 md:hidden">
-          <nav className="no-scrollbar flex items-center gap-2 overflow-x-auto">
-            <SearchModeTabs variant="mobile" />
-          </nav>
-        </div>
-
         {menuOpen ? <MobileMenu userPromise={userPromise} onLogin={loginFromMenu} onClose={closeMenu} /> : null}
 
         {alwaysShowSearch ? <SearchTakeoverBackdrop isOpen={takeover.isOpen} onClose={takeover.close} /> : null}

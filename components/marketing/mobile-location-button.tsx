@@ -11,6 +11,7 @@ import { LocationFields } from "@/components/marketing/location-fields";
 import { BUDGET_RANGE, budgetRangeLabel, budgetRangeParam, type BudgetRange } from "@/components/marketing/properties";
 import { budgetHint } from "@/components/marketing/search-choice-panels";
 import { useSearchMode } from "@/components/marketing/search-mode-context";
+import { SearchModeTabs } from "@/components/marketing/search-mode-tabs";
 import { buildSearchHref } from "@/components/marketing/search-url";
 
 const ANY_BUDGET: BudgetRange = { min: BUDGET_RANGE.min, max: BUDGET_RANGE.max };
@@ -108,6 +109,9 @@ export function MobileLocationButton() {
 
                 {/* Picking a chip or typing only fills the field: the search runs on Enter or "Buscar". */}
                 <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-5">
+                  <nav className="no-scrollbar -mx-4 mb-5 flex items-center gap-2 overflow-x-auto px-4">
+                    <SearchModeTabs variant="mobile" />
+                  </nav>
                   <LocationFields value={ubicacion} onValueChangeAction={setUbicacion} onPickAction={setUbicacion} />
                   {usesBudget ? (
                     <div className="mt-6 border-t border-separator pt-5">

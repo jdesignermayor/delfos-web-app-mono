@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ChevronUp } from "lucide-react";
 
 import { PropertyCard } from "@/components/marketing/property-card";
@@ -32,11 +32,29 @@ function useIsOnScreen(ref: React.RefObject<HTMLElement | null>, { ratio, rootMa
   return onScreen;
 }
 
+const noopSubscribe = () => () => {};
+
+/**
+ * Whether the visitor asked to save data (Data Saver / Lite mode) or is on a 2G-like connection.
+ * Only Chromium browsers report it; elsewhere (e.g. iOS Safari) this is always false.
+ */
+function useSavesData() {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => {
+      const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } })
+        .connection;
+      return Boolean(connection?.saveData) || /2g/.test(connection?.effectiveType ?? "");
+    },
+    () => false,
+  );
+}
+
 /**
  * Phones' "Propiedades destacadas": a TikTok-style vertical feed. Each project fills the player
  * and a swipe up snaps to the next one; the side dots and the counter show where you are. Only the
  * reel on screen plays (its video and photos, swiped sideways like Instagram), and only while the
- * feed itself is on screen; the next one preloads its video, the rest stay idle.
+ * feed itself is on screen; the ones just above and below preload their video, the rest stay idle.
  */
 export function HighlightedReels({
   title,
@@ -53,12 +71,16 @@ export function HighlightedReels({
   const feedOnScreen = useIsOnScreen(feedRef, { ratio: VISIBLE_RATIO });
   // Scrolling towards the feed: its current reel's player starts loading before it's seen.
   const feedNearScreen = useIsOnScreen(feedRef, { ratio: 0, rootMargin: NEAR_MARGIN });
+  const savesData = useSavesData();
   const count = properties.length;
 
   function reelMode(index: number): ReelMode {
+    // Saving data: a video only loads once its reel is on screen; nothing is preloaded.
+    if (savesData) return feedOnScreen && index === active ? "active" : "idle";
     if (!feedOnScreen) return feedNearScreen && index === active ? "preload" : "idle";
     if (index === active) return "active";
-    return index === active + 1 ? "preload" : "idle";
+    // Both neighbours stay warm, so swiping either way starts at once.
+    return Math.abs(index - active) === 1 ? "preload" : "idle";
   }
 
   function trackActiveReel() {
@@ -78,15 +100,15 @@ export function HighlightedReels({
         ) : null}
       </div>
 
-      <div className="relative mt-4">
+      <div className="relative mt-3">
         <div
           ref={feedRef}
           onScroll={trackActiveReel}
           aria-label={`${title}: desliza hacia arriba para ver el siguiente proyecto`}
-          // The viewport minus the sticky mobile header (~8.25rem), the section title (~5rem) and the
-          // bottom tab bar (4rem + safe area), so the whole reel — details included — fits on screen
-          // once the section reaches the top.
-          className="no-scrollbar flex h-[clamp(20rem,calc(100svh-18rem-env(safe-area-inset-bottom)),40rem)] snap-y snap-mandatory flex-col gap-3 overflow-y-auto rounded-2xl"
+          // The viewport minus the sticky mobile header (~4.5rem), the section title (~3.25rem), the
+          // swipe hint below (~1.5rem) and the bottom tab bar (4rem + safe area), so the whole reel —
+          // details and hint included — fits on screen once the section reaches the top.
+          className="no-scrollbar flex h-[clamp(20rem,calc(100svh-13.75rem-env(safe-area-inset-bottom)),40rem)] snap-y snap-mandatory flex-col gap-3 overflow-y-auto rounded-2xl"
         >
           {properties.map((property, index) => (
             <div key={property.slug} className="h-full shrink-0 snap-start snap-always">

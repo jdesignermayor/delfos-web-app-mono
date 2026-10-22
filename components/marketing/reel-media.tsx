@@ -11,8 +11,8 @@ const PHOTO_MS = 4000;
 const VIDEO_START_TIMEOUT_MS = 10_000;
 
 /**
- * "active": the reel on screen — it plays and moves on by itself. "preload": the next one — its
- * video player loads, paused, so it starts at once when swiped in. "idle": everything else — only
+ * "active": the reel on screen — it plays and moves on by itself. "preload": its neighbours — their
+ * video player loads and buffers, paused, so it starts at once when swiped in. "idle": everything else — only
  * its first slide is drawn, nothing loads or runs.
  */
 export type ReelMode = "active" | "preload" | "idle";

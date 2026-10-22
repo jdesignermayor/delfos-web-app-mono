@@ -11,7 +11,7 @@ const TAB_ICONS = {
   proyecto: MapPinHouseIcon,
 } as const;
 
-/** Desktop shows underlined tabs with icons in the header; mobile shows plain text chips under the search box. */
+/** Desktop shows underlined tabs with icons in the header; mobile shows plain text chips inside the full-screen search. */
 const VARIANTS = {
   desktop: {
     iconSize: 18,

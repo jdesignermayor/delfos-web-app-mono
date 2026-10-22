@@ -12,7 +12,7 @@ async function HighlightedListings() {
   if (!properties.length) return null;
 
   return (
-    <section className="mx-auto w-full max-w-[100rem] bg-white px-4 pt-8 sm:px-6 md:pt-6">
+    <section className="mx-auto w-full max-w-[100rem] bg-white px-4 pt-3 sm:px-6 md:pt-6">
       {/* Larger screens: a carousel of big cards. It also reports the list's impressions, once. */}
       <div className="hidden md:block">
         <PropertyCarousel title={TITLE} properties={properties} analyticsListId={ANALYTICS_LIST_ID} highlighted />

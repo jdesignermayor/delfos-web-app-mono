@@ -8,9 +8,9 @@ import { Volume2, VolumeX } from "lucide-react";
  * `loop` is false, and shows no controls. `enablejsapi` lets the page unmute it
  * and hear its state through `postMessage`.
  */
-function youtubeBackgroundUrl(videoId: string, loop: boolean, autoplay: boolean) {
+function youtubeBackgroundUrl(videoId: string, loop: boolean, reload = 0) {
   const params = new URLSearchParams({
-    autoplay: autoplay ? "1" : "0",
+    autoplay: "1",
     mute: "1",
     ...(loop ? { loop: "1", playlist: videoId } : {}),
     controls: "0",
@@ -21,6 +21,8 @@ function youtubeBackgroundUrl(videoId: string, loop: boolean, autoplay: boolean)
     rel: "0",
     modestbranding: "1",
     enablejsapi: "1",
+    // Changes the URL so the iframe reloads from scratch when a stuck player is retried.
+    ...(reload ? { reload: String(reload) } : {}),
   });
   return `https://www.youtube-nocookie.com/embed/${videoId}?${params}`;
 }
@@ -34,12 +36,24 @@ const youtubeHdThumbnail = (videoId: string) => `https://i.ytimg.com/vi/${videoI
 const MISSING_THUMBNAIL_WIDTH = 120;
 
 /**
+ * Opens the player's connections early (also during SSR, as <link rel="preconnect">), so a player
+ * mounted later — e.g. when a reel is swiped in — skips the DNS/TLS handshakes.
+ */
+function preconnectYouTube() {
+  preconnect("https://www.youtube-nocookie.com");
+  preconnect("https://www.youtube.com");
+  preconnect("https://i.ytimg.com");
+  preconnect("https://www.google.com");
+}
+
+/**
  * The video's poster, filling its parent like `object-cover`: the sharp 16:9 HD thumbnail, or
  * the 4:3 one when the upload has no HD version. The 4:3 one has black bars above and below a
  * 16:9 video baked in, so it's zoomed by 4/3 to crop them — otherwise a tall card shows them as
- * borders.
+ * borders. A poster means a player may follow, so it warms up the connections too.
  */
 export function VideoPoster({ videoId, className = "" }: { videoId: string; className?: string }) {
+  preconnectYouTube();
   const [hd, setHd] = useState(true);
   return (
     // eslint-disable-next-line @next/next/no-img-element -- static YouTube thumbnail
@@ -57,11 +71,12 @@ export function VideoPoster({ videoId, className = "" }: { videoId: string; clas
 
 function sendCommand(
   iframe: HTMLIFrameElement | null,
-  func: "mute" | "unMute" | "playVideo" | "pauseVideo",
+  func: "mute" | "unMute" | "playVideo" | "pauseVideo" | "seekTo",
+  args: unknown[] = [],
 ) {
   // Same envelope as the official IFrame API (and our "listening" handshake): without `id` and
   // `channel` the player may silently ignore the command.
-  iframe?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args: [], id: 1, channel: "widget" }), "*");
+  iframe?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args, id: 1, channel: "widget" }), "*");
 }
 
 /** YouTube player states, as reported over `postMessage`. */
@@ -72,12 +87,12 @@ const PAUSED = 2;
 /** Short grace period after playback starts, while YouTube's start-up overlay fades. */
 const CONTROLS_FADE_MS = 800;
 /** On touch screens YouTube's mobile player keeps its play/pause overlay up a little longer. */
-const TOUCH_CONTROLS_FADE_MS = 1500;
+const TOUCH_CONTROLS_FADE_MS = 1000;
 /** How often a "play" is re-sent while the player is still loading and can't take commands yet. */
 const PLAY_RETRY_MS = 300;
 /**
- * A preloaded player still not playing this long after being asked to is reloaded with autoplay:
- * commands over `postMessage` can be dropped while it boots, native autoplay never is.
+ * A preloaded player still not playing this long after being asked to is reloaded (it always
+ * autoplays): commands over `postMessage` can be dropped while it boots, native autoplay never is.
  */
 const PLAY_FALLBACK_MS = 1500;
 
@@ -90,11 +105,12 @@ const controlsFadeMs = () =>
  * API sends, without loading its script) and reports `true` a few seconds
  * after it starts playing.
  * Before that — and while ended or paused — YouTube paints its own play
- * button, title and controls, so the caller keeps them covered.
+ * button, title and controls, so the caller keeps them covered. An `onPlay`
+ * returning false keeps the player covered (a warm-up play, paused right away).
  */
 function useIsPlaying(
   iframeRef: React.RefObject<HTMLIFrameElement | null>,
-  { onPlay, onEnded }: { onPlay?: () => void; onEnded?: () => void } = {},
+  { onPlay, onEnded }: { onPlay?: () => boolean | void; onEnded?: () => void } = {},
 ) {
   const [playing, setPlaying] = useState(false);
   const revealTimer = useRef<number | undefined>(undefined);
@@ -124,7 +140,7 @@ function useIsPlaying(
             : undefined;
       if (state === PLAYING) {
         if (revealTimer.current === undefined) {
-          callbacks.current.onPlay?.();
+          if (callbacks.current.onPlay?.() === false) return;
           revealTimer.current = window.setTimeout(() => setPlaying(true), controlsFadeMs());
         }
       } else if (state === ENDED || state === PAUSED) {
@@ -186,8 +202,9 @@ export function BackgroundVideo({
   /** False plays the video once; `onEnded` then fires. */
   loop?: boolean;
   /**
-   * Controlled playback, to preload a player before it's shown: mounted paused, it loads without
-   * autoplay; when this turns false it's asked to play (falling back to an autoplay reload). Mounted
+   * Controlled playback, to preload a player before it's shown. Mounted paused, it still autoplays
+   * (muted, covered) and is paused and rewound as soon as it starts, so its video is already
+   * buffered; when this turns false it's asked to resume (falling back to a reload). Mounted
    * already unpaused, it simply autoplays.
    */
   paused?: boolean;
@@ -197,50 +214,59 @@ export function BackgroundVideo({
   /** Where the sound toggle sits (Tailwind position classes). */
   soundToggleClassName?: string;
 }) {
-  // Open the connections early (also during SSR, as <link rel="preconnect">) so the player starts sooner.
-  preconnect("https://www.youtube-nocookie.com");
-  preconnect("https://www.youtube.com");
-  preconnect("https://i.ytimg.com");
-  preconnect("https://www.google.com");
+  preconnectYouTube();
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [muted, setMuted] = useState(true);
   const isPlayingRef = useRef(false);
+  const pausedRef = useRef(paused);
+  useEffect(() => {
+    pausedRef.current = paused;
+  });
   const playing = useIsPlaying(iframeRef, {
     onPlay: () => {
+      if (pausedRef.current) {
+        // Warm-up: the preloaded player autoplayed while hidden. Stop it at the start, buffered.
+        sendCommand(iframeRef.current, "pauseVideo");
+        sendCommand(iframeRef.current, "seekTo", [0, true]);
+        return false;
+      }
       isPlayingRef.current = true;
       onPlay?.();
     },
     onEnded,
   });
   const controlled = paused !== undefined;
-  // Autoplay in the URL whenever the video should play from the start — the reliable path.
-  // Only a player preloaded paused relies on commands, and is reloaded with autoplay if they fail.
-  const [nativeAutoplay, setNativeAutoplay] = useState(() => !controlled || !paused);
+  // Whether the player was ever held paused, so playing needs commands rather than its autoplay.
+  const heldPausedRef = useRef(Boolean(paused));
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     if (!controlled) return;
     const iframe = iframeRef.current;
     if (paused) {
       isPlayingRef.current = false;
+      heldPausedRef.current = true;
       sendCommand(iframe, "pauseVideo");
       return;
     }
-    if (nativeAutoplay) return;
-    // Keep asking to play while the player boots; reload it with autoplay if it never starts.
+    if (!heldPausedRef.current) return;
+    // Keep asking to play while the player boots; reload it (autoplaying) if it never starts.
     sendCommand(iframe, "playVideo");
     const retry = window.setInterval(() => {
       if (isPlayingRef.current) window.clearInterval(retry);
       else sendCommand(iframe, "playVideo");
     }, PLAY_RETRY_MS);
     const fallback = window.setTimeout(() => {
-      if (!isPlayingRef.current) setNativeAutoplay(true);
+      if (isPlayingRef.current) return;
+      heldPausedRef.current = false;
+      setReload((count) => count + 1);
     }, PLAY_FALLBACK_MS);
     return () => {
       window.clearInterval(retry);
       window.clearTimeout(fallback);
     };
-  }, [controlled, paused, nativeAutoplay]);
+  }, [controlled, paused, reload]);
 
   function toggleSound(event: React.MouseEvent) {
     // The player may sit inside a link (a listing card): toggling sound must not navigate.
@@ -254,9 +280,11 @@ export function BackgroundVideo({
     <div className="absolute inset-0 overflow-hidden bg-black [container-type:size]">
       <iframe
         ref={iframeRef}
-        src={youtubeBackgroundUrl(videoId, loop, nativeAutoplay)}
+        src={youtubeBackgroundUrl(videoId, loop, reload)}
         title={title}
         allow="autoplay; encrypted-media; picture-in-picture"
+        // A preloaded (controlled) player loads off screen on purpose; any other waits until it's near.
+        loading={controlled ? "eager" : "lazy"}
         tabIndex={-1}
         className="pointer-events-none absolute left-1/2 top-1/2 h-[calc(max(100cqh,56.25cqw)+120px)] w-[max(100cqw,177.78cqh)] -translate-x-1/2 -translate-y-1/2"
       />
