@@ -15,6 +15,15 @@ const SLIDE_CLASS = "w-[58%] shrink-0 snap-start sm:w-[38%] lg:w-[22%] xl:w-[17%
  * serves a photo wider than its original, so small uploads cost nothing extra.
  */
 const SLIDE_SIZES = "(min-width: 1280px) 34vw, (min-width: 1024px) 44vw, (min-width: 640px) 76vw, 116vw";
+/**
+ * `gridOnDesktop`: laptops and up lay the cards out in a 3–4 column grid that runs down the page
+ * instead of scrolling sideways; smaller screens keep the carousel.
+ */
+const GRID_TRACK_CLASS = "lg:grid lg:grid-cols-3 lg:gap-x-5 lg:gap-y-8 lg:overflow-visible xl:grid-cols-4";
+/** Same as `SLIDE_CLASS` below `lg`, then a full grid cell. */
+const GRID_SLIDE_CLASS = "w-[58%] shrink-0 snap-start sm:w-[38%] lg:w-auto";
+/** Twice the grid card's width (see `SLIDE_SIZES`). */
+const GRID_SLIDE_SIZES = "(min-width: 1280px) 50vw, (min-width: 1024px) 66vw, (min-width: 640px) 76vw, 116vw";
 /** "Propiedades destacadas": much bigger cards, as tall as the viewport allows (see `PropertyCard`). */
 const HIGHLIGHTED_SLIDE_CLASS = "shrink-0 snap-start";
 /** The card is at most 44rem tall at 3:4, so never wider than 33rem. */
@@ -43,6 +52,7 @@ export function PropertyCarousel({
   properties,
   analyticsListId,
   highlighted = false,
+  gridOnDesktop = false,
 }: {
   title: string;
   properties: Property[];
@@ -50,6 +60,8 @@ export function PropertyCarousel({
   analyticsListId?: string;
   /** "Propiedades destacadas": bigger cards with the details over the photo. */
   highlighted?: boolean;
+  /** Laptops and up: a grid instead of a sideways carousel (see `GRID_TRACK_CLASS`). */
+  gridOnDesktop?: boolean;
 }) {
   const analyticsList = analyticsListId ? { id: analyticsListId, name: title } : undefined;
   const trackRef = useRef<HTMLDivElement>(null);
@@ -67,7 +79,7 @@ export function PropertyCarousel({
         <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">
           {title}
         </h2>
-        <div className="hidden items-center gap-2 sm:flex">
+        <div className={`hidden items-center gap-2 sm:flex ${gridOnDesktop ? "lg:hidden" : ""}`}>
           <CarouselArrow direction="previous" onClick={() => scrollTrack(-SCROLL_STEP)} />
           <CarouselArrow direction="next" onClick={() => scrollTrack(SCROLL_STEP)} />
         </div>
@@ -78,10 +90,13 @@ export function PropertyCarousel({
         className={`no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto sm:gap-4 scroll-smooth pb-2 ${
           // Room for the hover ring, which the scrolling track would otherwise clip.
           highlighted ? "-mx-2 mt-4 px-2 pt-2 sm:gap-5" : "-mx-2 mt-4 px-2 pt-2"
-        }`}
+        } ${gridOnDesktop ? GRID_TRACK_CLASS : ""}`}
       >
         {properties.map((property, index) => (
-          <div key={property.slug} className={highlighted ? HIGHLIGHTED_SLIDE_CLASS : SLIDE_CLASS}>
+          <div
+            key={property.slug}
+            className={highlighted ? HIGHLIGHTED_SLIDE_CLASS : gridOnDesktop ? GRID_SLIDE_CLASS : SLIDE_CLASS}
+          >
             <PropertyCard
               property={property}
               analyticsList={analyticsList}
@@ -89,7 +104,7 @@ export function PropertyCarousel({
               eager={index < EAGER_CARDS}
               variant={highlighted ? "highlighted" : "default"}
               playOnHover={!highlighted}
-              sizes={highlighted ? HIGHLIGHTED_SLIDE_SIZES : SLIDE_SIZES}
+              sizes={highlighted ? HIGHLIGHTED_SLIDE_SIZES : gridOnDesktop ? GRID_SLIDE_SIZES : SLIDE_SIZES}
             />
           </div>
         ))}
@@ -99,13 +114,13 @@ export function PropertyCarousel({
 }
 
 /** Placeholder while the listings stream in: same title, card size and spacing as the real carousel. */
-export function PropertyCarouselSkeleton({ title }: { title: string }) {
+export function PropertyCarouselSkeleton({ title, gridOnDesktop = false }: { title: string; gridOnDesktop?: boolean }) {
   return (
     <div aria-busy="true" aria-label="Cargando propiedades">
       <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
-      <div className="mt-6 flex gap-3 overflow-hidden pb-2 sm:gap-4">
+      <div className={`mt-6 flex gap-3 overflow-hidden pb-2 sm:gap-4 ${gridOnDesktop ? GRID_TRACK_CLASS : ""}`}>
         {Array.from({ length: EAGER_CARDS }, (_, index) => (
-          <div key={index} className={SLIDE_CLASS}>
+          <div key={index} className={gridOnDesktop ? GRID_SLIDE_CLASS : SLIDE_CLASS}>
             <div className="aspect-square w-full animate-pulse rounded-2xl bg-surface-secondary" />
             <div className="mt-3 h-4 w-3/4 animate-pulse rounded-full bg-surface-secondary" />
             <div className="mt-2 h-3.5 w-1/2 animate-pulse rounded-full bg-surface-secondary" />

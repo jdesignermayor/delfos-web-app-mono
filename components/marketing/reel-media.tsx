@@ -111,6 +111,7 @@ export function ReelMedia({
                   paused={!active || interruption !== null}
                   onPlay={() => setVideoStarted(true)}
                   onEnded={() => setInterruption("ended")}
+                  soundOn={true}
                   // Below the heart, clear of the details at the bottom of the reel.
                   soundToggleClassName="right-3 top-14"
                 >

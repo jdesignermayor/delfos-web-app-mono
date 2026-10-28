@@ -12,7 +12,7 @@ async function FeaturedCarousel() {
   return (
     <>
       <JsonLd data={buildPropertyListJsonLd(TITLE, properties)} />
-      <PropertyCarousel title={TITLE} properties={properties} analyticsListId="landing_featured" />
+      <PropertyCarousel title={TITLE} properties={properties} analyticsListId="landing_featured" gridOnDesktop />
     </>
   );
 }
@@ -21,7 +21,7 @@ async function FeaturedCarousel() {
 export function FeaturedCarouselSection() {
   return (
     <section className="mx-auto w-full max-w-[100rem] bg-white px-4 py-14 sm:px-6">
-      <Suspense fallback={<PropertyCarouselSkeleton title={TITLE} />}>
+      <Suspense fallback={<PropertyCarouselSkeleton title={TITLE} gridOnDesktop />}>
         <FeaturedCarousel />
       </Suspense>
     </section>

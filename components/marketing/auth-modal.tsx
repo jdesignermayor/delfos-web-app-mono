@@ -10,6 +10,7 @@ import {
   TextField,
   type UseOverlayStateReturn,
 } from "@heroui/react";
+import { Eye, EyeOff } from "lucide-react";
 
 import {
   registerViewerAccount,
@@ -94,20 +95,40 @@ function useAuthForm() {
 type AuthForm = ReturnType<typeof useAuthForm>;
 
 function CredentialFields({ fields, form }: { fields: FieldConfig[]; form: AuthForm }) {
-  return fields.map(({ name, type, label, placeholder }) => (
-    <TextField
-      key={name}
-      type={type}
-      value={form.credentials[name]}
-      onChange={(value) => form.setField(name, value)}
-      isRequired
-      isInvalid={form.errorField === name}
-      validationBehavior="aria"
-    >
-      <Label>{label}</Label>
-      <Input placeholder={placeholder} />
-    </TextField>
-  ));
+  const [passwordVisible, setPasswordVisible] = useState(false);
+
+  return fields.map(({ name, type, label, placeholder }) => {
+    const isPassword = type === "password";
+    return (
+      <TextField
+        key={name}
+        type={isPassword && passwordVisible ? "text" : type}
+        value={form.credentials[name]}
+        onChange={(value) => form.setField(name, value)}
+        isRequired
+        isInvalid={form.errorField === name}
+        validationBehavior="aria"
+      >
+        <Label>{label}</Label>
+        {isPassword ? (
+          <div className="relative">
+            <Input placeholder={placeholder} className="w-full pr-10" />
+            <button
+              type="button"
+              onClick={() => setPasswordVisible((current) => !current)}
+              aria-label={passwordVisible ? "Ocultar contraseña" : "Mostrar contraseña"}
+              aria-pressed={passwordVisible}
+              className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted transition-colors hover:text-foreground"
+            >
+              {passwordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
+        ) : (
+          <Input placeholder={placeholder} />
+        )}
+      </TextField>
+    );
+  });
 }
 
 function FormError({ message }: { message: string | null }) {

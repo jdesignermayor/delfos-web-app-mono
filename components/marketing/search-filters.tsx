@@ -20,10 +20,15 @@ const BATH_OPTIONS: Option[] = ["1", "2", "3"].map((n) => ({ value: n, label: `$
 const STRATUM_OPTIONS: Option[] = ["1", "2", "3", "4", "5", "6"].map((n) => ({ value: n, label: `Estrato ${n}` }));
 
 /**
- * Refinements that the main search bar doesn't offer (it already covers
- * operation, location, type, bedrooms and budget), so the two never repeat.
+ * What "Limpiar filtros" leaves: only the search mode tab (comprar / arrendar / proyecto). The bar's
+ * refinements and the main search bar's filters (location, type, bedrooms, budget) all go.
  */
-const REFINEMENTS = ["banos", "area", "estrato", "estado", "asequible", "orden"] as const;
+function clearedFilters(filters: PropertyFilters): PropertyFilters {
+  return {
+    operacion: filters.operacion,
+    tipo: filters.tipo === "proyecto" ? filters.tipo : undefined,
+  };
+}
 
 const pillBase =
   "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border bg-white px-3.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
@@ -142,14 +147,17 @@ export function SearchFilters({ filters }: { filters: PropertyFilters }) {
     };
   }, [openId]);
 
-  function apply(patch: Partial<PropertyFilters>) {
-    const next: PropertyFilters = { ...filters, ...patch };
+  function navigate(next: PropertyFilters) {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(next)) {
       if (value) params.set(key, value);
     }
     const qs = params.toString();
     router.push(qs ? `/search?${qs}` : "/search", { scroll: false });
+  }
+
+  function apply(patch: Partial<PropertyFilters>) {
+    navigate({ ...filters, ...patch });
   }
 
   const dropdown = (id: keyof PropertyFilters) => ({
@@ -159,7 +167,10 @@ export function SearchFilters({ filters }: { filters: PropertyFilters }) {
     onSelect: (value: string | undefined) => apply({ [id]: value }),
   });
 
-  const hasRefinements = REFINEMENTS.some((key) => filters[key]);
+  const cleared = clearedFilters(filters);
+  const hasFilters = (Object.keys(filters) as (keyof PropertyFilters)[]).some(
+    (key) => filters[key] && filters[key] !== cleared[key],
+  );
   const affordable = filters.asequible === "si";
 
   return (
@@ -169,7 +180,7 @@ export function SearchFilters({ filters }: { filters: PropertyFilters }) {
     >
       <div
         ref={containerRef}
-        className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-2 px-4 py-3 sm:px-6"
+        className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-2 px-4 py-3 sm:px-6 lg:max-w-none lg:flex-nowrap"
       >
         <FilterDropdown icon={Bath} label="Baños" options={[{ value: "", label: "Cualquiera" }, ...BATH_OPTIONS]} {...dropdown("banos")} />
         <FilterDropdown icon={Ruler} label="Área" options={[{ value: "", label: "Cualquiera" }, ...AREA_OPTIONS]} {...dropdown("area")} />
@@ -196,16 +207,15 @@ export function SearchFilters({ filters }: { filters: PropertyFilters }) {
 
         <FilterDropdown icon={ArrowUpDown} label="Ordenar" options={SORT_OPTIONS} align="right" {...dropdown("orden")} />
 
-        {hasRefinements ? (
-          <button
-            type="button"
-            onClick={() => apply(Object.fromEntries(REFINEMENTS.map((key) => [key, undefined])))}
-            className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <X className="size-4" />
-            Limpiar
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={() => navigate(cleared)}
+          disabled={!hasFilters}
+          className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-sm font-medium text-muted transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        >
+          <X className="size-4" />
+          Limpiar filtros
+        </button>
       </div>
     </div>
   );
