@@ -41,6 +41,7 @@ import { buildSeoTexts } from "@/lib/seo-autofill";
 import type { Tables } from "@/supabase/types";
 import type { TowerStatusOption } from "@/lib/data/property-form-options";
 import { towerKey, towerKeys } from "@/lib/towers/tower-keys";
+import { projectDeliveryDate } from "@/lib/towers/delivery-date";
 
 export type PropertyRecord = Tables<"properties"> & {
   developers: { id: number; name: string } | null;
@@ -118,7 +119,6 @@ const TEXT_FIELDS: (keyof PropertyFormValues)[] = [
   "commune",
   "neighborhood",
   "stratum",
-  "deliveryDate",
   "developerId",
   "projectName",
   "projectUrl",
@@ -162,7 +162,6 @@ function toInitialValues(property: PropertyRecord): PropertyFormValues {
     commune: property.commune ?? "",
     neighborhood: property.neighborhood ?? "",
     stratum: str(property.stratum),
-    deliveryDate: property.delivery_date ? property.delivery_date.slice(0, 7) : "",
     developerId: str(property.developer_id),
     projectName: property.project_name ?? "",
     projectUrl: property.project_url ?? "",
@@ -354,7 +353,6 @@ function buildSteps(
                 })),
               ],
             },
-            { name: "deliveryDate", label: "Fecha de entrega", kind: "month" },
             {
               name: "constructionCompany",
               label: "Gerencia",
@@ -662,6 +660,7 @@ export function PropertyForm({
     const texts = buildSeoTexts({
       ...values,
       developerName: developers.find((d) => String(d.id) === values.developerId)?.name,
+      deliveryDate: projectDeliveryDate(towerDetails, Number(values.towerCount) || 0) ?? "",
       amenities: amenities.map((a) => a.name),
       typologies: Array.from({ length: Number(values.towerCount) || 0 }, (_, i) => towerTypologies[`tower-${i + 1}`] ?? []).flat(),
     });

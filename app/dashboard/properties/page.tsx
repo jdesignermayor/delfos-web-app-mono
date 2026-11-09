@@ -9,6 +9,7 @@ import { createClient } from "@/supabase/server";
 import { ExportPropertiesButton } from "@/components/dashboard/properties/export-properties-button";
 import { LocationCell } from "@/components/dashboard/properties/location-cell";
 import { formatRange, typologyRanges } from "@/lib/typology-ranges";
+import { projectDeliveryDate } from "@/lib/towers/delivery-date";
 
 export const metadata: Metadata = {
   title: "Properties",
@@ -109,12 +110,16 @@ export default async function PropertiesPage() {
                       })()}
                     </td>
                     <td className="px-5 py-3 text-muted">
-                      {property.delivery_date
-                        ? new Date(property.delivery_date).toLocaleDateString("es-CO", {
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : "—"}
+                      {(() => {
+                        const delivery = projectDeliveryDate(property.tower_details, property.tower_count);
+                        return delivery
+                          ? new Date(delivery).toLocaleDateString("es-CO", {
+                              month: "short",
+                              year: "numeric",
+                              timeZone: "UTC",
+                            })
+                          : "—";
+                      })()}
                     </td>
                     <td className="px-5 py-3 text-right font-medium">
                       {currency.format(Number(property.price))}

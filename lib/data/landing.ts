@@ -5,12 +5,13 @@ import { LISTING_SUMMARY_SELECT, listingSummary, type ListingSummaryRow } from "
 import { PROPERTIES_CACHE_TAG } from "@/lib/cache-tags";
 import { youtubeId } from "@/lib/property-seo";
 import { createPublicClient } from "@/supabase/public";
+import { projectDeliveryDate } from "@/lib/towers/delivery-date";
 
 export type LandingStats = {
   count: number;
   /** Lowest listed price in COP; 0 when no listing has a price. */
   minPrice: number;
-  /** Earliest and latest delivery years, or null when no listing has a date. */
+  /** Earliest and latest delivery years (each project dated by its last tower), or null when none has a date. */
   deliveryYears: [number, number] | null;
 };
 
@@ -33,11 +34,11 @@ function minMax(values: number[]): [number, number] | null {
 export const getLandingStats = cache(async (): Promise<LandingStats | null> => {
   const { data } = await createPublicClient({ revalidate: 3600, tags: [PROPERTIES_CACHE_TAG] })
     .from("properties")
-    .select("price, delivery_date");
+    .select("price, tower_details, tower_count");
   if (!data?.length) return null;
 
   const prices = data.map((row) => Number(row.price)).filter((price) => price > 0);
-  const years = data.map((row) => deliveryYear(row.delivery_date)).filter((year) => year !== null);
+  const years = data.map((row) => deliveryYear(projectDeliveryDate(row.tower_details, row.tower_count))).filter((year) => year !== null);
 
   return {
     count: data.length,

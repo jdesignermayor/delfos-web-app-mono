@@ -28,7 +28,7 @@ export default async function DashboardPage() {
     supabase
       .from("properties")
       .select(
-        "uuid, title, created_at, developer_id, tower_count, city, location, price, housing_type, delivery_date, typologies, additional_images, developer:developers!developer_id(name)",
+        "uuid, title, created_at, developer_id, tower_count, city, location, price, housing_type, tower_details, typologies, additional_images, developer:developers!developer_id(name)",
       ),
     user,
   );

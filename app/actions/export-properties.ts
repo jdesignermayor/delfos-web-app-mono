@@ -6,6 +6,7 @@ import { createClient } from "@/supabase/server";
 import { getDashboardUser } from "@/lib/auth/dal";
 import { scopeToDeveloper } from "@/lib/auth/scope-query";
 import type { Json } from "@/supabase/types";
+import { projectDeliveryDate } from "@/lib/towers/delivery-date";
 
 type Cell = string | number | boolean | null | undefined;
 
@@ -30,7 +31,7 @@ const COLUMNS: [key: string, header: string][] = [
   ["price", "Precio"],
   ["meters2", "Metros 2"],
   ["stratum", "Estrato"],
-  ["delivery_date", "Fecha de entrega"],
+  ["delivery_date", "Fecha de entrega (última torre)"],
   ["address", "Dirección"],
   ["location", "Ubicación"],
   ["city", "Ciudad"],
@@ -62,6 +63,8 @@ const TYPOLOGY_FIELDS: [key: string, header: string][] = [
   ["bathrooms", "Baños"],
   ["study", "Estudio"],
   ["hasBalcony", "Balcón"],
+  ["hasSocialBathroom", "Baño social"],
+  ["hasServiceRoom", "Alcoba de servicio"],
 ];
 
 function asRecord(value: Json | undefined): Record<string, Json | undefined> {
@@ -173,6 +176,7 @@ export async function exportProperties(): Promise<ExportPropertiesResult> {
       developer: property.developer?.name,
       builder: property.builder?.name,
       seller: property.seller?.name,
+      delivery_date: projectDeliveryDate(property.tower_details, property.tower_count),
     };
     return {
       name: property.project_name || property.title || `Propiedad ${property.id}`,

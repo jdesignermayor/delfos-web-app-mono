@@ -79,6 +79,8 @@ export type Typology = {
   bathrooms?: number;
   hasStudy?: boolean;
   hasBalcony?: boolean;
+  hasSocialBathroom?: boolean;
+  hasServiceRoom?: boolean;
 };
 
 /** A `tower_statuses` row: "En Preventas", "Pendiente", … */

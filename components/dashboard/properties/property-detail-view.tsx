@@ -16,6 +16,7 @@ import type { PropertyRecord } from "@/components/dashboard/properties/property-
 import { MarkdownContent } from "@/components/markdown-content";
 import { parseAmenities } from "@/lib/amenities";
 import type { PropertyFormOptions } from "@/lib/data/property-form-options";
+import { projectDeliveryDate } from "@/lib/towers/delivery-date";
 
 const currency = new Intl.NumberFormat("es-CO", {
   style: "currency",
@@ -42,6 +43,8 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
         bedrooms: string;
         bathrooms: string;
         study: string;
+        hasSocialBathroom?: string;
+        hasServiceRoom?: string;
       }[])
     : [];
   const additionalImages = property.additional_images ?? [];
@@ -131,15 +134,13 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
           <Field label="Banco constructor" value={property.construction_bank} />
           <Field label="Fiducia" value={property.trust_company} />
           <Field
-            label="Fecha de entrega"
-            value={
-              property.delivery_date
-                ? new Date(property.delivery_date).toLocaleDateString("es-CO", {
-                    year: "numeric",
-                    month: "long",
-                  })
-                : null
-            }
+            label="Fecha de entrega (última torre)"
+            value={(() => {
+              const delivery = projectDeliveryDate(property.tower_details, property.tower_count);
+              return delivery
+                ? new Date(delivery).toLocaleDateString("es-CO", { year: "numeric", month: "long", timeZone: "UTC" })
+                : null;
+            })()}
           />
         </div>
       </Card>
@@ -213,6 +214,8 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
                   <th className="px-5 py-2.5 font-medium">Alcobas</th>
                   <th className="px-5 py-2.5 font-medium">Baños</th>
                   <th className="px-5 py-2.5 font-medium">Estudio</th>
+                  <th className="px-5 py-2.5 font-medium">Baño social</th>
+                  <th className="px-5 py-2.5 font-medium">Alcoba de servicio</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-separator">
@@ -223,6 +226,8 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
                     <td className="px-5 py-2.5 text-muted">{typology.bedrooms}</td>
                     <td className="px-5 py-2.5 text-muted">{typology.bathrooms}</td>
                     <td className="px-5 py-2.5 text-muted">{typology.study}</td>
+                    <td className="px-5 py-2.5 text-muted">{typology.hasSocialBathroom ?? "—"}</td>
+                    <td className="px-5 py-2.5 text-muted">{typology.hasServiceRoom ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

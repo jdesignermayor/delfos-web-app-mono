@@ -10,9 +10,22 @@ export type Typology = {
   bathrooms: string;
   study: "Sí" | "No";
   hasBalcony: "Sí" | "No";
+  /** "Baño social". Missing on typologies saved before it existed. */
+  hasSocialBathroom?: "Sí" | "No";
+  /** "Alcoba de servicio". Missing on typologies saved before it existed. */
+  hasServiceRoom?: "Sí" | "No";
 };
 
-const EMPTY_DRAFT: Typology = { name: "", area: "", bedrooms: "", bathrooms: "", study: "No", hasBalcony: "No" };
+const EMPTY_DRAFT: Typology = {
+  name: "",
+  area: "",
+  bedrooms: "",
+  bathrooms: "",
+  study: "No",
+  hasBalcony: "No",
+  hasSocialBathroom: "No",
+  hasServiceRoom: "No",
+};
 
 /**
  * Repeatable "Tipologías de apartamento" registry: a table of unit models
@@ -59,9 +72,23 @@ export function TypologiesEditor({
     setError(null);
   }
 
+  /**
+   * Inserts a copy right below the original, named "<nombre> (copia)", and opens it for editing so
+   * the user can rename it and change what differs.
+   */
+  function duplicateTypology(index: number) {
+    const copy: Typology = { ...EMPTY_DRAFT, ...typologies[index], name: `${typologies[index].name} (copia)` };
+    onChange([...typologies.slice(0, index + 1), copy, ...typologies.slice(index + 1)]);
+    setIsAdding(false);
+    setError(null);
+    setEditingIndex(index + 1);
+    setDraft(copy);
+  }
+
   function startEdit(index: number) {
     setEditingIndex(index);
-    setDraft(typologies[index]);
+    // Older typologies lack the newer yes/no fields; start those on "No".
+    setDraft({ ...EMPTY_DRAFT, ...typologies[index] });
   }
 
   function cancelEdit() {
@@ -88,7 +115,7 @@ export function TypologiesEditor({
 
       {typologies.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-separator">
-          <table className="w-full min-w-[560px] text-sm">
+          <table className="w-full min-w-[840px] text-sm">
             <thead>
               <tr className="border-b border-separator bg-surface-secondary text-left text-xs uppercase tracking-wider text-muted">
                 <th className="px-4 py-2.5 font-medium">Nombre / Modelo</th>
@@ -97,6 +124,8 @@ export function TypologiesEditor({
                 <th className="px-4 py-2.5 font-medium">Baños</th>
                 <th className="px-4 py-2.5 font-medium">Estudio</th>
                 <th className="px-4 py-2.5 font-medium">Balcón</th>
+                <th className="px-4 py-2.5 font-medium">Baño social</th>
+                <th className="px-4 py-2.5 font-medium">Alcoba de servicio</th>
                 <th className="px-4 py-2.5 font-medium">Acciones</th>
               </tr>
             </thead>
@@ -109,6 +138,8 @@ export function TypologiesEditor({
                   <td className="px-4 py-2.5 text-muted">{typology.bathrooms}</td>
                   <td className="px-4 py-2.5 text-muted">{typology.study}</td>
                   <td className="px-4 py-2.5 text-muted">{typology.hasBalcony}</td>
+                  <td className="px-4 py-2.5 text-muted">{typology.hasSocialBathroom ?? "—"}</td>
+                  <td className="px-4 py-2.5 text-muted">{typology.hasServiceRoom ?? "—"}</td>
                   <td className="px-4 py-2.5 flex gap-1">
                     <Button
                       type="button"
@@ -117,6 +148,14 @@ export function TypologiesEditor({
                       onPress={() => startEdit(index)}
                     >
                       Editar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onPress={() => duplicateTypology(index)}
+                    >
+                      Duplicar
                     </Button>
                     <Button
                       type="button"
@@ -147,7 +186,7 @@ export function TypologiesEditor({
           <h3 className="text-sm font-semibold">
             {editingIndex !== null ? `Editar: ${typologies[editingIndex].name}` : "Agregar nueva tipología"}
           </h3>
-          <div className="grid gap-4 sm:grid-cols-6">
+          <div className="grid gap-4 sm:grid-cols-4">
             <TextField
               value={draft.name}
               onChange={(v) => setDraft((d) => ({ ...d, name: v }))}
@@ -213,6 +252,40 @@ export function TypologiesEditor({
                 value={draft.hasBalcony}
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, hasBalcony: e.target.value as "Sí" | "No" }))
+                }
+                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
+              >
+                <option value="No">No</option>
+                <option value="Sí">Sí</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor={`${formId}-social-bathroom`} className="mb-1.5 block text-sm font-medium">
+                Baño social
+              </label>
+              <select
+                id={`${formId}-social-bathroom`}
+                value={draft.hasSocialBathroom}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, hasSocialBathroom: e.target.value as "Sí" | "No" }))
+                }
+                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
+              >
+                <option value="No">No</option>
+                <option value="Sí">Sí</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor={`${formId}-service-room`} className="mb-1.5 block text-sm font-medium">
+                Alcoba de servicio
+              </label>
+              <select
+                id={`${formId}-service-room`}
+                value={draft.hasServiceRoom}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, hasServiceRoom: e.target.value as "Sí" | "No" }))
                 }
                 className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
               >

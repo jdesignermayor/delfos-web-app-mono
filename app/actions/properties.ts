@@ -38,7 +38,6 @@ export type CreatePropertyInput = {
   commune: string;
   neighborhood: string;
   stratum: string;
-  deliveryDate: string;
   developerId: string;
   projectName: string;
   /** Sitio web del proyecto; saved with `https://` when typed without a protocol. */
@@ -154,7 +153,6 @@ function buildPropertyRow(input: CreatePropertyInput) {
     housing_type: input.housingType || null,
     price: input.price.trim(),
     stratum: Number(input.stratum) || 0,
-    delivery_date: input.deliveryDate ? `${input.deliveryDate}-01` : null,
     amenities: input.amenities.map(({ id, name }) => ({ id, name })),
     typologies: Object.keys(input.typologies).length > 0 ? input.typologies : {},
     tower_details: Object.keys(input.towerDetails).length > 0 ? input.towerDetails : {},

@@ -1,4 +1,5 @@
 import type { Json, Tables } from "@/supabase/types";
+import { projectDeliveryDate } from "@/lib/towers/delivery-date";
 
 export type ProjectRow = Pick<
   Tables<"properties">,
@@ -11,7 +12,7 @@ export type ProjectRow = Pick<
   | "location"
   | "price"
   | "housing_type"
-  | "delivery_date"
+  | "tower_details"
   | "typologies"
   | "additional_images"
 > & { developer: { name: string } | null };
@@ -104,7 +105,9 @@ export function computeProjectStats(rows: ProjectRow[], now = new Date()): Proje
 
   const created = rows.flatMap((row) => (row.created_at ? [row.created_at] : []));
   const prices = rows.map((row) => Number(row.price)).filter((price) => Number.isFinite(price) && price > 0);
-  const offPlan = rows.filter((row) => row.delivery_date && new Date(row.delivery_date) > now).length;
+  // Each project is delivered when its last tower is.
+  const deliveries = rows.flatMap((row) => projectDeliveryDate(row.tower_details, row.tower_count) ?? []);
+  const offPlan = deliveries.filter((date) => new Date(date) > now).length;
   const affordable = rows.filter((row) => /^\s*vi[sp]\b/i.test(row.housing_type ?? "")).length;
 
   return {
@@ -119,7 +122,7 @@ export function computeProjectStats(rows: ProjectRow[], now = new Date()): Proje
     averagePrice: prices.length ? prices.reduce((sum, price) => sum + price, 0) / prices.length : 0,
     byDeveloper: countBy(rows.map((row) => row.developer?.name ?? "Sin constructora")),
     byMunicipality: countBy(rows.map(municipalityOf)),
-    deliveriesByYear: countBy(rows.flatMap((row) => (row.delivery_date ? [row.delivery_date.slice(0, 4)] : [])), 99).sort(
+    deliveriesByYear: countBy(deliveries.map((date) => date.slice(0, 4)), 99).sort(
       (a, b) => a.label.localeCompare(b.label),
     ),
     priceRanges: PRICE_RANGES.map((range, index) => ({

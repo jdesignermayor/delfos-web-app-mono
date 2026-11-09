@@ -11,7 +11,7 @@ export type SeoAutofillInput = {
   neighborhood: string;
   price: string;
   stratum: string;
-  /** "YYYY-MM" from the form's month picker. */
+  /** The last tower's delivery date ("YYYY-MM-DD" or "YYYY-MM"), or "" when no tower has one. */
   deliveryDate: string;
   developerName?: string;
   description: string;
@@ -86,9 +86,8 @@ export function buildSeoTexts(input: SeoAutofillInput): SeoTexts {
   const beds = range(numbers(input.typologies.map((t) => t.bedrooms)));
   const baths = range(numbers(input.typologies.map((t) => t.bathrooms)));
   const area = range(numbers(input.typologies.map((t) => t.area)), " m²");
-  const delivery = /^\d{4}-\d{2}$/.test(input.deliveryDate)
-    ? monthYear.format(new Date(`${input.deliveryDate}-01T00:00:00Z`))
-    : "";
+  const deliveryMonth = input.deliveryDate.match(/^\d{4}-\d{2}/)?.[0];
+  const delivery = deliveryMonth ? monthYear.format(new Date(`${deliveryMonth}-01T00:00:00Z`)) : "";
   const affordable = /^\s*vi[sp]\b/i.test(input.housingType);
   const topAmenities = input.amenities.map((a) => a.trim()).filter(Boolean).slice(0, 3);
   const developer = input.developerName?.trim();

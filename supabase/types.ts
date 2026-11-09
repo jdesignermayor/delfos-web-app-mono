@@ -222,7 +222,6 @@ export type Database = {
           created_at: string | null
           credit_amount: string | null
           credit_percentage: number | null
-          delivery_date: string | null
           description: string
           developer_id: number | null
           housing_type: string | null
@@ -271,7 +270,6 @@ export type Database = {
           created_at?: string | null
           credit_amount?: string | null
           credit_percentage?: number | null
-          delivery_date?: string | null
           description: string
           developer_id?: number | null
           housing_type?: string | null
@@ -320,7 +318,6 @@ export type Database = {
           created_at?: string | null
           credit_amount?: string | null
           credit_percentage?: number | null
-          delivery_date?: string | null
           description?: string
           developer_id?: number | null
           housing_type?: string | null

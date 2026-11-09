@@ -16,6 +16,7 @@ import { parseAmenities } from "@/lib/amenities";
 import { BRAND_COLOR_KEYS, parseBrandColors } from "@/lib/brand-colors";
 import { towerKey, towerNumberOf } from "@/lib/towers/tower-keys";
 import { isSalesSuccessStatus } from "@/lib/towers/tower-status-rules";
+import { projectDeliveryDate } from "@/lib/towers/delivery-date";
 import { youtubeId } from "@/lib/property-seo";
 import { typologyRanges } from "@/lib/typology-ranges";
 
@@ -33,7 +34,7 @@ const TOWER_STATUSES_SELECT = "property_towers(tower_number, status:tower_status
  * Columns `listingSummary` reads, for queries that only need a card (the landing carousel)
  * instead of the full row.
  */
-export const LISTING_SUMMARY_SELECT = `neighborhood, commune, city, location, typologies, housing_type, delivery_date, ${TOWER_STATUSES_SELECT}`;
+export const LISTING_SUMMARY_SELECT = `neighborhood, commune, city, location, typologies, housing_type, tower_details, tower_count, ${TOWER_STATUSES_SELECT}`;
 
 /** The Constructora (`developer_id`) joined onto each row, for its name and contact phone, and each tower's status. */
 const PROPERTY_SELECT = `*, developer:developers!developer_id(name, phone), ${TOWER_STATUSES_SELECT}`;
@@ -129,6 +130,8 @@ function parseTowers(
             bathrooms: toNumber(item.bathrooms),
             hasStudy: toBoolean(item.study),
             hasBalcony: toBoolean(item.hasBalcony),
+            hasSocialBathroom: toBoolean(item.hasSocialBathroom),
+            hasServiceRoom: toBoolean(item.hasServiceRoom),
           })
         ),
       };
@@ -158,7 +161,8 @@ function toDetails(row: PropertyRow, statuses: Map<number, TowerStatus>): Proper
     constructionCompany: text(row.construction_company),
     trustCompany: text(row.trust_company),
     constructionBank: text(row.construction_bank),
-    deliveryDate: text(row.delivery_date),
+    // The last tower's delivery date stands for the whole project.
+    deliveryDate: projectDeliveryDate(row.tower_details, row.tower_count) ?? undefined,
     towerCount: row.tower_count ?? undefined,
     towers: parseTowers(row.typologies, row.tower_details, row.tower_count, statuses),
     financing: {
@@ -183,9 +187,13 @@ function toBrandColors(value: Json): Property["brandColors"] {
   return BRAND_COLOR_KEYS.some((key) => colors[key]) ? colors : undefined;
 }
 
+/** Whether a delivery date ("YYYY-MM-DD") is still ahead of `now`. */
+const isOffPlan = (deliveryDate: string | null, now = new Date()) =>
+  deliveryDate !== null && new Date(deliveryDate) > now;
+
 export type ListingSummaryRow = Pick<
   Tables<"properties">,
-  "neighborhood" | "commune" | "city" | "location" | "typologies" | "housing_type" | "delivery_date"
+  "neighborhood" | "commune" | "city" | "location" | "typologies" | "housing_type" | "tower_details" | "tower_count"
 > & { property_towers?: PropertyTowerRow[] };
 
 /**
@@ -207,8 +215,8 @@ export function listingSummary(row: ListingSummaryRow) {
     area: ranges.area,
     // "VIS" / "VIP" housing (but not "No VIS") is the affordable filter.
     affordable: /^\s*vi[sp]\b/i.test(row.housing_type ?? ""),
-    // A delivery date still ahead means the project is off-plan.
-    status: row.delivery_date && new Date(row.delivery_date) > new Date() ? "Sobre planos" : "Listo para estrenar",
+    // The last tower's delivery date still ahead means the project is off-plan.
+    status: isOffPlan(projectDeliveryDate(row.tower_details, row.tower_count)) ? "Sobre planos" : "Listo para estrenar",
     salesSuccess: [...statuses.values()].some((status) => isSalesSuccessStatus(status.id)) || undefined,
   } satisfies Partial<Property>;
 }

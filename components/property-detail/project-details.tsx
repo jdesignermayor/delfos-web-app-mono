@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
-import { ArrowUpDown, BookOpen, CalendarDays, ChevronDown, Fence, Trash } from "lucide-react";
+import { ArrowUpDown, BedSingle, BookOpen, CalendarDays, ChevronDown, Fence, Toilet, Trash } from "lucide-react";
 
 import { BathIcon, BedIcon, BuildingIcon, RulerIcon } from "@/components/icons";
 import {
@@ -107,6 +107,8 @@ function TypologyRow({ typology }: { typology: Typology }) {
       {typology.bathrooms != null ? <Fact icon={BathIcon}>{plural(typology.bathrooms, "baño", "baños")}</Fact> : null}
       {typology.hasStudy ? <Fact icon={BookOpen}>Estudio</Fact> : null}
       {typology.hasBalcony ? <Fact icon={Fence}>Balcón</Fact> : null}
+      {typology.hasSocialBathroom ? <Fact icon={Toilet}>Baño social</Fact> : null}
+      {typology.hasServiceRoom ? <Fact icon={BedSingle}>Alcoba de servicio</Fact> : null}
     </li>
   );
 }
