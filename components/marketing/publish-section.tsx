@@ -35,7 +35,7 @@ function FeatureTile({ feature }: { feature: Feature }) {
         <Icon className="size-[18px]" />
       </div>
       <p className="mt-3 text-sm font-medium">{title}</p>
-      <p className="mt-1 text-xs text-muted">{body}</p>
+      <p className="mt-1 text-sm text-muted">{body}</p>
     </div>
   );
 }

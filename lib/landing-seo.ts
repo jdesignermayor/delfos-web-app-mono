@@ -8,10 +8,10 @@ const SHARE_IMAGE = { url: "/og/landing", width: 1200, height: 630, alt: "Delfos
 
 const AREA_SERVED = ["Medellín", "Envigado", "Sabaneta", "Itagüí", "La Estrella", "Bello"];
 
-const millions = (price: number) => `$${Math.round(price / 1_000_000).toLocaleString("es-CO")}M`;
+export const millions = (price: number) => `$${Math.round(price / 1_000_000).toLocaleString("es-CO")}M`;
 
 /** "2027" when every delivery falls in one year, "2026–2028" otherwise. */
-const yearRange = ([first, last]: [number, number]) => (first === last ? `${first}` : `${first}–${last}`);
+export const yearRange =([first, last]: [number, number]) => (first === last ? `${first}` : `${first}–${last}`);
 
 /**
  * "Compara 6 proyectos de vivienda nueva en venta en Medellín… desde $429M. Entregas 2026–2028. Agenda tu visita."

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { CtaSection } from "@/components/marketing/cta-section";
@@ -9,7 +10,7 @@ import { PublishSection } from "@/components/marketing/publish-section";
 import { SearchModeProvider } from "@/components/marketing/search-mode-context";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteNavbar } from "@/components/marketing/site-navbar";
-import { StatsSection } from "@/components/marketing/stats-section";
+import { StatsSection, StatsSectionSkeleton } from "@/components/marketing/stats-section";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getLandingStats } from "@/lib/data/landing";
 import { SITE_JSON_LD, buildLandingMetadata } from "@/lib/landing-seo";
@@ -32,9 +33,12 @@ export default function LandingPage() {
         <main className="flex-1">
           <HeroSection />
           <FeaturedCarouselSection />
+          {/* Proof right after the listings, before the "how" sections. */}
+          <Suspense fallback={<StatsSectionSkeleton />}>
+            <StatsSection />
+          </Suspense>
           <OptionsSection />
           <PublishSection />
-          <StatsSection />
           <CtaSection />
         </main>
       </SearchModeProvider>

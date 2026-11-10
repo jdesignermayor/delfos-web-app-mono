@@ -40,18 +40,19 @@ const OPTIONS: Option[] = [
 function OptionCard({ option }: { option: Option }) {
   const { icon: Icon, title, body, cta, href } = option;
   return (
-    <Card className="flex h-full flex-col p-6">
-      <div className="flex size-11 items-center justify-center rounded-xl bg-accent-soft text-accent">
+    // The whole card is the hit target (stretched link), with the CTA text as its accessible name.
+    <Card className="group relative flex h-full cursor-pointer flex-col border border-transparent p-6 transition-[box-shadow,border-color,transform] duration-200 ease-out hover:border-accent/30 hover:shadow-lg focus-within:border-accent/40 motion-safe:hover:-translate-y-0.5">
+      <div className="flex size-11 items-center justify-center rounded-xl bg-accent-soft text-accent transition-colors duration-200 group-hover:bg-accent group-hover:text-accent-foreground">
         <Icon />
       </div>
       <h3 className="mt-4 font-display text-lg font-semibold">{title}</h3>
-      <p className="mt-2 flex-1 text-sm text-muted">{body}</p>
+      <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{body}</p>
       <Link
         href={href}
-        className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+        className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-accent outline-none after:absolute after:inset-0 after:rounded-[inherit] focus-visible:after:ring-2 focus-visible:after:ring-focus"
       >
         {cta}
-        <ArrowRightIcon className="size-4" />
+        <ArrowRightIcon className="size-4 transition-transform duration-200 motion-safe:group-hover:translate-x-1" />
       </Link>
     </Card>
   );

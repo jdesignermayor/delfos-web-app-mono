@@ -6,7 +6,8 @@ import { ArrowRightIcon } from "@/components/icons";
 export function CtaSection() {
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-      <div className="relative overflow-hidden rounded-3xl border border-separator bg-surface px-6 py-16 text-center shadow-[0_24px_70px_-32px_rgba(15,23,42,0.35)]">
+      {/* `isolate` gives the card its own stacking context so the -z-10 glow sits above its background. */}
+      <div className="relative isolate overflow-hidden rounded-3xl border border-separator bg-surface px-6 py-16 text-center shadow-[0_24px_70px_-32px_rgba(15,23,42,0.35)]">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(50%_80%_at_50%_0%,var(--color-accent-soft),transparent_70%)]" />
         <h2 className="mx-auto max-w-2xl font-display text-3xl font-semibold tracking-tight sm:text-4xl">
           Tu próximo hogar te está esperando
