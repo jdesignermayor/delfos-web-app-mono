@@ -199,7 +199,7 @@ export function MultiImagePicker({
                 type="button"
                 onClick={() => removeImage(img.id)}
                 aria-label={`Eliminar ${img.name}`}
-                className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-sm text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                className="absolute right-1 top-1 flex size-9 items-center justify-center rounded-full bg-black/60 text-base text-white transition-opacity focus-visible:opacity-100 md:size-6 md:text-sm md:opacity-0 md:group-hover:opacity-100"
               >
                 ×
               </button>

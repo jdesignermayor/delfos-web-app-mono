@@ -186,7 +186,7 @@ export function SeoEditor({
             onClick={onAutofill}
             disabled={autofilling}
             aria-busy={autofilling}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-70"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold max-md:min-h-11 max-md:w-full max-md:text-base text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-70"
           >
             <Sparkles className={`size-4 ${autofilling ? "animate-pulse" : ""}`} />
             {autofilling ? "Generando…" : "Autorrellenar"}
@@ -212,7 +212,7 @@ export function SeoEditor({
               aria-selected={selected}
               aria-controls={`seo-panel-${p.key}`}
               onClick={() => setActive(p.key)}
-              className={`flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={`flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors max-md:min-h-11 ${
                 selected
                   ? "bg-surface text-foreground shadow-sm"
                   : "text-muted hover:text-foreground"

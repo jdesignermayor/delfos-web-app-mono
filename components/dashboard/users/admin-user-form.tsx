@@ -48,7 +48,7 @@ const COPY: Record<AdminUserFormMode, { submit: string; pending: string; success
 };
 
 const selectClassName =
-  "h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30 aria-invalid:border-danger";
+  "h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm max-md:h-12 max-md:text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30 aria-invalid:border-danger";
 
 function UserTextField({
   config,

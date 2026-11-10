@@ -103,7 +103,7 @@ function ToolbarButton({
       // Keep the selection in the editor while clicking the toolbar.
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => action.run(editor)}
-      className={`flex size-8 items-center justify-center rounded-md transition-colors disabled:opacity-40 ${
+      className={`flex size-8 items-center justify-center rounded-md transition-colors disabled:opacity-40 max-md:size-10 ${
         active ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-secondary hover:text-foreground"
       }`}
     >

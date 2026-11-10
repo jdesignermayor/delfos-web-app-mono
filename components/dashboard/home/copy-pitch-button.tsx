@@ -21,7 +21,7 @@ export function CopyPitchButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={copy}
-      className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-accent transition-colors hover:text-accent-hover"
+      className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-accent transition-colors hover:text-accent-hover max-md:min-h-11 max-md:text-sm"
     >
       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       <span aria-live="polite">{copied ? "Copiado" : "Copiar texto"}</span>

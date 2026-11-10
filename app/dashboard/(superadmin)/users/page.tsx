@@ -22,7 +22,7 @@ export default async function UsersPage() {
             Cuentas de las constructoras: gestionan sus propias propiedades y fiducias.
           </p>
         </div>
-        <Link href="/dashboard/users/new" className={buttonVariants({ variant: "primary", size: "sm" })}>
+        <Link href="/dashboard/users/new" className={`${buttonVariants({ variant: "primary", size: "sm" })} max-md:w-full`}>
           <Plus className="size-4" />
           Nuevo usuario
         </Link>

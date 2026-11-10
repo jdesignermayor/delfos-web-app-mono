@@ -18,7 +18,7 @@ export const PRIMARY_ACTION =
   "inline-flex h-9 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-opacity hover:opacity-85 disabled:opacity-50";
 /** Quiet bordered button for secondary actions. */
 export const SECONDARY_ACTION =
-  "inline-flex h-9 items-center gap-2 rounded-lg border border-separator px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-secondary disabled:opacity-50";
+  "inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-separator px-4 text-sm font-medium max-md:h-11 max-md:w-full max-md:text-base text-foreground transition-colors hover:bg-surface-secondary disabled:opacity-50";
 
 const STATUS: Record<StepState, { label: string; className: string }> = {
   done: { label: "Completado", className: GREEN_TEXT },

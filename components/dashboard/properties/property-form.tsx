@@ -479,7 +479,7 @@ function parseTowerDetails(raw: unknown): Record<string, TowerDetail> {
 }
 
 function fieldClassName() {
-  return "h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30";
+  return "h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm max-md:h-12 max-md:text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30";
 }
 
 
@@ -912,7 +912,8 @@ export function PropertyForm({
                   {i + 1}
                 </span>
                 <span
-                  className={`text-sm font-medium ${
+                  // Phones: only the current step's name fits; the others show just their number.
+                  className={`text-sm font-medium ${state === "current" ? "" : "hidden sm:inline"} ${
                     state === "upcoming" ? "text-muted" : "text-foreground"
                   }`}
                 >
@@ -922,7 +923,7 @@ export function PropertyForm({
               </button>
               {i < steps.length - 1 ? (
                 <span
-                  className={`mx-3 h-px flex-1 ${
+                  className={`mx-2 h-px min-w-3 flex-1 sm:mx-3 ${
                     i < stepIndex ? "bg-accent" : "bg-separator"
                   }`}
                 />
@@ -932,7 +933,7 @@ export function PropertyForm({
         })}
       </ol>
 
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <div className="mb-5">
           <h2 className="text-lg font-semibold">{step.title}</h2>
           <p className="mt-1 text-sm text-muted">{step.description}</p>
@@ -1192,7 +1193,7 @@ export function PropertyForm({
         </p>
       ) : null}
 
-      <div className="flex items-center justify-between">
+      <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-2 border-t border-separator bg-background/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none max-sm:[&_.button]:flex-1 max-sm:[&>div]:flex max-sm:[&>div]:flex-1 max-sm:[&>div]:gap-2">
         <Button type="button" variant="outline" onPress={goBack} isDisabled={stepIndex === 0}>
           Atrás
         </Button>

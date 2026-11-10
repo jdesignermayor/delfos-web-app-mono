@@ -29,11 +29,12 @@ function ExportButtonView({
   error?: string | null;
 }) {
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex flex-col items-stretch gap-1 sm:items-end">
       <Button
         type="button"
         variant="outline"
         size="sm"
+        className="max-md:w-full"
         isPending={isPending}
         isDisabled={isPending}
         onPress={onPress}

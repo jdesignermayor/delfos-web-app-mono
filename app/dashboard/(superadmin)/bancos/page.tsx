@@ -26,7 +26,7 @@ export default async function BancosPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Bancos</h1>
           <p className="mt-1 text-sm text-muted">Gestiona los bancos del sistema</p>
         </div>
-        <Link href="/dashboard/bancos/new" className={buttonVariants({ variant: "primary", size: "sm" })}>
+        <Link href="/dashboard/bancos/new" className={`${buttonVariants({ variant: "primary", size: "sm" })} max-md:w-full`}>
           Nuevo banco
           <ArrowRightIcon className="size-4" />
         </Link>

@@ -38,7 +38,7 @@ const TONES: Record<Tone, string> = {
 
 function Panel({ title, hint, children, className = "" }: { title: string; hint?: string; children: ReactNode; className?: string }) {
   return (
-    <Card className={`rounded-3xl p-6 ${className}`}>
+    <Card className={`rounded-3xl p-4 sm:p-6 ${className}`}>
       <p className="text-base font-semibold text-foreground">{title}</p>
       {hint ? <p className="mt-0.5 text-sm text-muted">{hint}</p> : null}
       <div className="mt-5">{children}</div>
@@ -67,11 +67,11 @@ function Delta({ thisMonth, lastMonth }: { thisMonth: number; lastMonth: number 
 
 function StatTile({ icon: Icon, tone, label, value, hint }: { icon: ComponentType<{ className?: string }>; tone: Tone; label: string; value: string; hint: string }) {
   return (
-    <Card className="rounded-3xl p-5">
+    <Card className="min-w-0 rounded-3xl p-4 sm:p-5">
       <span className={`flex size-11 items-center justify-center rounded-2xl ${TONES[tone]}`}>
         <Icon className="size-5" />
       </span>
-      <p className="mt-4 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
+      <p className="mt-4 truncate text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{value}</p>
       <p className="mt-1 text-sm font-medium text-foreground">{label}</p>
       <p className="text-xs text-muted">{hint}</p>
     </Card>
@@ -106,7 +106,7 @@ function Columns({ items, unit }: { items: Count[]; unit: [string, string] }) {
   const max = Math.max(1, ...items.map((item) => item.count));
   return (
     <div>
-      <div className="flex h-48 items-end gap-3 border-b border-separator">
+      <div className="flex h-48 items-end gap-1.5 border-b border-separator sm:gap-3">
         {items.map((item) => (
           <div key={item.label} className="group flex h-full flex-1 flex-col items-center justify-end" title={`${item.label}: ${plural(item.count, ...unit)}`}>
             <span className="mb-1.5 text-sm font-semibold tabular-nums text-foreground">{item.count || ""}</span>
@@ -117,7 +117,7 @@ function Columns({ items, unit }: { items: Count[]; unit: [string, string] }) {
           </div>
         ))}
       </div>
-      <div className="mt-2 flex gap-3">
+      <div className="mt-2 flex gap-1.5 sm:gap-3">
         {items.map((item) => (
           <span key={item.label} className="flex-1 text-center text-xs text-muted">
             {item.label}
@@ -177,10 +177,10 @@ export function ProjectOverview({ stats }: { stats: ProjectStats }) {
     <div className="flex flex-col gap-4">
       {/* Hero + growth */}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <Card className="flex flex-col justify-between rounded-3xl bg-gradient-to-br from-accent-soft via-white to-white p-7">
+        <Card className="flex flex-col justify-between rounded-3xl bg-gradient-to-br from-accent-soft via-white to-white p-5 sm:p-7">
           <div>
             <p className="text-sm font-semibold text-accent">Proyectos en la plataforma</p>
-            <p className="mt-2 text-7xl font-semibold tracking-tight text-foreground">{number.format(stats.total)}</p>
+            <p className="mt-2 text-6xl font-semibold sm:text-7xl tracking-tight text-foreground">{number.format(stats.total)}</p>
             <Delta thisMonth={stats.addedThisMonth} lastMonth={stats.addedLastMonth} />
           </div>
 
@@ -191,13 +191,13 @@ export function ProjectOverview({ stats }: { stats: ProjectStats }) {
           </div>
         </Card>
 
-        <Card className="rounded-3xl p-7">
+        <Card className="min-w-0 rounded-3xl p-5 sm:p-7">
           <GrowthChart createdAt={stats.createdAt} />
         </Card>
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatTile icon={Building} tone="indigo" label="Constructoras aliadas" value={number.format(stats.developers)} hint="Con al menos un proyecto" />
         <StatTile icon={HardHat} tone="amber" label="Torres publicadas" value={number.format(stats.towers)} hint={`${plural(stats.typologies, "tipología", "tipologías")} en total`} />
         <StatTile icon={MapPinned} tone="emerald" label="Municipios con cobertura" value={number.format(municipalities)} hint="Valle de Aburrá" />

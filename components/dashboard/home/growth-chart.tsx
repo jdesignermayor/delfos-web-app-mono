@@ -117,7 +117,7 @@ export function GrowthChart({ createdAt }: { createdAt: string[] }) {
                 setGranularity(option);
                 setHover(null);
               }}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors ${
+              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors max-md:px-4 max-md:py-2.5 max-md:text-sm ${
                 granularity === option ? "bg-white text-foreground shadow-sm" : "text-muted hover:text-foreground"
               }`}
             >

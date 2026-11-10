@@ -87,7 +87,7 @@ export function PasswordForm() {
       <button
         type="button"
         onClick={() => setVisible((current) => !current)}
-        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
+        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground max-md:min-h-11"
       >
         {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         {visible ? "Ocultar contraseñas" : "Mostrar contraseñas"}

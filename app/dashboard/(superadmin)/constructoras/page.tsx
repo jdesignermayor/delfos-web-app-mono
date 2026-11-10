@@ -26,7 +26,7 @@ export default async function ConstructorasPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Constructoras</h1>
           <p className="mt-1 text-sm text-muted">Gestiona las constructoras del sistema</p>
         </div>
-        <Link href="/dashboard/constructoras/new" className={buttonVariants({ variant: "primary", size: "sm" })}>
+        <Link href="/dashboard/constructoras/new" className={`${buttonVariants({ variant: "primary", size: "sm" })} max-md:w-full`}>
           Nueva constructora
           <ArrowRightIcon className="size-4" />
         </Link>

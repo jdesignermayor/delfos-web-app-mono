@@ -26,7 +26,7 @@ export default async function ZonasComunesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Zonas comunes</h1>
           <p className="mt-1 text-sm text-muted">Gestiona las zonas comunes del sistema</p>
         </div>
-        <Link href="/dashboard/zonas-comunes/new" className={buttonVariants({ variant: "primary", size: "sm" })}>
+        <Link href="/dashboard/zonas-comunes/new" className={`${buttonVariants({ variant: "primary", size: "sm" })} max-md:w-full`}>
           Nueva zona común
           <ArrowRightIcon className="size-4" />
         </Link>

@@ -236,7 +236,7 @@ export function TypologiesEditor({
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, study: e.target.value as "Sí" | "No" }))
                 }
-                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
+                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm max-md:h-12 max-md:text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
               >
                 <option value="No">No</option>
                 <option value="Sí">Sí</option>
@@ -253,7 +253,7 @@ export function TypologiesEditor({
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, hasBalcony: e.target.value as "Sí" | "No" }))
                 }
-                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
+                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm max-md:h-12 max-md:text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
               >
                 <option value="No">No</option>
                 <option value="Sí">Sí</option>
@@ -270,7 +270,7 @@ export function TypologiesEditor({
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, hasSocialBathroom: e.target.value as "Sí" | "No" }))
                 }
-                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
+                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm max-md:h-12 max-md:text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
               >
                 <option value="No">No</option>
                 <option value="Sí">Sí</option>
@@ -287,7 +287,7 @@ export function TypologiesEditor({
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, hasServiceRoom: e.target.value as "Sí" | "No" }))
                 }
-                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
+                className="h-10 w-full rounded-lg border border-separator bg-surface px-3 text-sm max-md:h-12 max-md:text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-focus/30"
               >
                 <option value="No">No</option>
                 <option value="Sí">Sí</option>

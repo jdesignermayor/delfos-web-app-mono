@@ -43,7 +43,7 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Inicio</h1>
           <p className="mt-1 text-sm text-muted">{subtitle}</p>
         </div>
-        <Link href="/dashboard/properties/new" className={buttonVariants({ variant: "primary", size: "sm" })}>
+        <Link href="/dashboard/properties/new" className={`${buttonVariants({ variant: "primary", size: "sm" })} max-md:w-full`}>
           <Plus className="size-4" />
           Nueva propiedad
         </Link>

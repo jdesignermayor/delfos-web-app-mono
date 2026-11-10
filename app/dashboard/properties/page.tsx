@@ -40,11 +40,11 @@ export default async function PropertiesPage() {
             {properties?.length ?? 0} propiedades {scopeLabel}.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
           <ExportPropertiesButton />
           <Link
             href="/dashboard/properties/new"
-            className={buttonVariants({ variant: "primary", size: "sm" })}
+            className={`${buttonVariants({ variant: "primary", size: "sm" })} max-md:w-full`}
           >
             <Plus className="size-4" />
             Nueva propiedad

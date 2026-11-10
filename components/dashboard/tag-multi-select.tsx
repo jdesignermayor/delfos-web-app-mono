@@ -34,7 +34,7 @@ export function TagMultiSelect({
             type="button"
             onClick={() => toggle(o)}
             aria-pressed={active}
-            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors max-md:px-4 max-md:py-2.5 ${
               active
                 ? "border-accent bg-accent text-white"
                 : "border-separator bg-surface text-foreground hover:border-accent/50"

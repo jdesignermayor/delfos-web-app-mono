@@ -33,7 +33,7 @@ export default async function FiduciasPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Fiducias</h1>
           <p className="mt-1 text-sm text-muted">Gestiona las fiducias del sistema</p>
         </div>
-        <Link href="/dashboard/fiducias/new" className={buttonVariants({ variant: "primary", size: "sm" })}>
+        <Link href="/dashboard/fiducias/new" className={`${buttonVariants({ variant: "primary", size: "sm" })} max-md:w-full`}>
           Nueva fiducia
           <ArrowRightIcon className="size-4" />
         </Link>

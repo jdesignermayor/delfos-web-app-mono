@@ -28,9 +28,10 @@ const currency = new Intl.NumberFormat("es-CO", {
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === "") return null;
   return (
-    <div>
+    // `min-w-0` + `break-words`: long values (emails, addresses) wrap instead of overflowing on phones.
+    <div className="min-w-0">
       <p className="text-xs font-medium uppercase tracking-wider text-muted">{label}</p>
-      <p className="mt-0.5 text-sm">{value}</p>
+      <p className="mt-0.5 break-words text-sm">{value}</p>
     </div>
   );
 }
@@ -272,7 +273,7 @@ export function PropertyDetailView({
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/dashboard/properties"
           className="inline-flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
@@ -281,7 +282,7 @@ export function PropertyDetailView({
           Volver a propiedades
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">
           {!isEditing ? (
             <Button
               type="button"

@@ -18,7 +18,7 @@ export default async function InmobiliariasPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Inmobiliarias</h1>
           <p className="mt-1 text-sm text-muted">Gestiona las inmobiliarias del sistema</p>
         </div>
-        <Link href="/dashboard/inmobiliarias/new" className={buttonVariants({ variant: "primary", size: "sm" })}>
+        <Link href="/dashboard/inmobiliarias/new" className={`${buttonVariants({ variant: "primary", size: "sm" })} max-md:w-full`}>
           Nueva inmobiliaria
           <ArrowRightIcon className="size-4" />
         </Link>
