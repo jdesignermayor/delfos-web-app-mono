@@ -445,6 +445,44 @@ export type Database = {
           },
         ]
       }
+      property_price_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_name: string | null
+          id: number
+          previous_price: number | null
+          price: number
+          property_id: number
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_name?: string | null
+          id?: never
+          previous_price?: number | null
+          price: number
+          property_id: number
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_name?: string | null
+          id?: never
+          previous_price?: number | null
+          price?: number
+          property_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_price_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_ratings: {
         Row: {
           created_at: string

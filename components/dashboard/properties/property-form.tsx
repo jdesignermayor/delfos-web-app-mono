@@ -42,11 +42,15 @@ import type { Tables } from "@/supabase/types";
 import type { TowerStatusOption } from "@/lib/data/property-form-options";
 import { towerKey, towerKeys } from "@/lib/towers/tower-keys";
 import { projectDeliveryDate } from "@/lib/towers/delivery-date";
+import type { PriceHistoryEntry } from "@/lib/price-history/price-history";
+import { PriceHistory } from "@/components/dashboard/properties/price-history";
 
 export type PropertyRecord = Tables<"properties"> & {
   developers: { id: number; name: string } | null;
   /** Saved "Estado de la torre" per tower (`property_towers`). */
   property_towers?: Pick<Tables<"property_towers">, "tower_number" | "status_id">[];
+  /** Read-only price log (`property_price_history`), newest first. */
+  price_history?: PriceHistoryEntry[];
 };
 
 type FieldKind =
@@ -1107,6 +1111,12 @@ export function PropertyForm({
                       />
                     </div>
                   ) : null}
+                </div>
+              ) : null}
+
+              {group.key === "pricing" && isEditing ? (
+                <div className="border-t border-separator pt-5">
+                  <PriceHistory entries={property?.price_history} />
                 </div>
               ) : null}
 

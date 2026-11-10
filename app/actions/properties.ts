@@ -14,6 +14,8 @@ import { canManageProperty, developerScope, type DashboardUser } from "@/lib/aut
 import type { Typology } from "@/components/dashboard/properties/typologies-editor";
 import { listTowerStatusIds, replacePropertyTowers } from "@/lib/towers/property-towers-repository";
 import { towerKeys } from "@/lib/towers/tower-keys";
+import { parsePrice } from "@/lib/price-history/price-history";
+import { recordPriceChange } from "@/lib/price-history/price-history-repository";
 
 /** Per-tower attributes stored in `properties.tower_details`. */
 export type TowerDetail = {
@@ -228,11 +230,35 @@ function withOwner(row: PropertyRow, user: DashboardUser): PropertyRow {
   return developerId === null ? row : { ...row, developer_id: developerId };
 }
 
-/** Whether `user` may edit the existing property `id` (it must exist and be in their scope). */
-async function canEditProperty(user: DashboardUser, id: number): Promise<boolean> {
+/**
+ * The current price of the existing property `id` when `user` may edit it (it must exist and be in
+ * their scope); `false` when they may not.
+ */
+async function editablePropertyPrice(user: DashboardUser, id: number): Promise<{ price: number | null } | false> {
   const admin = createAdminClient();
-  const { data } = await admin.from("properties").select("developer_id").eq("id", id).maybeSingle();
-  return data !== null && canManageProperty(user, data.developer_id);
+  const { data } = await admin.from("properties").select("developer_id, price").eq("id", id).maybeSingle();
+  return data !== null && canManageProperty(user, data.developer_id) ? { price: parsePrice(data.price) } : false;
+}
+
+/**
+ * Logs the price in `property_price_history` when it differs from `previousPrice` (always on
+ * create, where there's none). The error message, or null when it worked or nothing changed.
+ */
+async function logPriceChange(
+  propertyId: number,
+  previousPrice: number | null,
+  newPrice: string,
+  user: DashboardUser,
+): Promise<string | null> {
+  const price = parsePrice(newPrice);
+  if (price === null || price === previousPrice) return null;
+  try {
+    await recordPriceChange(createAdminClient(), { propertyId, price, previousPrice, user });
+    return null;
+  } catch (error) {
+    const message = (error as { message?: unknown } | null)?.message;
+    return typeof message === "string" ? message : "Error desconocido";
+  }
 }
 
 /**
@@ -282,11 +308,15 @@ export async function createProperty(input: CreatePropertyInput): Promise<Create
     return { success: false, error: error.message };
   }
   const towersError = await saveTowerStatuses(data.id, input);
+  const priceError = await logPriceChange(data.id, null, input.price, user);
   revalidateTag(PROPERTIES_CACHE_TAG, "max");
   // Dashboard lists, stats and detail pages (and their client-side cache).
   revalidatePath("/dashboard", "layout");
   if (towersError) {
     return { success: false, error: `La propiedad se creó, pero no se guardó el estado de las torres: ${towersError}` };
+  }
+  if (priceError) {
+    return { success: false, error: `La propiedad se creó, pero no se registró el precio en el historial: ${priceError}` };
   }
   return { success: true, id: data.id };
 }
@@ -296,7 +326,8 @@ export async function updateProperty(
   input: CreatePropertyInput,
 ): Promise<CreatePropertyResult> {
   const user = await getDashboardUser();
-  if (!user || !(await canEditProperty(user, id))) {
+  const current = user ? await editablePropertyPrice(user, id) : false;
+  if (!user || !current) {
     return { success: false, error: UNAUTHORIZED };
   }
 
@@ -313,11 +344,16 @@ export async function updateProperty(
     return { success: false, error: error.message };
   }
   const towersError = await saveTowerStatuses(id, input);
+  // Only a different price adds a row: the log can't be edited, it just grows on each change.
+  const priceError = await logPriceChange(id, current.price, input.price, user);
   revalidateTag(PROPERTIES_CACHE_TAG, "max");
   // Dashboard lists, stats and detail pages (and their client-side cache).
   revalidatePath("/dashboard", "layout");
   if (towersError) {
     return { success: false, error: `No se pudo guardar el estado de las torres: ${towersError}` };
+  }
+  if (priceError) {
+    return { success: false, error: `Los cambios se guardaron, pero no se registró el cambio de precio: ${priceError}` };
   }
   return { success: true, id };
 }

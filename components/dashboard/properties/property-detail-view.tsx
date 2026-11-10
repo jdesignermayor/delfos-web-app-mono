@@ -17,6 +17,7 @@ import { MarkdownContent } from "@/components/markdown-content";
 import { parseAmenities } from "@/lib/amenities";
 import type { PropertyFormOptions } from "@/lib/data/property-form-options";
 import { projectDeliveryDate } from "@/lib/towers/delivery-date";
+import { PriceHistory } from "@/components/dashboard/properties/price-history";
 
 const currency = new Intl.NumberFormat("es-CO", {
   style: "currency",
@@ -177,6 +178,10 @@ function PropertyReadView({ property }: { property: PropertyRecord }) {
             }
           />
         </div>
+      </Card>
+
+      <Card className="p-5">
+        <PriceHistory entries={property.price_history} />
       </Card>
 
       <Card className="p-5">

@@ -3,6 +3,9 @@ import { cache } from "react";
 import { getDashboardUser } from "@/lib/auth/dal";
 import { canManageProperty } from "@/lib/auth/permissions";
 import { createClient } from "@/supabase/server";
+import { createAdminClient } from "@/supabase/admin";
+import type { PriceHistoryEntry } from "@/lib/price-history/price-history";
+import { listPriceHistory } from "@/lib/price-history/price-history-repository";
 
 /**
  * A single property (with its developer) for the dashboard detail/edit page —
@@ -21,5 +24,14 @@ export const getDashboardProperty = cache(async (id: number) => {
     .eq("id", id)
     .maybeSingle();
 
-  return data && canManageProperty(user, data.developer_id) ? data : null;
+  if (!data || !canManageProperty(user, data.developer_id)) return null;
+
+  // The price log is only readable with the admin client, now that access is checked.
+  let priceHistory: PriceHistoryEntry[] = [];
+  try {
+    priceHistory = await listPriceHistory(createAdminClient(), data.id);
+  } catch {
+    // Show the property even if the log can't be read (e.g. its table isn't created yet).
+  }
+  return { ...data, price_history: priceHistory };
 });
