@@ -169,6 +169,88 @@ body {
 }
 
 /*
+ * Floating "Habla con tu asesor" (property page, phones). The 3px frame of `.agent-fab-ring` is a
+ * conic gradient in the project's colors (Delfos' accent without a brand) spinning behind the white
+ * pill, plus a halo that pulses outward every few seconds to invite the tap. Both loops animate
+ * transform/opacity only (compositor, no repaints). Reduced motion: a still gradient frame.
+ */
+.agent-fab-ring {
+  --agent-c1: var(--brand-cta, var(--color-accent));
+  --agent-c2: var(--brand-tertiary, color-mix(in oklab, var(--color-accent) 35%, white));
+  --agent-c3: var(--brand-primary, var(--color-accent-hover, var(--color-accent)));
+  isolation: isolate;
+  overflow: hidden;
+}
+/*
+ * The spinning frame: a square wider than the pill's diagonal, centered with `translate` (which
+ * composes with the animated `transform: rotate`), clipped by the rounded edge.
+ */
+.agent-fab-ring::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  z-index: -1;
+  background: conic-gradient(var(--agent-c1), var(--agent-c2), var(--agent-c3), var(--agent-c2), var(--agent-c1));
+}
+/* The pulsing halo lives on the wrapper, outside the ring's clip. */
+.agent-fab::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--brand-cta, var(--color-accent)) 45%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+@keyframes agent-fab-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@keyframes agent-fab-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(1.35, 1.6);
+    opacity: 0;
+  }
+}
+@keyframes agent-fab-nudge {
+  0%,
+  86%,
+  100% {
+    transform: rotate(0);
+  }
+  89% {
+    transform: rotate(-14deg);
+  }
+  92% {
+    transform: rotate(12deg);
+  }
+  95% {
+    transform: rotate(-6deg);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .agent-fab-ring::before {
+    animation: agent-fab-spin 3s linear infinite;
+  }
+  .agent-fab::before {
+    animation: agent-fab-pulse 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+  .agent-fab-icon {
+    animation: agent-fab-nudge 4s ease-in-out infinite;
+  }
+}
+
+/*
  * Dashboard on phones: every HeroUI button (and link styled as one) is 48px tall with 16px text,
  * whatever `size` it was given for desktop — comfortably above the 44px minimum touch target.
  * Icon-only row actions stay 44px square so table rows don't balloon. Scoped to

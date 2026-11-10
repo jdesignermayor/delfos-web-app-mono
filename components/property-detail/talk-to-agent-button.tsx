@@ -1,4 +1,4 @@
-import { MessageCircleIcon } from "@/components/icons";
+import { AgentCta } from "@/components/property-detail/agent-cta";
 
 /**
  * wa.me wants international digits only. Colombian numbers are stored as the
@@ -12,24 +12,12 @@ function toWhatsAppNumber(phone: string) {
 /**
  * Opens a WhatsApp chat (WhatsApp Web on desktop, the app on phones) with the
  * sales room (sala de ventas), pre-filled with the listing's name. Renders nothing when the
- * listing has no contact phone.
+ * listing has no contact phone. On phones it also floats until the reader reaches it (`AgentCta`).
  */
 export function TalkToAgentButton({ propertyTitle, phone }: { propertyTitle: string; phone?: string }) {
   const number = phone ? toWhatsAppNumber(phone) : "";
   if (!number) return null;
 
   const message = encodeURIComponent(`Hola, quiero más información sobre "${propertyTitle}".`);
-  const href = `https://wa.me/${number}?text=${message}`;
-
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="brand-cta flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-accent-hover px-4 py-3.5 text-base font-semibold text-accent-foreground shadow-sm transition-[filter] hover:brightness-110"
-    >
-      <MessageCircleIcon className="size-4" />
-      Hablar con un agente
-    </a>
-  );
+  return <AgentCta href={`https://wa.me/${number}?text=${message}`} />;
 }
