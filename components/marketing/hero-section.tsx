@@ -13,10 +13,6 @@ export function HeroSection() {
         <h1 className="sr-only font-display font-semibold tracking-tight text-foreground md:not-sr-only md:text-2xl">
           Encuentra el hogar donde quieres vivir
         </h1>
-        <p className="mt-2 hidden max-w-xl text-base text-muted md:block">
-          Proyectos de vivienda nueva en Medellín con precios, tipologías y fechas de entrega actualizados.
-        </p>
-
         <div ref={heroSearchRef} className="mt-6 hidden w-full md:block">
           <PropertySearch />
         </div>

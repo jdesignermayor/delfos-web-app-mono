@@ -1,10 +1,11 @@
 import type { ComponentType, ReactNode } from "react";
 import Link from "next/link";
-import { Card } from "@heroui/react";
+import { Card, Skeleton } from "@heroui/react";
 import {
   ArrowUpRight,
   Building,
   CircleDollarSign,
+  ExternalLink,
   HardHat,
   LayoutGrid,
   MapPinned,
@@ -14,6 +15,7 @@ import {
 import type { Count, ProjectStats, Split } from "@/components/dashboard/home/project-stats";
 import { CopyPitchButton } from "@/components/dashboard/home/copy-pitch-button";
 import { GrowthChart } from "@/components/dashboard/home/growth-chart";
+import { DashboardImage } from "@/components/dashboard/properties/dashboard-image";
 
 /** Validated pair (light surface): blue / orange, ΔE 24.7 under protanopia. */
 const SERIES = ["#2a78d6", "#eb6834"] as const;
@@ -39,7 +41,7 @@ const TONES: Record<Tone, string> = {
 function Panel({ title, hint, children, className = "" }: { title: string; hint?: string; children: ReactNode; className?: string }) {
   return (
     <Card className={`rounded-3xl p-4 sm:p-6 ${className}`}>
-      <p className="text-base font-semibold text-foreground">{title}</p>
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
       {hint ? <p className="mt-0.5 text-sm text-muted">{hint}</p> : null}
       <div className="mt-5">{children}</div>
     </Card>
@@ -67,13 +69,16 @@ function Delta({ thisMonth, lastMonth }: { thisMonth: number; lastMonth: number 
 
 function StatTile({ icon: Icon, tone, label, value, hint }: { icon: ComponentType<{ className?: string }>; tone: Tone; label: string; value: string; hint: string }) {
   return (
+    // Label leads (what is this?), the number dominates, the hint gives context.
     <Card className="min-w-0 rounded-3xl p-4 sm:p-5">
-      <span className={`flex size-11 items-center justify-center rounded-2xl ${TONES[tone]}`}>
-        <Icon className="size-5" />
-      </span>
-      <p className="mt-4 truncate text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{value}</p>
-      <p className="mt-1 text-sm font-medium text-foreground">{label}</p>
-      <p className="text-xs text-muted">{hint}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-medium leading-snug text-muted">{label}</p>
+        <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${TONES[tone]}`}>
+          <Icon className="size-5" aria-hidden />
+        </span>
+      </div>
+      <p className="mt-3 truncate text-2xl font-semibold tracking-tight tabular-nums text-foreground sm:text-3xl">{value}</p>
+      <p className="mt-1 truncate text-xs text-muted sm:text-sm">{hint}</p>
     </Card>
   );
 }
@@ -179,8 +184,10 @@ export function ProjectOverview({ stats }: { stats: ProjectStats }) {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <Card className="flex flex-col justify-between rounded-3xl bg-gradient-to-br from-accent-soft via-white to-white p-5 sm:p-7">
           <div>
-            <p className="text-sm font-semibold text-accent">Proyectos en la plataforma</p>
-            <p className="mt-2 text-6xl font-semibold sm:text-7xl tracking-tight text-foreground">{number.format(stats.total)}</p>
+            <h2 className="text-sm font-semibold text-accent">Proyectos en la plataforma</h2>
+            <p className="mt-2 font-display text-6xl font-semibold tracking-tight tabular-nums text-foreground sm:text-7xl">
+              {number.format(stats.total)}
+            </p>
             <Delta thisMonth={stats.addedThisMonth} lastMonth={stats.addedLastMonth} />
           </div>
 
@@ -230,17 +237,27 @@ export function ProjectOverview({ stats }: { stats: ProjectStats }) {
       </div>
 
       {/* Latest */}
-      <Panel title="Últimos proyectos agregados" hint="Los 5 más recientes">
-        <ul className="divide-y divide-separator">
+      <Panel title="Últimos proyectos agregados" hint="Los 5 más recientes · se abren en la página pública">
+        {stats.recent.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted">Todavía no hay proyectos publicados.</p>
+        ) : null}
+        <ul className="-mx-2 divide-y divide-separator">
           {stats.recent.map((project) => (
             <li key={project.uuid}>
               <Link
                 href={`/propiedades/${project.uuid}`}
                 target="_blank"
-                className="flex items-center gap-4 rounded-xl px-2 py-3 transition-colors hover:bg-surface-secondary/60"
+                className="group flex items-center gap-4 rounded-xl px-2 py-3 outline-none transition-colors duration-150 hover:bg-surface-secondary/60 focus-visible:ring-2 focus-visible:ring-focus"
               >
-                <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${TONES.sky}`}>
-                  <LayoutGrid className="size-5" />
+                {/* The cover photo makes each project recognizable at a glance. */}
+                <span className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-surface-secondary">
+                  {project.image ? (
+                    <DashboardImage src={project.image} alt="" sizes="48px" />
+                  ) : (
+                    <span className={`flex size-full items-center justify-center ${TONES.sky}`}>
+                      <LayoutGrid className="size-5" aria-hidden />
+                    </span>
+                  )}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-foreground">{project.title}</span>
@@ -252,11 +269,75 @@ export function ProjectOverview({ stats }: { stats: ProjectStats }) {
                   <span className="block font-semibold tabular-nums text-foreground">{compactCOP(project.price)}</span>
                   <span className="block text-xs text-muted">{shortDate.format(new Date(project.createdAt))}</span>
                 </span>
+                <ExternalLink
+                  className="size-4 shrink-0 text-muted transition-colors group-hover:text-foreground"
+                  aria-hidden
+                />
+                <span className="sr-only">(se abre en una pestaña nueva)</span>
               </Link>
             </li>
           ))}
         </ul>
       </Panel>
+    </div>
+  );
+}
+
+/**
+ * Loading placeholder with the overview's real layout (hero + chart, KPI row, two panels), so the
+ * indicators swap in without the page jumping.
+ */
+export function ProjectOverviewSkeleton() {
+  return (
+    <div className="flex flex-col gap-4" aria-busy="true">
+      <span role="status" className="sr-only">
+        Cargando indicadores…
+      </span>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <Card className="flex flex-col gap-4 rounded-3xl p-5 sm:p-7">
+          <Skeleton className="h-4 w-44 rounded-lg" />
+          <Skeleton className="h-16 w-32 rounded-xl sm:h-20" />
+          <Skeleton className="h-7 w-56 rounded-full" />
+          <Skeleton className="mt-6 h-32 w-full rounded-2xl" />
+        </Card>
+        <Card className="flex flex-col gap-4 rounded-3xl p-5 sm:p-7">
+          <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-5 w-48 rounded-lg" />
+              <Skeleton className="h-4 w-64 rounded-lg" />
+            </div>
+            <Skeleton className="h-9 w-40 rounded-full" />
+          </div>
+          <Skeleton className="mt-2 h-64 w-full rounded-xl" />
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Card key={i} className="flex flex-col gap-3 rounded-3xl p-4 sm:p-5">
+            <div className="flex items-start justify-between">
+              <Skeleton className="h-4 w-24 rounded-lg" />
+              <Skeleton className="size-10 rounded-xl" />
+            </div>
+            <Skeleton className="h-8 w-20 rounded-lg" />
+            <Skeleton className="h-3 w-28 rounded-lg" />
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {[0, 1].map((i) => (
+          <Card key={i} className="flex flex-col gap-4 rounded-3xl p-4 sm:p-6">
+            <Skeleton className="h-5 w-52 rounded-lg" />
+            {[0, 1, 2, 3].map((row) => (
+              <div key={row} className="flex flex-col gap-1.5">
+                <Skeleton className="h-4 w-40 rounded-lg" />
+                <Skeleton className="h-3 w-full rounded-full" />
+              </div>
+            ))}
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

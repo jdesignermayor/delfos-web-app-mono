@@ -19,7 +19,7 @@ export type NavSection = {
 const NAV_BY_ROLE: Partial<Record<RoleName, NavSection[]>> = {
   superadmin: [
     {
-      title: "Overview",
+      title: "General",
       items: [
         { label: "Inicio", href: "/dashboard", icon: LayoutDashboard },
         { label: "Administrar propiedades", href: "/dashboard/properties", icon: Building2 },
@@ -27,7 +27,7 @@ const NAV_BY_ROLE: Partial<Record<RoleName, NavSection[]>> = {
       ],
     },
     {
-      title: "Configuration",
+      title: "Configuración",
       items: [
         { label: "Constructoras", href: "/dashboard/constructoras", icon: HardHat },
         { label: "Fiducias", href: "/dashboard/fiducias", icon: ShieldCheck },
@@ -39,21 +39,21 @@ const NAV_BY_ROLE: Partial<Record<RoleName, NavSection[]>> = {
   // Constructora users: only their own properties and fiducias.
   admin: [
     {
-      title: "Overview",
+      title: "General",
       items: [
         { label: "Inicio", href: "/dashboard", icon: LayoutDashboard },
         { label: "Mis propiedades", href: "/dashboard/properties", icon: Building2 },
       ],
     },
     {
-      title: "Configuration",
+      title: "Configuración",
       items: [{ label: "Fiducias", href: "/dashboard/fiducias", icon: ShieldCheck }],
     },
   ],
   // Self-registered visitors: just their home (saved properties). The profile stays in the sidebar footer.
   viewer: [
     {
-      title: "Overview",
+      title: "General",
       items: [{ label: "Inicio", href: "/dashboard", icon: LayoutDashboard }],
     },
   ],

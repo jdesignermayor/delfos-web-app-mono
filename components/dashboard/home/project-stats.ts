@@ -5,6 +5,7 @@ export type ProjectRow = Pick<
   Tables<"properties">,
   | "uuid"
   | "title"
+  | "image"
   | "created_at"
   | "developer_id"
   | "tower_count"
@@ -23,6 +24,8 @@ export type Split = { label: string; count: number }[];
 export type RecentProject = {
   uuid: string;
   title: string;
+  /** Cover photo URL, or null when the project has none. */
+  image: string | null;
   developer: string;
   municipality: string;
   createdAt: string;
@@ -144,6 +147,7 @@ export function computeProjectStats(rows: ProjectRow[], now = new Date()): Proje
       .map((row) => ({
         uuid: row.uuid,
         title: row.title,
+        image: row.image ?? row.additional_images?.[0] ?? null,
         developer: row.developer?.name ?? "Sin constructora",
         municipality: municipalityOf(row),
         createdAt: row.created_at ?? "",

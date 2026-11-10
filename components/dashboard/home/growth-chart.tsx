@@ -117,7 +117,7 @@ export function GrowthChart({ createdAt }: { createdAt: string[] }) {
                 setGranularity(option);
                 setHover(null);
               }}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors max-md:px-4 max-md:py-2.5 max-md:text-sm ${
+              className={`cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus max-md:px-4 max-md:py-2.5 max-md:text-sm ${
                 granularity === option ? "bg-white text-foreground shadow-sm" : "text-muted hover:text-foreground"
               }`}
             >
@@ -129,7 +129,7 @@ export function GrowthChart({ createdAt }: { createdAt: string[] }) {
 
       <div className="mt-6 flex flex-1 gap-3">
         {/* Y axis: three recessive ticks. */}
-        <div className="flex h-64 flex-col justify-between pb-0 text-right text-[11px] tabular-nums text-muted" aria-hidden="true">
+        <div className="flex h-64 flex-col justify-between pb-0 text-right text-xs tabular-nums text-muted" aria-hidden="true">
           {ticks.map((tick) => (
             <span key={tick} className="-translate-y-1/2 first:translate-y-0 last:translate-y-0">
               {number.format(tick)}
@@ -195,7 +195,7 @@ export function GrowthChart({ createdAt }: { createdAt: string[] }) {
             </div>
           </div>
 
-          <div className="mt-2 flex justify-between text-[11px] text-muted" aria-hidden="true">
+          <div className="mt-2 flex justify-between text-xs text-muted" aria-hidden="true">
             {points.map((p, index) => (
               <span
                 key={p.key}
