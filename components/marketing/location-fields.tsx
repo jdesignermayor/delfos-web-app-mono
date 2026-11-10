@@ -125,7 +125,7 @@ export function LocationFields({
           value={value}
           onChange={(event) => onValueChangeAction(event.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-2xl border border-separator bg-white py-3 pl-11 pr-4 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="w-full rounded-2xl border border-separator bg-white py-3 pl-11 pr-4 text-base text-foreground sm:text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
       </label>
 

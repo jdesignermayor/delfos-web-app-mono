@@ -127,7 +127,15 @@ export function GrowthChart({ createdAt }: { createdAt: string[] }) {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-1 gap-3">
+      {/* Phones: a fixed readout instead of the floating tooltip, which can't fit beside the point on a narrow plot. */}
+      <p className="mt-4 text-sm text-muted sm:hidden" aria-hidden="true">
+        <span className="font-semibold text-foreground">{number.format(point.total)} proyectos</span>
+        {" · "}
+        {granularity === "semanas" ? `semana del ${point.label}` : monthLong.format(new Date(`${point.key}T00:00:00Z`))}
+        {" · "}+{number.format(point.added)} nuevos
+      </p>
+
+      <div className="mt-3 flex flex-1 gap-3 sm:mt-6">
         {/* Y axis: three recessive ticks. */}
         <div className="flex h-64 flex-col justify-between pb-0 text-right text-xs tabular-nums text-muted" aria-hidden="true">
           {ticks.map((tick) => (
@@ -142,8 +150,10 @@ export function GrowthChart({ createdAt }: { createdAt: string[] }) {
             tabIndex={0}
             role="img"
             aria-label={`Total de proyectos: ${point.total} en ${point.label}. Usa las flechas para recorrer.`}
+            onPointerDown={onPointerMove}
             onPointerMove={onPointerMove}
-            onPointerLeave={() => setHover(null)}
+            // Touch "leaves" the moment the finger lifts; keep the tapped point selected there.
+            onPointerLeave={(event) => event.pointerType === "mouse" && setHover(null)}
             onKeyDown={onKeyDown}
             onBlur={() => setHover(null)}
             className="relative h-64 cursor-crosshair rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -182,7 +192,7 @@ export function GrowthChart({ createdAt }: { createdAt: string[] }) {
             />
             <div
               aria-hidden="true"
-              className={`pointer-events-none absolute top-2 z-10 whitespace-nowrap rounded-xl bg-foreground px-3 py-2 text-background shadow-lg ${
+              className={`pointer-events-none absolute top-2 z-10 hidden whitespace-nowrap rounded-xl sm:block bg-foreground px-3 py-2 text-background shadow-lg ${
                 x(active) > 70 ? "-translate-x-[calc(100%+12px)]" : "translate-x-3"
               }`}
               style={{ left: `${x(active)}%` }}

@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition, type RefObject } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Avatar, Button } from "@heroui/react";
-import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { LogOut, Menu, X } from "lucide-react";
 
 import { signOutAccount } from "@/app/actions/auth";
@@ -39,7 +38,7 @@ function NavLinks({ sections, large = false, onNavigate }: { sections: NavSectio
   const pathname = usePathname();
 
   return (
-    <nav className={`flex flex-1 flex-col overflow-y-auto ${large ? "gap-7 px-4 py-5" : "gap-6 px-3 py-4"}`}>
+    <nav className={`flex flex-1 flex-col overflow-y-auto overscroll-contain ${large ? "gap-7 px-4 py-5" : "gap-6 px-3 py-4"}`}>
       {sections.map((section) => (
         <div key={section.title}>
           <p className={`pb-2 text-xs font-medium uppercase tracking-wider text-muted ${large ? "px-4" : "px-3"}`}>
@@ -169,12 +168,15 @@ function useDrawerLock(
 ) {
   useEffect(() => {
     if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // iOS Safari ignores overflow on <body> alone; the root element is what actually stops the scroll.
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+    root.style.overflow = "hidden";
     const trigger = triggerRef.current;
-    const focusables = () =>
-      Array.from(panelRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])") ?? []);
-    focusables()[0]?.focus();
+    const panel = panelRef.current;
+    const focusables = () => Array.from(panel?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])") ?? []);
+    // preventScroll: without it Safari scrolls the page toward the panel while it's still sliding in.
+    focusables()[0]?.focus({ preventScroll: true });
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") return setOpen(false);
@@ -193,9 +195,10 @@ function useDrawerLock(
     }
     window.addEventListener("keydown", onKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      root.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
-      trigger?.focus();
+      // Hand focus back only if it was still in the menu (not when a link already moved on).
+      if (panel?.contains(document.activeElement)) trigger?.focus({ preventScroll: true });
     };
   }, [open, setOpen, panelRef, triggerRef]);
 }
@@ -210,17 +213,26 @@ const ICON_BUTTON = `flex size-12 shrink-0 items-center justify-center rounded-2
 export function MobileNav({ user }: { user: CurrentUser }) {
   const sections = getNavSections(user.role);
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   const panelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   useDrawerLock(open, setOpen, panelRef, triggerRef);
 
+  // The drawer's links are off-screen until it opens, so Next never prefetches them on its own:
+  // warm every section up front and a tap navigates as fast as the desktop sidebar.
+  const hrefs = sections.flatMap((section) => section.items.map((item) => item.href)).join(" ");
+  useEffect(() => {
+    for (const href of [...hrefs.split(" "), PROFILE_HREF]) router.prefetch(href);
+  }, [hrefs, router]);
+
   const title = pathname.startsWith(PROFILE_HREF) ? "Mi perfil" : (currentItem(sections, pathname)?.label ?? "Delfos");
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-separator bg-surface/95 px-2 backdrop-blur-xl md:hidden">
+      {/* Solid, not backdrop-blurred: a blur under the sliding drawer and every scroll is costly on phones. */}
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-separator bg-surface px-2 md:hidden">
         <button
           ref={triggerRef}
           type="button"
@@ -241,35 +253,33 @@ export function MobileNav({ user }: { user: CurrentUser }) {
         </Link>
       </header>
 
-      {/* Rendered in place (not in the header, whose blur would trap a fixed panel).
-          `reducedMotion="user"`: with reduced motion on, the drawer fades instead of sliding. */}
-      <MotionConfig reducedMotion="user">
-      <AnimatePresence>
-              {open ? (
-                <div key="mobile-nav" className="fixed inset-0 z-[60] md:hidden">
-                  <motion.button
-                    type="button"
-                    aria-label="Cerrar menú"
-                    onClick={close}
-                    className="absolute inset-0 bg-black/40"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  />
-                  <motion.aside
-                    ref={panelRef}
-                    id="dashboard-mobile-menu"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label="Menú"
-                    className="absolute inset-y-0 left-0 flex w-[min(20rem,85vw)] flex-col bg-surface shadow-2xl"
-                    initial={{ x: "-100%" }}
-                    animate={{ x: 0 }}
-                    exit={{ x: "-100%" }}
-                    transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
-                  >
-                    <div className="flex h-16 shrink-0 items-center justify-between border-b border-separator pl-5 pr-2 pt-[env(safe-area-inset-top)]">
+      {/*
+        Always mounted and animated with CSS transitions on transform/opacity only: they run on the
+        compositor, so the slide stays smooth even while React renders the page a link opened (the
+        old JS-driven animation stalled right then). Closed, it's `inert` (no focus, hidden from
+        screen readers) and `invisible` once the slide-out ends. Reduced motion: no slide at all.
+      */}
+      <div className={`fixed inset-0 z-[60] md:hidden ${open ? "" : "pointer-events-none"}`} inert={!open}>
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={close}
+          className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out motion-reduce:transition-none ${
+            open ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        <aside
+          ref={panelRef}
+          id="dashboard-mobile-menu"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menú"
+          className={`absolute inset-y-0 left-0 flex w-[min(20rem,85vw)] flex-col bg-surface shadow-xl transition-[transform,visibility] duration-[250ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform motion-reduce:transition-none ${
+            open ? "visible translate-x-0" : "invisible -translate-x-full"
+          }`}
+        >
+                    <div className="flex min-h-16 shrink-0 items-center justify-between border-b border-separator pl-5 pr-2 pt-[env(safe-area-inset-top)]">
                       <Link href="/dashboard" onClick={close} className={`flex items-center gap-2 rounded-lg font-semibold tracking-tight ${FOCUS_RING}`}>
                         <LogoMark />
                         <span className="text-lg">Delfos</span>
@@ -278,13 +288,10 @@ export function MobileNav({ user }: { user: CurrentUser }) {
                         <X className="size-6" />
                       </button>
                     </div>
-                    <NavLinks sections={sections} large onNavigate={close} />
-                    <SidebarUser user={user} large onNavigate={close} />
-                  </motion.aside>
-                </div>
-              ) : null}
-      </AnimatePresence>
-      </MotionConfig>
+          <NavLinks sections={sections} large onNavigate={close} />
+          <SidebarUser user={user} large onNavigate={close} />
+        </aside>
+      </div>
     </>
   );
 }

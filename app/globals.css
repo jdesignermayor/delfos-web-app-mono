@@ -43,6 +43,20 @@ body {
   font-family: var(--font-sans);
 }
 
+/*
+ * iOS Safari zooms the page in when a field under 16px gets focus, and doesn't zoom back out.
+ * On touch screens every text field is at least 16px. Unlayered on purpose: it beats `text-sm`
+ * utilities. (Never fix this with `maximum-scale=1`: that also blocks pinch-zoom.)
+ */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]),
+  select,
+  textarea,
+  [contenteditable="true"] {
+    font-size: max(16px, 1em);
+  }
+}
+
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
