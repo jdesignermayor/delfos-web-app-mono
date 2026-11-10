@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CircleUserRound } from "lucide-react";
 
-import { HeartIcon, SearchIcon } from "@/components/icons";
+import { HeartIcon, HomeIcon, SearchIcon } from "@/components/icons";
 import type { CurrentUser } from "@/supabase/roles";
 
 const TAB_CLASS =
@@ -24,27 +24,22 @@ function TabLink({ href, isActive, icon, label }: { href: string; isActive: bool
   );
 }
 
-/** Search and favourites tabs; reads the URL to highlight the current one. */
-function NavigationTabs({ favoritesTab }: { favoritesTab?: boolean }) {
-  const pathname = usePathname();
-  const onSearch = pathname === "/search";
-  const onFavorites = pathname === "/favoritos" || pathname.startsWith("/favoritos/");
+const NAVIGATION_TABS = {
+  home: { href: "/", label: "Inicio", Icon: HomeIcon, isActive: (pathname: string) => pathname === "/" },
+  search: { href: "/search", label: "Buscar", Icon: SearchIcon, isActive: (pathname: string) => pathname === "/search" },
+  favorites: {
+    href: "/favoritos",
+    label: "Favoritos",
+    Icon: HeartIcon,
+    isActive: (pathname: string) => pathname === "/favoritos" || pathname.startsWith("/favoritos/"),
+  },
+} as const;
 
-  return favoritesTab ? (
-    <TabLink
-      href="/favoritos"
-      isActive={onFavorites}
-      icon={<HeartIcon className="size-6" />}
-      label="Favoritos"
-    />
-  ) : (
-    <TabLink
-      href="/search"
-      isActive={onSearch}
-      icon={<SearchIcon className="size-6" />}
-      label="Buscar"
-    />
-  );
+/** One link tab (Inicio, Buscar or Favoritos); reads the URL to highlight the current one. */
+function NavigationTab({ tab }: { tab: keyof typeof NAVIGATION_TABS }) {
+  const pathname = usePathname();
+  const { href, label, Icon, isActive } = NAVIGATION_TABS[tab];
+  return <TabLink href={href} isActive={isActive(pathname)} icon={<Icon className="size-6" />} label={label} />;
 }
 
 /** Opens the login modal when signed out, the account menu when signed in. */
@@ -72,7 +67,7 @@ function TabPlaceholder() {
 }
 
 /**
- * Bottom tab bar for phones: Buscar · Favoritos · Ingresar/Cuenta. Pages that render it reserve
+ * Bottom tab bar for phones: Inicio · Buscar · Favoritos · Ingresar/Cuenta. Pages that render it reserve
  * its height with `pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0` so it never covers content.
  */
 export function MobileTabBar({
@@ -91,10 +86,13 @@ export function MobileTabBar({
     >
       <div className="flex h-16 items-stretch">
         <Suspense fallback={<TabPlaceholder />}>
-          <NavigationTabs />
+          <NavigationTab tab="home" />
         </Suspense>
         <Suspense fallback={<TabPlaceholder />}>
-          <NavigationTabs favoritesTab />
+          <NavigationTab tab="search" />
+        </Suspense>
+        <Suspense fallback={<TabPlaceholder />}>
+          <NavigationTab tab="favorites" />
         </Suspense>
         <Suspense fallback={<TabPlaceholder />}>
           <AccountTab userPromise={userPromise} onLoginAction={onLoginAction} onOpenAccountAction={onOpenAccountAction} />
