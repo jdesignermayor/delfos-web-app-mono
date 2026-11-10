@@ -18,7 +18,6 @@ import {
   signInAccount,
   type RegisterField,
 } from "@/app/actions/auth";
-import { GoogleIcon } from "@/components/icons";
 import { useFavorites } from "@/components/marketing/favorites-provider";
 import { rememberLastEmail } from "@/lib/auth/client-session";
 
@@ -223,12 +222,10 @@ function SignupForm({
   form,
   isPending,
   onSubmit,
-  onGoogle,
 }: {
   form: AuthForm;
   isPending: boolean;
   onSubmit: () => void;
-  onGoogle: () => void;
 }) {
   return (
     <form className="flex flex-col gap-4" onSubmit={submitWith(onSubmit)}>
@@ -238,17 +235,6 @@ function SignupForm({
 
       <Button type="submit" variant="primary" fullWidth isDisabled={isPending}>
         {isPending ? "Creando cuenta…" : "Crear cuenta"}
-      </Button>
-
-      <div className="flex items-center gap-3 text-xs text-muted">
-        <span className="h-px flex-1 bg-separator" />
-        o
-        <span className="h-px flex-1 bg-separator" />
-      </div>
-
-      <Button type="button" variant="outline" fullWidth onPress={onGoogle}>
-        <GoogleIcon />
-        Continuar con Google
       </Button>
     </form>
   );
@@ -372,7 +358,7 @@ export function AuthModal({
                 onBack={() => goTo("email")}
               />
             ) : (
-              <SignupForm form={form} isPending={isPending} onSubmit={handleRegister} onGoogle={() => state.close()} />
+              <SignupForm form={form} isPending={isPending} onSubmit={handleRegister} />
             )}
           </Modal.Body>
 
