@@ -36,6 +36,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { TrackPropertyView } from "@/components/analytics/track-property-view";
 import { RecordRecentView } from "@/components/property-detail/record-recent-view";
+import { PropertyRatingProvider, RatingSection, RatingSummary } from "@/components/property-detail/property-rating";
 import { buildPropertyJsonLd, buildPropertyMetadata, propertyPath, youtubeId } from "@/lib/property-seo";
 import { formatRange } from "@/lib/typology-ranges";
 
@@ -143,6 +144,7 @@ export default async function PropertyDetailPage({
               </div>
             </PropertyActionsProvider>
 
+            <PropertyRatingProvider propertyUuid={property.uuid}>
             <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
               <div className="flex flex-col gap-10">
                 <div id="descripcion" className="scroll-mt-32">
@@ -152,6 +154,7 @@ export default async function PropertyDetailPage({
                   <p className="mt-1 text-muted">
                     {property.neighborhood}, {property.city}
                   </p>
+                  <RatingSummary />
 
                   {/* On phones the price card sits far below; show the price up here too. */}
                   <div className="mt-5 lg:hidden">
@@ -232,6 +235,8 @@ export default async function PropertyDetailPage({
                 </section>
 
                 {details ? <SalesRoomSection salesRoom={details.salesRoom} /> : null}
+
+                <RatingSection />
               </div>
 
               {/* Docks below the site header plus the section sub-nav (~4.5rem + ~3rem), not under them. */}
@@ -244,6 +249,7 @@ export default async function PropertyDetailPage({
                 </QuoteCard>
               </aside>
             </div>
+            </PropertyRatingProvider>
 
             <LocationMap property={property} />
           </div>

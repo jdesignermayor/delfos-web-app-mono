@@ -445,6 +445,38 @@ export type Database = {
           },
         ]
       }
+      property_ratings: {
+        Row: {
+          created_at: string
+          property_id: number
+          rating: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          property_id: number
+          rating: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          property_id?: number
+          rating?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_ratings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_recent_views: {
         Row: {
           property_id: number
@@ -678,6 +710,10 @@ export type Database = {
       migrate_typologies_to_tower_format: {
         Args: { old_typologies: Json; tower_count: number }
         Returns: Json
+      }
+      property_rating_summary: {
+        Args: { p_property_id: number }
+        Returns: { average: number; total: number }[]
       }
     }
     Enums: {
