@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 
 import { CloseIcon, SearchIcon } from "@/components/icons";
 import { BudgetRangePanel } from "@/components/marketing/budget-range-panel";
-import { LocationFields } from "@/components/marketing/location-fields";
+import { MultiLocationFields, locationsLabel, locationsWithText } from "@/components/marketing/location-fields";
 import { BUDGET_RANGE, budgetRangeLabel, budgetRangeParam, type BudgetRange } from "@/components/marketing/properties";
 import { budgetHint } from "@/components/marketing/search-choice-panels";
 import { useSearchMode } from "@/components/marketing/search-mode-context";
@@ -42,6 +42,8 @@ export function MobileLocationButton() {
   const router = useRouter();
   const { mode } = useSearchMode();
   const [open, setOpen] = useState(false);
+  // Picked places plus the text still being typed; listings in any of the places match.
+  const [places, setPlaces] = useState<string[]>([]);
   const [ubicacion, setUbicacion] = useState("");
   const [budget, setBudget] = useState<BudgetRange>(ANY_BUDGET);
   // The price slider is for buying; rent budgets are monthly and searched from /search.
@@ -54,7 +56,7 @@ export function MobileLocationButton() {
   function search() {
     setOpen(false);
     router.push(
-      buildSearchHref({ mode, location: ubicacion, presupuesto: usesBudget ? budgetRangeParam(budget) : undefined }),
+      buildSearchHref({ mode, location: locationsWithText(places, ubicacion), presupuesto: usesBudget ? budgetRangeParam(budget) : undefined }),
     );
   }
 
@@ -70,7 +72,7 @@ export function MobileLocationButton() {
       >
         <SearchIcon className="size-4 shrink-0 text-foreground" />
         <span className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-medium">{ubicacion || "Buscar barrio o ciudad"}</span>
+          <span className="truncate text-sm font-medium">{locationsLabel(places, ubicacion) || "Buscar barrio o ciudad"}</span>
           {budgetLabel ? <span className="truncate text-[11px] font-semibold text-accent">{budgetLabel}</span> : null}
         </span>
       </button>
@@ -112,7 +114,12 @@ export function MobileLocationButton() {
                   <nav className="no-scrollbar -mx-4 mb-5 flex items-center gap-2 overflow-x-auto px-4">
                     <SearchModeTabs variant="mobile" />
                   </nav>
-                  <LocationFields value={ubicacion} onValueChangeAction={setUbicacion} onPickAction={setUbicacion} />
+                  <MultiLocationFields
+                    places={places}
+                    onPlacesChangeAction={setPlaces}
+                    text={ubicacion}
+                    onTextChangeAction={setUbicacion}
+                  />
                   {usesBudget ? (
                     <div className="mt-6 border-t border-separator pt-5">
                       <BudgetRangePanel hint={budgetHint("comprar")} value={budget} onChangeAction={setBudget} />

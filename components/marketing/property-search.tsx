@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { BedIcon, HomeIcon, MapPinIcon, SearchIcon, WalletIcon } from "@/components/icons";
 import { BudgetRangePanel } from "@/components/marketing/budget-range-panel";
-import { LocationFields } from "@/components/marketing/location-fields";
+import { MultiLocationFields, locationsLabel, locationsWithText } from "@/components/marketing/location-fields";
 import { DROPDOWN_MOTION } from "@/components/marketing/motion-presets";
 import {
   BUDGET_OPTIONS,
@@ -14,6 +14,7 @@ import {
   budgetRangeLabel,
   budgetRangeParam,
   parseBudgetRange,
+  parseLocations,
   TYPE_LABELS,
   type Operation,
   type PropertyFilters,
@@ -32,7 +33,10 @@ import { useClickOutside } from "@/hooks/use-click-outside";
 
 type Field = "ubicacion" | "tipo" | "habitaciones" | "presupuesto";
 
-/** What the visitor has picked so far, keyed like the /search query params. */
+/**
+ * What the visitor has picked so far, keyed like the /search query params. `ubicacion` is only the
+ * text still being typed; the picked places live in their own list.
+ */
 type Draft = Record<Field, string>;
 
 type Segment = {
@@ -51,7 +55,7 @@ const LABELS = {
 
 function initialDraft(filters: PropertyFilters | undefined): Draft {
   return {
-    ubicacion: filters?.ubicacion ?? "",
+    ubicacion: "",
     // "proyecto" comes from the search mode, not the type picker.
     tipo: filters?.tipo === "proyecto" ? "" : (filters?.tipo ?? ""),
     habitaciones: filters?.habitaciones ?? "",
@@ -68,18 +72,20 @@ function buildSegments({
   mode,
   compact,
   budgetLabel,
+  locationLabel,
 }: {
   draft: Draft;
   mode: SearchMode;
   compact: boolean;
   budgetLabel: string;
+  locationLabel: string;
 }): Segment[] {
   const labels = compact ? LABELS.compact : LABELS.full;
   const isProject = mode === "proyecto";
   const typeLabel = draft.tipo ? TYPE_LABELS[draft.tipo as PropertyType] : "";
 
   return [
-    { field: "ubicacion", icon: MapPinIcon, label: labels.ubicacion, value: draft.ubicacion, placeholder: "Barrio, proyecto o ciudad" },
+    { field: "ubicacion", icon: MapPinIcon, label: labels.ubicacion, value: locationLabel, placeholder: "Barrio, proyecto o ciudad" },
     {
       field: "tipo",
       icon: HomeIcon,
@@ -188,6 +194,8 @@ export function PropertySearch({
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeField, setActiveField] = useState<Field | null>(null);
   const [draft, setDraft] = useState<Draft>(() => initialDraft(initialFilters));
+  // Several places can be picked; listings in any of them match.
+  const [places, setPlaces] = useState<string[]>(() => parseLocations(initialFilters?.ubicacion));
 
   useClickOutside(containerRef, () => setActiveField(null));
 
@@ -207,14 +215,14 @@ export function PropertySearch({
     ? budgetRangeLabel(budgetRange)
     : (budgetOptions.find((option) => option.value === activeBudget)?.label ?? "");
 
-  const segments = buildSegments({ draft, mode, compact, budgetLabel });
+  const segments = buildSegments({ draft, mode, compact, budgetLabel, locationLabel: locationsLabel(places, draft.ubicacion) });
 
   function runSearch() {
     onSearchAction?.();
     router.push(
       buildSearchHref({
         mode,
-        location: draft.ubicacion,
+        location: locationsWithText(places, draft.ubicacion),
         tipo: draft.tipo,
         habitaciones: draft.habitaciones,
         presupuesto: activeBudget,
@@ -238,11 +246,12 @@ export function PropertySearch({
     switch (field) {
       case "ubicacion":
         return (
-          <LocationFields
-            value={draft.ubicacion}
-            onValueChangeAction={(value) => setDraft((current) => ({ ...current, ubicacion: value }))}
-            // Picking a place only fills the field; the search runs when the visitor presses "Buscar".
-            onPickAction={(location) => select("ubicacion", location)}
+          // Picking places only fills the field (the panel stays open for more); the search runs on "Buscar".
+          <MultiLocationFields
+            places={places}
+            onPlacesChangeAction={setPlaces}
+            text={draft.ubicacion}
+            onTextChangeAction={(value) => setDraft((current) => ({ ...current, ubicacion: value }))}
           />
         );
       case "tipo":

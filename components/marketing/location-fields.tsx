@@ -1,8 +1,14 @@
 "use client";
 
-import { MapPin, Search, Trees } from "lucide-react";
+import { MapPin, Search, Trees, X } from "lucide-react";
 
-import { MEDELLIN_AREAS, NEARBY_MUNICIPALITIES } from "@/components/marketing/properties";
+import {
+  MEDELLIN_AREAS,
+  NEARBY_MUNICIPALITIES,
+  locationsParam,
+  placeShortName,
+  withPlace,
+} from "@/components/marketing/properties";
 import { PlaceChip, type LucideIcon, type Tone } from "@/components/marketing/search-option-ui";
 
 type PlaceGroup = {
@@ -27,6 +33,68 @@ const PLACE_GROUPS: PlaceGroup[] = [
     places: NEARBY_MUNICIPALITIES.map((municipality) => ({ label: municipality, location: municipality })),
   },
 ];
+
+/**
+ * Several places at once: the picked ones as removable chips on top, then the input and shortcuts
+ * (a shortcut toggles its place). Typed text stays in `text` until the caller adds it, usually
+ * when searching.
+ */
+export function MultiLocationFields({
+  places,
+  onPlacesChangeAction,
+  text,
+  onTextChangeAction,
+}: {
+  places: string[];
+  onPlacesChangeAction: (places: string[]) => void;
+  text: string;
+  onTextChangeAction: (text: string) => void;
+}) {
+  function toggle(place: string) {
+    onPlacesChangeAction(places.includes(place) ? places.filter((item) => item !== place) : withPlace(places, place));
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {places.length ? (
+        <ul className="flex flex-wrap gap-2" aria-label="Ubicaciones seleccionadas">
+          {places.map((place) => (
+            <li key={place}>
+              <button
+                type="button"
+                onClick={() => toggle(place)}
+                aria-label={`Quitar ${place}`}
+                className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1 text-sm font-medium text-background transition-opacity hover:opacity-80"
+              >
+                {place}
+                <X className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <LocationFields
+        value={text}
+        onValueChangeAction={onTextChangeAction}
+        onPickAction={toggle}
+        selected={places}
+        placeholder={places.length ? "Agrega otro barrio o ciudad" : "Barrio, proyecto o ciudad"}
+      />
+    </div>
+  );
+}
+
+/** Places picked plus whatever is still typed in the box, as the `ubicacion` param. */
+export function locationsWithText(places: string[], text: string) {
+  const typed = text.trim();
+  return locationsParam(typed ? withPlace(places, typed) : places);
+}
+
+/** "El Poblado, Medellín", or "El Poblado +2" for several; "" for none. */
+export function locationsLabel(places: string[], text = "") {
+  if (places.length > 1) return `${placeShortName(places[0])} +${places.length - 1}`;
+  return places[0] ?? text.trim();
+}
 
 /**
  * Location input + place shortcuts, shared by the full search, the mobile quick-search button and
