@@ -6,7 +6,11 @@ import { SearchFilters } from "@/components/marketing/search-filters";
 import { SearchResults } from "@/components/marketing/search-results";
 import {
   filterProperties,
+  MORE_FILTER_KEYS,
+  parseLocations,
+  placeShortName,
   sortProperties,
+  type Property,
   type PropertyFilters,
 } from "@/components/marketing/properties";
 import { getDbProperties } from "@/components/marketing/property-adapter";
@@ -31,7 +35,24 @@ function parseFilters(params: SearchParams): PropertyFilters {
     area: first(params.area),
     estrato: first(params.estrato),
     estado: first(params.estado),
+    ascensores: first(params.ascensores),
+    constructora: first(params.constructora),
+    torres: first(params.torres),
+    entrega: first(params.entrega),
+    zonas: first(params.zonas),
     orden: first(params.orden),
+  };
+}
+
+/** Values for the filter bar's Constructora and Zonas comunes pickers, from every listing. */
+function filterOptions(properties: Property[]) {
+  const sorted = (values: (string | undefined)[]) =>
+    [...new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)))].sort((a, b) =>
+      a.localeCompare(b, "es"),
+    );
+  return {
+    developers: sorted(properties.map((property) => property.details?.developer?.name)),
+    amenities: sorted(properties.flatMap((property) => property.amenities ?? [])),
   };
 }
 
@@ -52,7 +73,12 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const filters = parseFilters(await searchParams);
   const results = filterProperties(filters, await getDbProperties());
   const renting = filters.operacion === "arrendar";
-  const place = filters.ubicacion?.trim() || "Medellín";
+  // One place reads in full ("El Poblado, Medellín"); several by their short names ("El Poblado y Envigado").
+  const places = parseLocations(filters.ubicacion);
+  const place =
+    places.length > 1
+      ? new Intl.ListFormat("es", { type: "conjunction" }).format(places.map(placeShortName))
+      : places[0] || "Medellín";
   const kind = TYPE_TITLE[filters.tipo ?? ""] ?? (renting ? "Apartamentos" : "Apartamentos nuevos");
   const title = `${kind} ${renting ? "en arriendo" : "en venta"} en ${place} ${currentYear()}`;
   const description =
@@ -67,7 +93,14 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   }
   const canonical = core.size ? `/search?${core.toString()}` : "/search";
   const refined = Boolean(
-    filters.habitaciones || filters.presupuesto || filters.asequible || filters.banos || filters.area || filters.estrato || filters.estado || filters.orden,
+    places.length > 1 ||
+      filters.habitaciones ||
+      filters.presupuesto ||
+      filters.asequible ||
+      filters.banos ||
+      filters.area ||
+      filters.orden ||
+      MORE_FILTER_KEYS.some((key) => filters[key]),
   );
 
   return {
@@ -83,7 +116,8 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 export default async function SearchPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const filters = parseFilters(await searchParams);
 
-  const results = sortProperties(filterProperties(filters, await getDbProperties()), filters.orden);
+  const properties = await getDbProperties();
+  const results = sortProperties(filterProperties(filters, properties), filters.orden);
 
   return (
     <div
@@ -95,8 +129,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           filters.tipo === "proyecto" ? "proyecto" : filters.operacion === "arrendar" ? "arrendar" : "comprar"
         }
       >
-        <SiteNavbar alwaysShowSearch searchFilters={filters} userPromise={getCurrentUser()} />
-        <SearchFilters filters={filters} />
+        <SiteNavbar searchInPage searchFilters={filters} userPromise={getCurrentUser()} />
+        <SearchFilters filters={filters} options={filterOptions(properties)} />
         <SearchResults results={results} />
       </SearchModeProvider>
     </div>

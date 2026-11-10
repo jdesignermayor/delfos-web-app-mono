@@ -380,14 +380,73 @@ export type PropertyFilters = {
   tipo?: string;
   habitaciones?: string;
   presupuesto?: string;
+  /** "si" = only VIS / VIP, "no" = only No VIS. */
   asequible?: string;
   /** Refinements only offered by the /search filter bar (not by the main search). */
   banos?: string;
   area?: string;
   estrato?: string;
   estado?: string;
+  /** Minimum elevators in at least one tower ("1", "2", "3"). */
+  ascensores?: string;
+  /** Constructora name, as shown on the listing. */
+  constructora?: string;
+  /** Tower count: "1", "2", "3" or "4+". */
+  torres?: string;
+  /** Delivery window, one of `DELIVERY_OPTIONS`. */
+  entrega?: string;
+  /** Common areas the project must have, comma-separated ("Piscina,Gimnasio"). */
+  zonas?: string;
   orden?: string;
 };
+
+/** Filters behind the /search bar's "Más filtros" button. */
+export const MORE_FILTER_KEYS = ["estrato", "estado", "ascensores", "constructora", "torres", "entrega", "zonas"] as const;
+
+export const AFFORDABLE_OPTIONS = [
+  { value: "si", label: "VIS / VIP" },
+  { value: "no", label: "No VIS" },
+] as const;
+
+export const ELEVATOR_OPTIONS = ["1", "2", "3"].map((n) => ({ value: n, label: `${n}+ ${n === "1" ? "ascensor" : "ascensores"}` }));
+
+export const TOWER_COUNT_OPTIONS = [
+  { value: "1", label: "1 torre" },
+  { value: "2", label: "2 torres" },
+  { value: "3", label: "3 torres" },
+  { value: "4+", label: "4 o más torres" },
+];
+
+/** Delivery windows for `entrega`, in months from today (`max` exclusive of `min`). */
+export const DELIVERY_OPTIONS = [
+  { value: "inmediata", label: "Entrega inmediata", min: -Infinity, max: 0 },
+  { value: "12", label: "En menos de 12 meses", min: 0, max: 12 },
+  { value: "12-24", label: "Entre 12 y 24 meses", min: 12, max: 24 },
+  { value: "24+", label: "En más de 24 meses", min: 24, max: Infinity },
+] as const;
+
+/**
+ * `ubicacion` holds one or more places separated by ";", since a place itself has commas:
+ * `El Poblado, Medellín;Envigado` → ["El Poblado, Medellín", "Envigado"].
+ */
+export const parseLocations = (value: string | undefined) =>
+  (value ?? "").split(";").map((place) => place.trim()).filter(Boolean);
+
+/** The `ubicacion` param for a list of places; undefined when empty. */
+export const locationsParam = (places: string[]) => places.join(";") || undefined;
+
+/** Adds `place` to `places` unless it's already there (ignoring case and accents). */
+export function withPlace(places: string[], place: string) {
+  const key = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return places.some((item) => key(item) === key(place)) ? places : [...places, place];
+}
+
+/** "El Poblado" for "El Poblado, Medellín": the first part, for compact labels. */
+export const placeShortName = (place: string) => place.split(",")[0]?.trim() || place;
+
+/** `zonas=Piscina,Gimnasio` → ["Piscina", "Gimnasio"]. */
+export const parseAmenityFilter = (value: string | undefined) =>
+  (value ?? "").split(",").map((name) => name.trim()).filter(Boolean);
 
 /** Built-area buckets (m²) for the `area` filter. */
 export const AREA_OPTIONS = [
@@ -497,17 +556,46 @@ export function isNewProject(property: Pick<Property, "type" | "status">) {
   return property.type === "proyecto" || property.status !== "Usado";
 }
 
+/** Whole months from `now` until `date` (negative once it has passed). */
+function monthsUntil(date: Date, now: Date) {
+  return (date.getUTCFullYear() - now.getUTCFullYear()) * 12 + (date.getUTCMonth() - now.getUTCMonth());
+}
+
+/**
+ * Whether the project's delivery (its last tower's date) falls in the window. Without a date,
+ * only "Entrega inmediata" can match, and only for projects that aren't off-plan.
+ */
+function inDeliveryWindow(
+  property: Property,
+  range: (typeof DELIVERY_OPTIONS)[number],
+  now: Date,
+) {
+  const date = property.details?.deliveryDate ? new Date(property.details.deliveryDate) : null;
+  if (!date || Number.isNaN(date.getTime())) return range.value === "inmediata" && property.status !== "Sobre planos";
+  const months = monthsUntil(date, now);
+  return range.value === "inmediata" ? date <= now : date > now && months >= range.min && months < range.max;
+}
+
 export function filterProperties(
   filters: PropertyFilters,
   source: Property[] = PROPERTIES,
 ): Property[] {
-  const tokens = normalizeText(filters.ubicacion ?? "").split(/[\s,]+/).filter(Boolean);
+  // Each place's words must all appear in the listing ("El Poblado, Medellín" → el, poblado, medellin).
+  const places = parseLocations(filters.ubicacion)
+    .map((place) => normalizeText(place).split(/[\s,]+/).filter(Boolean))
+    .filter((tokens) => tokens.length > 0);
   const minBeds = filters.habitaciones ? Number.parseInt(filters.habitaciones, 10) : 0;
   const budget = budgetBounds(filters.presupuesto);
   const minBaths = filters.banos ? Number.parseInt(filters.banos, 10) : 0;
   const areaBucket = AREA_OPTIONS.find((option) => option.value === filters.area);
   const stratum = filters.estrato ? Number.parseInt(filters.estrato, 10) : 0;
   const status = STATUS_OPTIONS.find((option) => option.value === filters.estado)?.label;
+  const minElevators = filters.ascensores ? Number.parseInt(filters.ascensores, 10) : 0;
+  const developer = filters.constructora ? normalizeText(filters.constructora) : "";
+  const towers = filters.torres ? Number.parseInt(filters.torres, 10) : 0;
+  const delivery = DELIVERY_OPTIONS.find((option) => option.value === filters.entrega);
+  const amenities = parseAmenityFilter(filters.zonas).map(normalizeText);
+  const now = new Date();
 
   return source.filter((property) => {
     if (filters.operacion && property.operation !== filters.operacion) return false;
@@ -515,6 +603,20 @@ export function filterProperties(
       return false;
     }
     if (filters.asequible === "si" && !property.affordable) return false;
+    if (filters.asequible === "no" && property.affordable) return false;
+    if (minElevators && !property.details?.towers.some((tower) => (tower.elevatorCount ?? 0) >= minElevators)) {
+      return false;
+    }
+    if (developer && normalizeText(property.details?.developer?.name ?? "") !== developer) return false;
+    if (towers) {
+      const count = property.details?.towerCount ?? property.details?.towers.length ?? 0;
+      if (filters.torres?.endsWith("+") ? count < towers : count !== towers) return false;
+    }
+    if (delivery && !inDeliveryWindow(property, delivery, now)) return false;
+    if (amenities.length) {
+      const has = new Set((property.amenities ?? []).map(normalizeText));
+      if (!amenities.every((amenity) => has.has(amenity))) return false;
+    }
     // A project matches when at least one of its typologies has enough bedrooms.
     if (minBeds && (!property.beds || property.beds.max < minBeds)) return false;
     if (budget && (property.price < budget.min || property.price > budget.max)) return false;
@@ -525,13 +627,14 @@ export function filterProperties(
     }
     if (stratum && property.stratum !== stratum) return false;
     if (status && property.status !== status) return false;
-    if (tokens.length) {
+    if (places.length) {
       const haystack = normalizeText(
         [property.title, property.projectName, property.neighborhood, property.city, property.address]
           .filter(Boolean)
           .join(" "),
       );
-      if (!tokens.every((token) => haystack.includes(token))) return false;
+      // Several places widen the search: matching any one of them is enough.
+      if (!places.some((tokens) => tokens.every((token) => haystack.includes(token)))) return false;
     }
     return true;
   });

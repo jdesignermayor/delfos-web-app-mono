@@ -28,27 +28,35 @@ const PLACE_GROUPS: PlaceGroup[] = [
   },
 ];
 
-/** Location input + place shortcuts, shared by the full search and the mobile quick-search button. */
+/**
+ * Location input + place shortcuts, shared by the full search, the mobile quick-search button and
+ * the /search filter bar. With `selected`, several shortcuts can be on at once (multi-select).
+ */
 export function LocationFields({
   value,
   onValueChangeAction,
   onPickAction,
+  selected,
+  placeholder = "Barrio, proyecto o ciudad",
 }: {
   value: string;
   onValueChangeAction: (value: string) => void;
   onPickAction: (location: string) => void;
+  /** Places already picked, for multi-select; when absent, the shortcut matching `value` shows as picked. */
+  selected?: string[];
+  placeholder?: string;
 }) {
   return (
     <div className="flex flex-col gap-5">
       <label className="relative block">
-        <span className="sr-only">Barrio, proyecto o ciudad</span>
+        <span className="sr-only">{placeholder}</span>
         <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" />
         <input
           autoFocus
           type="text"
           value={value}
           onChange={(event) => onValueChangeAction(event.target.value)}
-          placeholder="Barrio, proyecto o ciudad"
+          placeholder={placeholder}
           className="w-full rounded-2xl border border-separator bg-white py-3 pl-11 pr-4 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
       </label>
@@ -63,7 +71,7 @@ export function LocationFields({
                 icon={group.icon}
                 tone={group.tone}
                 label={label}
-                selected={value === location}
+                selected={selected ? selected.includes(location) : value === location}
                 onClick={() => onPickAction(location)}
               />
             ))}

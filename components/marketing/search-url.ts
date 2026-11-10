@@ -2,7 +2,19 @@ import type { PropertyFilters } from "@/components/marketing/properties";
 import type { SearchMode } from "@/components/marketing/search-mode-context";
 
 /** Refinements only the /search filter bar sets; kept when searching again from the search box. */
-const REFINEMENT_KEYS = ["banos", "area", "estrato", "estado", "orden", "asequible"] as const;
+const REFINEMENT_KEYS = [
+  "banos",
+  "area",
+  "estrato",
+  "estado",
+  "ascensores",
+  "constructora",
+  "torres",
+  "entrega",
+  "zonas",
+  "orden",
+  "asequible",
+] as const;
 
 export type SearchSelection = {
   mode: SearchMode;
@@ -36,4 +48,22 @@ export function buildSearchHref({ mode, location, tipo, habitaciones, presupuest
   }
 
   return `/search?${params.toString()}`;
+}
+
+/**
+ * The current /search with another mode (Comprar / Arrendar / Proyectos nuevos), keeping every
+ * other filter. The budget only carries over within the same operation: buying uses a price
+ * range, renting a monthly-rent bucket.
+ */
+export function modeSwitchHref(mode: SearchMode, current: PropertyFilters = {}) {
+  const operation = mode === "arrendar" ? "arrendar" : "comprar";
+  const currentOperation = current.operacion === "arrendar" ? "arrendar" : "comprar";
+  return buildSearchHref({
+    mode,
+    location: current.ubicacion,
+    tipo: current.tipo === "proyecto" ? undefined : current.tipo,
+    habitaciones: current.habitaciones,
+    presupuesto: operation === currentOperation ? current.presupuesto : undefined,
+    current,
+  });
 }

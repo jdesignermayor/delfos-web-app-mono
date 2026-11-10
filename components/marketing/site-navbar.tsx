@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button, buttonVariants, useOverlayState } from "@heroui/react";
@@ -16,6 +17,7 @@ import { HEADER_SEARCH_MOTION, HEADER_SWAP_MOTION } from "@/components/marketing
 import { PropertySearch } from "@/components/marketing/property-search";
 import { useSearchMode } from "@/components/marketing/search-mode-context";
 import { SearchModeTabs } from "@/components/marketing/search-mode-tabs";
+import { modeSwitchHref } from "@/components/marketing/search-url";
 import type { PropertyFilters } from "@/components/marketing/properties";
 import { useDismissableOverlay } from "@/hooks/use-dismissable-overlay";
 import type { CurrentUser } from "@/supabase/roles";
@@ -68,6 +70,22 @@ function useSearchTakeover() {
   useDismissableOverlay(isOpen, close);
 
   return { isOpen, isSettled, open, close, settle: () => setIsSettled(true) };
+}
+
+/**
+ * Header centre on /search, where every filter lives in the bar under the header: just the mode
+ * tabs, and picking one re-runs the current search in that mode.
+ */
+function SearchPageModeTabs({ searchFilters }: { searchFilters?: PropertyFilters }) {
+  const router = useRouter();
+  return (
+    <nav className="flex items-center gap-1">
+      <SearchModeTabs
+        variant="desktop"
+        onSelectAction={(mode) => router.push(modeSwitchHref(mode, searchFilters), { scroll: false })}
+      />
+    </nav>
+  );
 }
 
 /**
@@ -194,10 +212,16 @@ function MobileMenu({
 
 export function SiteNavbar({
   alwaysShowSearch = false,
+  searchInPage = false,
   searchFilters,
   userPromise,
 }: {
   alwaysShowSearch?: boolean;
+  /**
+   * /search: the page's own filter bar holds every filter, so the header has no search box,
+   * only the Comprar / Arrendar / Proyectos nuevos tabs.
+   */
+  searchInPage?: boolean;
   /** The current search (on /search), so reopening the search bar keeps it instead of starting blank. */
   searchFilters?: PropertyFilters;
   userPromise: Promise<CurrentUser | null>;
@@ -228,16 +252,18 @@ export function SiteNavbar({
           </Link>
 
           {/* Phones: the search sits right in the middle of the bar, between the logo and the menu. */}
-          <div className="min-w-0 md:hidden">
-            <MobileLocationButton />
-          </div>
+          <div className="min-w-0 md:hidden">{searchInPage ? null : <MobileLocationButton />}</div>
 
           <div className="hidden min-w-0 items-center justify-center md:flex">
-            <DesktopHeaderCenter
-              alwaysShowSearch={alwaysShowSearch}
-              takeoverOpen={takeover.isOpen}
-              onOpenTakeover={takeover.open}
-            />
+            {searchInPage ? (
+              <SearchPageModeTabs searchFilters={searchFilters} />
+            ) : (
+              <DesktopHeaderCenter
+                alwaysShowSearch={alwaysShowSearch}
+                takeoverOpen={takeover.isOpen}
+                onOpenTakeover={takeover.open}
+              />
+            )}
           </div>
 
           <div className="hidden items-center gap-2 md:flex">
@@ -260,11 +286,11 @@ export function SiteNavbar({
           </div>
         </div>
 
-        {alwaysShowSearch ? <SearchTakeoverPanel takeover={takeover} searchFilters={searchFilters} /> : null}
+        {alwaysShowSearch && !searchInPage ? <SearchTakeoverPanel takeover={takeover} searchFilters={searchFilters} /> : null}
 
         {menuOpen ? <MobileMenu userPromise={userPromise} onLogin={loginFromMenu} onClose={closeMenu} /> : null}
 
-        {alwaysShowSearch ? <SearchTakeoverBackdrop isOpen={takeover.isOpen} onClose={takeover.close} /> : null}
+        {alwaysShowSearch && !searchInPage ? <SearchTakeoverBackdrop isOpen={takeover.isOpen} onClose={takeover.close} /> : null}
 
         <AuthModal state={authModal} />
       </header>

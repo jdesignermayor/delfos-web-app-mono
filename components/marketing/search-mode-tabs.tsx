@@ -3,7 +3,7 @@
 import { HomeIcon } from "@/components/icons/animated/home";
 import { KeyIcon } from "@/components/icons/animated/key";
 import { MapPinHouseIcon } from "@/components/icons/animated/map-pin-house";
-import { SEARCH_MODES, useSearchMode } from "@/components/marketing/search-mode-context";
+import { SEARCH_MODES, useSearchMode, type SearchMode } from "@/components/marketing/search-mode-context";
 
 const TAB_ICONS = {
   comprar: HomeIcon,
@@ -27,8 +27,17 @@ const VARIANTS = {
   },
 } as const;
 
-/** Comprar / Arrendar / Proyectos nuevos switch, bound to the shared search mode. */
-export function SearchModeTabs({ variant }: { variant: keyof typeof VARIANTS }) {
+/**
+ * Comprar / Arrendar / Proyectos nuevos switch, bound to the shared search mode. `onSelectAction`
+ * runs after the mode changes, e.g. to re-run the search on /search.
+ */
+export function SearchModeTabs({
+  variant,
+  onSelectAction,
+}: {
+  variant: keyof typeof VARIANTS;
+  onSelectAction?: (mode: SearchMode) => void;
+}) {
   const { mode, setMode } = useSearchMode();
   const styles = VARIANTS[variant];
 
@@ -39,7 +48,10 @@ export function SearchModeTabs({ variant }: { variant: keyof typeof VARIANTS }) 
       <button
         key={tab.value}
         type="button"
-        onClick={() => setMode(tab.value)}
+        onClick={() => {
+          setMode(tab.value);
+          onSelectAction?.(tab.value);
+        }}
         aria-current={active ? "true" : undefined}
         className={`${styles.base} ${active ? styles.active : styles.inactive}`}
       >
