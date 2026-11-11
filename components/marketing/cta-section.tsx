@@ -1,34 +1,34 @@
 import Link from "next/link";
-import { buttonVariants } from "@heroui/react";
 
-import { ArrowRightIcon } from "@/components/icons";
+import { BTN_PRIMARY, BTN_SECONDARY, SECTION } from "@/components/marketing/landing-tokens";
+import { LIVE_ICON_TRIGGER, LiveIcon } from "@/components/marketing/live-icon";
 
+/**
+ * The closing ask: an ink block with a hard brand-blue offset shadow and a faint visible grid. Huge
+ * uppercase white headline; the yellow primary action is the brightest thing on it.
+ */
 export function CtaSection() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-      {/* `isolate` gives the card its own stacking context so the -z-10 glow sits above its background. */}
-      <div className="relative isolate overflow-hidden rounded-3xl border border-separator bg-surface px-6 py-16 text-center shadow-[0_24px_70px_-32px_rgba(15,23,42,0.35)]">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(50%_80%_at_50%_0%,var(--color-accent-soft),transparent_70%)]" />
-        <h2 className="mx-auto max-w-2xl font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-          Tu próximo hogar te está esperando
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-lg text-muted">
-          Empieza tu búsqueda o publica tu primer proyecto en minutos.
-        </p>
-        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link
-            href="/search?operacion=comprar"
-            className={buttonVariants({ variant: "primary", size: "lg" })}
-          >
-            Buscar propiedades
-            <ArrowRightIcon />
-          </Link>
-          <Link
-            href="/dashboard"
-            className={buttonVariants({ variant: "outline", size: "lg" })}
-          >
-            Publicar propiedad
-          </Link>
+    <section className={SECTION}>
+      <div className="relative overflow-hidden border-[1.5px] border-ink bg-ink px-5 py-14 text-white shadow-[5px_5px_0_0_var(--color-brut-blue)] sm:px-12 sm:py-20 md:text-center">
+        <div aria-hidden="true" className="brut-grid pointer-events-none absolute inset-0 text-white" />
+        <div className="relative">
+          <h2 className="mx-auto max-w-3xl font-display text-4xl font-bold leading-[1] tracking-tight text-balance sm:text-6xl">
+            Tu próximo hogar te está esperando
+          </h2>
+          <p className="mx-auto mt-5 max-w-xl text-base text-white/80 sm:text-lg">
+            Empieza tu búsqueda o publica tu primer proyecto en minutos.
+          </p>
+          <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
+            {/* On ink, an ink hard shadow would vanish: recolor it (shadow-<color> sets --tw-shadow-color). */}
+            <Link {...LIVE_ICON_TRIGGER} href="/search?operacion=comprar" className={`${BTN_PRIMARY} shadow-white`}>
+              Buscar propiedades
+              <LiveIcon name="arrow" size={20} />
+            </Link>
+            <Link href="/dashboard" className={`${BTN_SECONDARY} shadow-brut-yellow`}>
+              Publicar propiedad
+            </Link>
+          </div>
         </div>
       </div>
     </section>

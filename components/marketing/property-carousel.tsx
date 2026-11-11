@@ -33,14 +33,18 @@ const EAGER_CARDS = 6;
 /** How far (px) one arrow press scrolls the track — about two cards on desktop. */
 const SCROLL_STEP = 600;
 
-function CarouselArrow({ direction, onClick }: { direction: "previous" | "next"; onClick: () => void }) {
+function CarouselArrow({ direction, onClick, brutal = false }: { direction: "previous" | "next"; onClick: () => void; brutal?: boolean }) {
   const isPrevious = direction === "previous";
   return (
     <button
       type="button"
       aria-label={isPrevious ? "Anterior" : "Siguiente"}
       onClick={onClick}
-      className="flex size-9 items-center justify-center rounded-full border border-separator bg-surface text-foreground shadow-sm transition-colors hover:border-accent hover:text-accent"
+      className={
+        brutal
+          ? "flex size-11 items-center justify-center border border-ink/15 bg-white text-ink transition-[border-color,background-color,scale] duration-200 ease-out hover:border-ink active:scale-95 motion-reduce:transition-none outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+          : "flex size-9 items-center justify-center rounded-full border border-separator bg-surface text-foreground shadow-sm transition-colors hover:border-accent hover:text-accent"
+      }
     >
       <ArrowRightIcon className={`size-4 ${isPrevious ? "rotate-180" : ""}`} />
     </button>
@@ -53,9 +57,12 @@ export function PropertyCarousel({
   analyticsListId,
   highlighted = false,
   gridOnDesktop = false,
+  brutal = false,
 }: {
   title: string;
   properties: Property[];
+  /** The landing's brutalist style: square arrows, uppercase title, brutalist cards (see `PropertyCard`). */
+  brutal?: boolean;
   /** When set, the list's impressions and card clicks are reported to GA4 under this id. */
   analyticsListId?: string;
   /** "Propiedades destacadas": bigger cards with the details over the photo. */
@@ -76,20 +83,21 @@ export function PropertyCarousel({
         <TrackPropertyList listId={analyticsList.id} listName={analyticsList.name} properties={properties} />
       ) : null}
       <div className="flex items-center justify-between gap-4">
-        <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">
-          {title}
-        </h2>
+        <CarouselTitle title={title} brutal={brutal} />
         <div className={`hidden items-center gap-2 sm:flex ${gridOnDesktop ? "lg:hidden" : ""}`}>
-          <CarouselArrow direction="previous" onClick={() => scrollTrack(-SCROLL_STEP)} />
-          <CarouselArrow direction="next" onClick={() => scrollTrack(SCROLL_STEP)} />
+          <CarouselArrow direction="previous" onClick={() => scrollTrack(-SCROLL_STEP)} brutal={brutal} />
+          <CarouselArrow direction="next" onClick={() => scrollTrack(SCROLL_STEP)} brutal={brutal} />
         </div>
       </div>
 
       <div
         ref={trackRef}
-        className={`no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto sm:gap-4 scroll-smooth pb-2 ${
-          // Room for the hover ring, which the scrolling track would otherwise clip.
-          highlighted ? "-mx-2 mt-4 px-2 pt-2 sm:gap-5" : "-mx-2 mt-4 px-2 pt-2"
+        className={`no-scrollbar flex snap-x snap-mandatory overflow-x-auto scroll-smooth ${
+          brutal
+            ? // Room for the hard shadow (and its hover growth), which the scrolling track would otherwise clip.
+              "-mx-2 mt-5 gap-4 px-2 pb-4 pt-2 sm:gap-5 lg:gap-y-10"
+            : // Room for the hover ring, which the scrolling track would otherwise clip.
+              `gap-3 pb-2 sm:gap-4 ${highlighted ? "-mx-2 mt-4 px-2 pt-2 sm:gap-5" : "-mx-2 mt-4 px-2 pt-2"}`
         } ${gridOnDesktop ? GRID_TRACK_CLASS : ""}`}
       >
         {properties.map((property, index) => (
@@ -104,6 +112,7 @@ export function PropertyCarousel({
               eager={index < EAGER_CARDS}
               variant={highlighted ? "highlighted" : "default"}
               playOnHover={!highlighted}
+              brutal={brutal}
               sizes={highlighted ? HIGHLIGHTED_SLIDE_SIZES : gridOnDesktop ? GRID_SLIDE_SIZES : SLIDE_SIZES}
             />
           </div>
@@ -113,19 +122,55 @@ export function PropertyCarousel({
   );
 }
 
+/** The list's heading: a plain bold title, no decoration. */
+function CarouselTitle({ title, brutal }: { title: string; brutal: boolean }) {
+  return brutal ? (
+    <h2 className="font-display text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl">
+      {title}
+    </h2>
+  ) : (
+    <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
+  );
+}
+
 /** Placeholder while the listings stream in: same title, card size and spacing as the real carousel. */
-export function PropertyCarouselSkeleton({ title, gridOnDesktop = false }: { title: string; gridOnDesktop?: boolean }) {
+export function PropertyCarouselSkeleton({
+  title,
+  gridOnDesktop = false,
+  brutal = false,
+}: {
+  title: string;
+  gridOnDesktop?: boolean;
+  brutal?: boolean;
+}) {
   return (
     <div aria-busy="true" aria-label="Cargando propiedades">
-      <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
-      <div className={`mt-6 flex gap-3 overflow-hidden pb-2 sm:gap-4 ${gridOnDesktop ? GRID_TRACK_CLASS : ""}`}>
-        {Array.from({ length: EAGER_CARDS }, (_, index) => (
-          <div key={index} className={gridOnDesktop ? GRID_SLIDE_CLASS : SLIDE_CLASS}>
-            <div className="aspect-square w-full animate-pulse rounded-2xl bg-surface-secondary" />
-            <div className="mt-3 h-4 w-3/4 animate-pulse rounded-full bg-surface-secondary" />
-            <div className="mt-2 h-3.5 w-1/2 animate-pulse rounded-full bg-surface-secondary" />
-          </div>
-        ))}
+      <CarouselTitle title={title} brutal={brutal} />
+      <div
+        className={`flex overflow-hidden ${brutal ? "-mx-2 mt-5 gap-4 px-2 pb-4 pt-2 sm:gap-5 lg:gap-y-10" : "mt-6 gap-3 pb-2 sm:gap-4"} ${
+          gridOnDesktop ? GRID_TRACK_CLASS : ""
+        }`}
+      >
+        {Array.from({ length: EAGER_CARDS }, (_, index) =>
+          brutal ? (
+            <div key={index} className={gridOnDesktop ? GRID_SLIDE_CLASS : SLIDE_CLASS}>
+              <div className="border-[1.5px] border-ink bg-white shadow-brut">
+                <div className="aspect-[4/5] w-full animate-pulse bg-ink/[0.06] motion-reduce:animate-none" />
+                <div className="p-3">
+                  <div className="h-4 w-3/4 animate-pulse bg-ink/10 motion-reduce:animate-none" />
+                  <div className="mt-2 h-3 w-1/2 animate-pulse bg-ink/10 motion-reduce:animate-none" />
+                  <div className="mt-3 h-5 w-2/3 animate-pulse bg-ink/10 motion-reduce:animate-none" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div key={index} className={gridOnDesktop ? GRID_SLIDE_CLASS : SLIDE_CLASS}>
+              <div className="aspect-square w-full animate-pulse rounded-2xl bg-surface-secondary" />
+              <div className="mt-3 h-4 w-3/4 animate-pulse rounded-full bg-surface-secondary" />
+              <div className="mt-2 h-3.5 w-1/2 animate-pulse rounded-full bg-surface-secondary" />
+            </div>
+          ),
+        )}
       </div>
     </div>
   );

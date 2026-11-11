@@ -12,7 +12,7 @@ async function FeaturedCarousel() {
   return (
     <>
       <JsonLd data={buildPropertyListJsonLd(TITLE, properties)} />
-      <PropertyCarousel title={TITLE} properties={properties} analyticsListId="landing_featured" gridOnDesktop />
+      <PropertyCarousel title={TITLE} properties={properties} analyticsListId="landing_featured" gridOnDesktop brutal />
     </>
   );
 }
@@ -20,8 +20,9 @@ async function FeaturedCarousel() {
 /** Streams in: the rest of the landing renders immediately while the listings load. */
 export function FeaturedCarouselSection() {
   return (
-    <section className="mx-auto w-full max-w-[100rem] bg-white px-4 py-14 sm:px-6">
-      <Suspense fallback={<PropertyCarouselSkeleton title={TITLE} gridOnDesktop />}>
+    // On the cream canvas (no white band), so the white listing cards stand out.
+    <section className="mx-auto w-full max-w-[100rem] px-4 py-14 sm:px-6">
+      <Suspense fallback={<PropertyCarouselSkeleton title={TITLE} gridOnDesktop brutal />}>
         <FeaturedCarousel />
       </Suspense>
     </section>

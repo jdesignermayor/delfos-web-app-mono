@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Poppins, Geist_Mono } from "next/font/google";
+import { Poppins, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { FavoritesProvider } from "@/components/marketing/favorites-provider";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { SITE_URL } from "@/lib/site";
@@ -24,6 +24,18 @@ const poppins = Poppins({
  * (`--font-sans`). That costs zero bytes and never causes layout shift.
  * Geist Mono still backs the `--font-mono` token for code / tabular figures.
  */
+/**
+ * Instrument Serif: the editorial accent face (one italic word in the landing hero), set against
+ * Poppins for contrast. Only the regular weight exists; we load roman and italic.
+ */
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  display: "swap",
+});
+
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -63,7 +75,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="es"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={`${poppins.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
+      className={`${poppins.variable} ${instrumentSerif.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
       {process.env.NODE_ENV === "development" ? (
         <head>

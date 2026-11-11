@@ -1,13 +1,14 @@
 "use client";
 
-import { useRef, useState, type ComponentType } from "react";
+import { useId, useRef, useState, type ComponentType, type RefObject } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { ArrowRight, ChevronDown } from "lucide-react";
 
 import { BedIcon, HomeIcon, MapPinIcon, SearchIcon, WalletIcon } from "@/components/icons";
 import { BudgetRangePanel } from "@/components/marketing/budget-range-panel";
 import { MultiLocationFields, locationsLabel, locationsWithText } from "@/components/marketing/location-fields";
-import { DROPDOWN_MOTION } from "@/components/marketing/motion-presets";
+import { BRUTAL_DROPDOWN_MOTION, DROPDOWN_MOTION } from "@/components/marketing/motion-presets";
 import {
   BUDGET_OPTIONS,
   BUDGET_RANGE,
@@ -28,6 +29,7 @@ import {
   budgetHint,
 } from "@/components/marketing/search-choice-panels";
 import { useSearchMode, type SearchMode } from "@/components/marketing/search-mode-context";
+import { SEARCH_BRUTAL, SearchStyleProvider } from "@/components/marketing/search-style";
 import { buildSearchHref } from "@/components/marketing/search-url";
 import { useClickOutside } from "@/hooks/use-click-outside";
 
@@ -52,6 +54,9 @@ const LABELS = {
   full: { ubicacion: "Ubicación", tipo: "Tipo", habitaciones: "Habitaciones", presupuesto: "Presupuesto" },
   compact: { ubicacion: "Ubic.", tipo: "Tipo", habitaciones: "Hab.", presupuesto: "Presup." },
 } as const;
+
+/** The order the filters are walked through, one after another. */
+const STEP_ORDER: Field[] = ["ubicacion", "tipo", "habitaciones", "presupuesto"];
 
 function initialDraft(filters: PropertyFilters | undefined): Draft {
   return {
@@ -103,6 +108,87 @@ function buildSegments({
     },
     { field: "presupuesto", icon: WalletIcon, label: labels.presupuesto, value: budgetLabel, placeholder: "Cualquiera" },
   ];
+}
+
+/**
+ * Minimal segment: no icon, a quiet sans label over a large, readable value, short centred hairline
+ * dividers. The open one gets a faint ink wash, a chevron that flips, and an ink bar that slides
+ * along the bottom from the previously open segment (shared layout animation).
+ */
+function BrutalSearchSegment({
+  segment,
+  active,
+  compact,
+  showDivider,
+  onToggle,
+}: {
+  segment: Segment;
+  active: boolean;
+  compact: boolean;
+  showDivider: boolean;
+  onToggle: () => void;
+}) {
+  const { field, label, value, placeholder, disabled } = segment;
+  return (
+    <div className={`flex md:min-w-0 md:items-center ${field === "ubicacion" ? "flex-[1.4]" : "flex-1"}`}>
+      {showDivider ? <span aria-hidden="true" className="hidden h-8 w-px shrink-0 bg-ink/25 md:block" /> : null}
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={disabled}
+        aria-expanded={active}
+        className={`group relative flex min-w-0 flex-1 flex-col justify-center self-stretch text-left transition-colors duration-200 disabled:cursor-default ${SEARCH_BRUTAL.focus} focus-visible:-outline-offset-2 ${
+          compact ? "gap-0 px-3 py-1.5" : "gap-1.5 px-6 py-4 md:py-5"
+        } ${active ? "bg-ink/[0.07]" : "hover:bg-ink/[0.04] disabled:hover:bg-transparent"}`}
+      >
+        <span className={compact ? "text-[11px] font-semibold text-ink/70" : SEARCH_BRUTAL.label}>{label}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            className={`min-w-0 flex-1 truncate ${compact ? "text-sm" : "text-xl leading-snug"} ${value ? "font-semibold text-ink" : "font-medium text-ink/55"}`}
+          >
+            {value || placeholder}
+          </span>
+          {disabled || compact ? null : (
+            <ChevronDown
+              aria-hidden="true"
+              strokeWidth={2.25}
+              className={`size-5 shrink-0 text-ink/60 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:text-ink ${active ? "rotate-180 text-ink" : ""}`}
+            />
+          )}
+        </span>
+        {active ? (
+          <motion.span
+            layoutId="segment-indicator"
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-[3px] bg-ink"
+            transition={{ type: "spring", stiffness: 520, damping: 38 }}
+          />
+        ) : null}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * The CTA: a brand-yellow block with ink type, flush with the frame's right edge and split from the
+ * fields by an ink rule ("Buscar" spelled out unless compact). Matte pastel yellow + ink is ~14:1.
+ */
+function BrutalSubmitButton({ compact, buttonRef }: { compact: boolean; buttonRef: RefObject<HTMLButtonElement | null> }) {
+  return (
+    <button
+      ref={buttonRef}
+      type="submit"
+      aria-label="Buscar"
+      className={`group flex shrink-0 items-center justify-center gap-2.5 border-t-[1.5px] border-ink bg-brut-yellow font-semibold text-ink transition-[background-color,scale] duration-200 hover:bg-[#e2d095] active:scale-[0.97] active:duration-75 md:border-l-[1.5px] md:border-t-0 ${SEARCH_BRUTAL.focus} ${
+        compact ? "h-10 md:h-auto md:w-11" : "h-16 text-lg md:h-auto md:px-10"
+      }`}
+    >
+      <SearchIcon
+        className={`transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-rotate-12 group-hover:scale-115 group-active:scale-90 ${compact ? "size-4" : "size-6"}`}
+      />
+      <span className={compact ? "md:hidden" : ""}>Buscar</span>
+    </button>
+  );
 }
 
 /** One clickable segment of the search pill (icon, label and current value). */
@@ -161,10 +247,11 @@ function SearchSegment({
   );
 }
 
-function SearchSubmitButton({ compact }: { compact: boolean }) {
+function SearchSubmitButton({ compact, buttonRef }: { compact: boolean; buttonRef: RefObject<HTMLButtonElement | null> }) {
   return (
     <div className={`flex shrink-0 ${compact ? "p-1" : "p-1.5"} md:p-0 ${compact ? "md:pl-1" : "md:pl-2 md:pr-0.5"}`}>
       <button
+        ref={buttonRef}
         type="submit"
         aria-label="Buscar"
         className={`flex w-full items-center justify-center gap-2 rounded-full bg-accent font-semibold text-accent-foreground shadow-lg shadow-accent/30 transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.97] ${
@@ -182,8 +269,18 @@ export function PropertySearch({
   compact = false,
   initialFilters,
   onSearchAction,
+  brutal = false,
+  align = "center",
 }: {
   compact?: boolean;
+  /** Where the full-size bar sits in its row: centred (default) or flush left, e.g. under a left-set headline. */
+  align?: "center" | "start";
+  /**
+   * The landing's minimal brutalism: a square bar in a thin ink frame, flush segments with mono
+   * labels, an ink "Buscar" block, and square dropdown panels (every piece inside follows, through
+   * `SearchStyleProvider`).
+   */
+  brutal?: boolean;
   /** Pre-fills the fields, e.g. with the search currently shown on /search. */
   initialFilters?: PropertyFilters;
   /** Called right before navigating to the results — lets a caller (e.g. a search overlay) close itself. */
@@ -192,6 +289,8 @@ export function PropertySearch({
   const router = useRouter();
   const { mode } = useSearchMode();
   const containerRef = useRef<HTMLDivElement>(null);
+  const layoutId = useId();
+  const submitRef = useRef<HTMLButtonElement>(null);
   const [activeField, setActiveField] = useState<Field | null>(null);
   const [draft, setDraft] = useState<Draft>(() => initialDraft(initialFilters));
   // Several places can be picked; listings in any of them match.
@@ -235,10 +334,86 @@ export function PropertySearch({
     setActiveField((current) => (current === field ? null : field));
   }
 
-  /** Stores a pick and closes its panel. */
+  /** The filters in the order they're walked through (the type step is skipped for new projects). */
+  const steps = STEP_ORDER.filter((field) => !(field === "tipo" && mode === "proyecto"));
+
+  /**
+   * Moves the visitor on to the next filter, so they can fill the search in one pass. After the last
+   * one the panel closes and "Buscar" takes focus with a nudge: the next thing to do.
+   */
+  function advance(from: Field) {
+    const next = steps[steps.indexOf(from) + 1];
+    if (next) {
+      setActiveField(next);
+      return;
+    }
+    setActiveField(null);
+    const button = submitRef.current;
+    if (!button) return;
+    button.focus({ preventScroll: true });
+    button.classList.remove("submit-nudge");
+    void button.offsetWidth; // restart the animation
+    button.classList.add("submit-nudge");
+  }
+
+  /** Stores a pick and opens the next filter. */
   function select(field: Field, value: string) {
     setDraft((current) => ({ ...current, [field]: value }));
-    setActiveField(null);
+    advance(field);
+  }
+
+  /**
+   * Under every panel: where the visitor is in the sequence, and the way forward — "Siguiente" after
+   * places (they're multi-select, so picking doesn't move on), "Omitir" on the single-pick steps,
+   * and "Ver resultados" on the last one.
+   */
+  function renderFooter(field: Field) {
+    const index = steps.indexOf(field);
+    const next = steps[index + 1];
+    const isLast = !next;
+    const nextLabel = next ? LABELS.full[next] : "";
+    const hasValue = field === "ubicacion" ? places.length > 0 || draft.ubicacion.trim() !== "" : false;
+    const forwardLabel = isLast ? "Ver resultados" : field === "ubicacion" && hasValue ? `Siguiente: ${nextLabel}` : `Omitir · ${nextLabel}`;
+    const primary = isLast || (field === "ubicacion" && hasValue);
+
+    return (
+      <div
+        className={`mt-6 flex items-center justify-between gap-4 pt-4 ${brutal ? "border-t-[1.5px] border-ink/10" : "border-t border-separator"}`}
+      >
+        <div className="flex items-center gap-3">
+          {/* Progress: one bar per step, filled up to this one. */}
+          <span aria-hidden="true" className="flex gap-1">
+            {steps.map((step, i) => (
+              <span
+                key={step}
+                className={`h-1.5 w-5 transition-colors duration-300 ${brutal ? "" : "rounded-full"} ${
+                  i <= index ? (brutal ? "bg-ink" : "bg-accent") : brutal ? "bg-ink/15" : "bg-accent-soft"
+                }`}
+              />
+            ))}
+          </span>
+          <span className={brutal ? "text-sm font-medium text-ink/60" : "text-xs font-medium text-muted"}>
+            Paso {index + 1} de {steps.length}
+          </span>
+        </div>
+        <button
+          type={isLast ? "submit" : "button"}
+          onClick={isLast ? undefined : () => advance(field)}
+          className={
+            brutal
+              ? `group inline-flex min-h-12 items-center gap-2 px-5 text-base font-semibold transition-[background-color,color,scale] duration-200 active:scale-[0.96] active:duration-75 ${SEARCH_BRUTAL.focus} ${
+                  primary ? "bg-ink text-white hover:bg-ink/85" : "text-ink/70 hover:bg-ink/[0.05] hover:text-ink"
+                }`
+              : `group inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-colors ${
+                  primary ? "bg-accent text-accent-foreground hover:bg-accent-hover" : "text-foreground/70 hover:bg-surface-secondary hover:text-foreground"
+                }`
+          }
+        >
+          {forwardLabel}
+          <ArrowRight aria-hidden="true" className="size-4 transition-transform duration-200 group-hover:translate-x-1" strokeWidth={2.25} />
+        </button>
+      </div>
+    );
   }
 
 
@@ -297,48 +472,76 @@ export function PropertySearch({
   }
 
   return (
-    <div ref={containerRef} className={`relative w-full ${compact ? "max-w-2xl" : "mx-auto max-w-3xl"}`}>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          setActiveField(null);
-          runSearch();
-        }}
-      >
-        <div
-          className={`overflow-hidden rounded-3xl border border-separator bg-white transition-shadow md:rounded-full ${
-            compact
-              ? "shadow-[0_4px_16px_-8px_rgba(15,23,42,0.22)] hover:shadow-[0_8px_24px_-10px_rgba(15,23,42,0.3)]"
-              : "shadow-[0_18px_50px_-24px_rgba(15,23,42,0.35)]"
-          }`}
+    <SearchStyleProvider value={brutal}>
+      {/* Scopes the sliding segment indicator to this bar (the hero and the navbar each have one). */}
+      <LayoutGroup id={layoutId}>
+      <div ref={containerRef} className={`relative w-full ${compact ? "max-w-2xl" : align === "start" ? "max-w-5xl" : "mx-auto max-w-3xl"}`}>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            setActiveField(null);
+            runSearch();
+          }}
         >
-          <div className={`flex flex-col gap-1 p-1.5 md:flex-row md:items-center ${compact ? "md:p-1" : "md:p-1.5"}`}>
-            {segments.map((segment, index) => (
-              <SearchSegment
-                key={segment.field}
-                segment={segment}
-                active={activeField === segment.field}
-                compact={compact}
-                showDivider={index > 0}
-                onToggle={() => toggleField(segment.field)}
-              />
-            ))}
-            <SearchSubmitButton compact={compact} />
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {activeField ? (
-            <motion.div
-              key={activeField}
-              {...DROPDOWN_MOTION}
-              className="absolute inset-x-0 top-full z-20 mt-2 origin-top rounded-3xl border border-separator bg-white p-5 text-left shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)]"
+          {brutal ? (
+            // Square bar, thin ink frame, no shadow; segments stacked with hairlines on phones, flush in a row from md.
+            <div className={`flex flex-col divide-y-[1.5px] divide-ink/15 md:flex-row md:divide-y-0 ${SEARCH_BRUTAL.frame}`}>
+              {segments.map((segment, index) => (
+                <BrutalSearchSegment
+                  key={segment.field}
+                  segment={segment}
+                  active={activeField === segment.field}
+                  compact={compact}
+                  showDivider={index > 0}
+                  onToggle={() => toggleField(segment.field)}
+                />
+              ))}
+              <BrutalSubmitButton compact={compact} buttonRef={submitRef} />
+            </div>
+          ) : (
+            <div
+              className={`overflow-hidden rounded-3xl border border-separator bg-white transition-shadow md:rounded-full ${
+                compact
+                  ? "shadow-[0_4px_16px_-8px_rgba(15,23,42,0.22)] hover:shadow-[0_8px_24px_-10px_rgba(15,23,42,0.3)]"
+                  : "shadow-[0_18px_50px_-24px_rgba(15,23,42,0.35)]"
+              }`}
             >
-              {renderPanel(activeField)}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </form>
-    </div>
+              <div className={`flex flex-col gap-1 p-1.5 md:flex-row md:items-center ${compact ? "md:p-1" : "md:p-1.5"}`}>
+                {segments.map((segment, index) => (
+                  <SearchSegment
+                    key={segment.field}
+                    segment={segment}
+                    active={activeField === segment.field}
+                    compact={compact}
+                    showDivider={index > 0}
+                    onToggle={() => toggleField(segment.field)}
+                  />
+                ))}
+                <SearchSubmitButton compact={compact} buttonRef={submitRef} />
+              </div>
+            </div>
+          )}
+
+          <AnimatePresence>
+            {activeField ? (
+              <motion.div
+                key={activeField}
+                {...(brutal ? BRUTAL_DROPDOWN_MOTION : DROPDOWN_MOTION)}
+                className={
+                  brutal
+                    ? // Square panel, thin ink frame, flat: no offset shadow, no color.
+                      "absolute inset-x-0 top-full z-20 mt-2 origin-top border-[1.5px] border-ink bg-white p-5 text-left sm:p-6"
+                    : "absolute inset-x-0 top-full z-20 mt-2 origin-top rounded-3xl border border-separator bg-white p-5 text-left shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)]"
+                }
+              >
+                {renderPanel(activeField)}
+                {renderFooter(activeField)}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </form>
+      </div>
+      </LayoutGroup>
+    </SearchStyleProvider>
   );
 }

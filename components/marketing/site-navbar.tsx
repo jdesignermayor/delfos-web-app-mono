@@ -13,7 +13,7 @@ import { AuthModal } from "@/components/marketing/auth-modal";
 import { MiniSearchTrigger } from "@/components/marketing/mini-search-trigger";
 import { MobileTabBar } from "@/components/marketing/mobile-tab-bar";
 import { MobileLocationButton } from "@/components/marketing/mobile-location-button";
-import { HEADER_SEARCH_MOTION, HEADER_SWAP_MOTION } from "@/components/marketing/motion-presets";
+import { HEADER_SEARCH_MOTION } from "@/components/marketing/motion-presets";
 import { PropertySearch } from "@/components/marketing/property-search";
 import { useSearchMode } from "@/components/marketing/search-mode-context";
 import { SearchModeTabs } from "@/components/marketing/search-mode-tabs";
@@ -49,6 +49,21 @@ function useHeroSearchScrolledPast(enabled: boolean) {
   }, [enabled, heroSearchRef, navbarRef]);
 
   return scrolledPast;
+}
+
+/** True once the page has scrolled away from the very top. */
+function useScrolledFromTop(enabled: boolean) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const update = () => setScrolled(window.scrollY > 4);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [enabled]);
+
+  return scrolled;
 }
 
 /** Open/close state of the /search header takeover, plus whether its expand animation has finished. */
@@ -93,14 +108,27 @@ function SearchPageModeTabs({ searchFilters }: { searchFilters?: PropertyFilters
  * the hero search scrolls away; on pages without a hero (`alwaysShowSearch`) it shows a mini
  * trigger that opens the full search takeover.
  */
+/**
+ * Landing header, quiet brutalism: the hero's pastel Delfos blue, ink type, square corners.
+ * The navbar's one primary action: a flat ink block.
+ */
+const BRUTAL_NAV_CTA =
+  "flex h-10 items-center justify-center gap-2 bg-ink px-4 text-sm font-semibold text-white transition-colors hover:bg-ink/85 outline-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ink";
+
+/** Phone menu (a white panel under the bar): the same action as a full-width ink block. */
+const MOBILE_MENU_CTA =
+  "flex h-12 w-full items-center justify-center gap-2 bg-ink px-4 text-sm font-semibold text-white transition-colors hover:bg-ink/85 outline-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ink";
+
 function DesktopHeaderCenter({
   alwaysShowSearch,
   takeoverOpen,
   onOpenTakeover,
+  brutal = false,
 }: {
   alwaysShowSearch: boolean;
   takeoverOpen: boolean;
   onOpenTakeover: () => void;
+  brutal?: boolean;
 }) {
   const heroScrolledPast = useHeroSearchScrolledPast(!alwaysShowSearch);
 
@@ -114,17 +142,15 @@ function DesktopHeaderCenter({
     );
   }
 
+  // Landing: the centre stays empty (the mode tabs live in the hero, above its search) until the
+  // hero search scrolls away; then the compact search takes over.
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence initial={false}>
       {heroScrolledPast ? (
         <motion.div key="search" {...HEADER_SEARCH_MOTION} className="flex w-full justify-center">
-          <PropertySearch compact />
+          <PropertySearch compact brutal={brutal} />
         </motion.div>
-      ) : (
-        <motion.nav key="tabs" {...HEADER_SWAP_MOTION} className="flex items-center gap-1">
-          <SearchModeTabs variant="desktop" />
-        </motion.nav>
-      )}
+      ) : null}
     </AnimatePresence>
   );
 }
@@ -187,21 +213,25 @@ function MobileMenu({
   userPromise,
   onLogin,
   onClose,
+  brutal = false,
 }: {
   userPromise: Promise<CurrentUser | null>;
   onLogin: () => void;
   onClose: () => void;
+  brutal?: boolean;
 }) {
   return (
-    <div className="border-t border-separator bg-background px-4 py-4 md:hidden">
-      <div className="flex flex-col gap-2">
+    <div
+      className={`px-4 py-4 md:hidden ${brutal ? "border-t-[1.5px] border-ink bg-white" : "border-t border-separator bg-background"}`}
+    >
+      <div className={`flex flex-col ${brutal ? "gap-3" : "gap-2"}`}>
         <Suspense fallback={<AccountSkeleton fullWidth />}>
-          <AccountActions userPromise={userPromise} fullWidth onLogin={onLogin} onNavigate={onClose} />
+          <AccountActions userPromise={userPromise} fullWidth onLogin={onLogin} onNavigate={onClose} brutal={brutal} />
         </Suspense>
         <Link
           href="/dashboard"
           onClick={onClose}
-          className={buttonVariants({ variant: "primary", size: "sm", fullWidth: true })}
+          className={brutal ? MOBILE_MENU_CTA : buttonVariants({ variant: "primary", size: "sm", fullWidth: true })}
         >
           Publicar propiedad
         </Link>
@@ -215,7 +245,14 @@ export function SiteNavbar({
   searchInPage = false,
   searchFilters,
   userPromise,
+  tone = "default",
 }: {
+  /**
+   * "landing": the header takes the hero's pastel Delfos blue (no blur, no hairline) so the two
+   * read as one block, and its pieces settle in with the hero's intro; a faint white rule appears
+   * under it once the page scrolls.
+   */
+  tone?: "default" | "landing";
   alwaysShowSearch?: boolean;
   /**
    * /search: the page's own filter bar holds every filter, so the header has no search box,
@@ -230,6 +267,8 @@ export function SiteNavbar({
   const { navbarRef } = useSearchMode();
   const authModal = useOverlayState();
   const takeover = useSearchTakeover();
+  const isLanding = tone === "landing";
+  const scrolled = useScrolledFromTop(isLanding);
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -240,11 +279,25 @@ export function SiteNavbar({
 
   return (
     <>
-      <header ref={navbarRef} className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl">
+      <header
+        ref={navbarRef}
+        className={
+          isLanding
+            ? // The border is always there (only its color changes), so nothing shifts when it appears.
+              `sticky top-0 z-50 border-b-[1.5px] bg-delfos-pastel text-ink transition-colors duration-200 ${
+                scrolled ? "border-ink" : "border-transparent"
+              }`
+            : "sticky top-0 z-50 bg-white/95 backdrop-blur-xl"
+        }
+      >
         <div className="mx-auto grid h-18 w-full max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-4 px-4 sm:px-6">
           <Link
             href="/"
-            className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight"
+            className={
+              isLanding
+                ? "nav-drop flex items-center gap-2 font-display text-lg font-bold tracking-tight text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+                : "flex items-center gap-2 font-display text-lg font-semibold tracking-tight"
+            }
             onClick={closeMenu}
           >
             <LogoMark />
@@ -252,7 +305,7 @@ export function SiteNavbar({
           </Link>
 
           {/* Phones: the search sits right in the middle of the bar, between the logo and the menu. */}
-          <div className="min-w-0 md:hidden">{searchInPage ? null : <MobileLocationButton />}</div>
+          <div className="min-w-0 md:hidden">{searchInPage ? null : <MobileLocationButton brutal={isLanding} />}</div>
 
           <div className="hidden min-w-0 items-center justify-center md:flex">
             {searchInPage ? (
@@ -262,33 +315,57 @@ export function SiteNavbar({
                 alwaysShowSearch={alwaysShowSearch}
                 takeoverOpen={takeover.isOpen}
                 onOpenTakeover={takeover.open}
+                brutal={isLanding}
               />
             )}
           </div>
 
-          <div className="hidden items-center gap-2 md:flex">
+          <div
+            className={`hidden items-center md:flex ${isLanding ? "nav-drop gap-3" : "gap-2"}`}
+            style={isLanding ? ({ "--drop-delay": "120ms" } as React.CSSProperties) : undefined}
+          >
             <Suspense fallback={<AccountSkeleton />}>
-              <AccountActions userPromise={userPromise} onLogin={authModal.open} />
+              <AccountActions userPromise={userPromise} onLogin={authModal.open} brutal={isLanding} />
             </Suspense>
+            {/* Landing: a persistent primary action in the bar (the same link as in the phone menu). */}
+            {isLanding ? (
+              <Link href="/dashboard" className={`${BRUTAL_NAV_CTA} hidden lg:flex`}>
+                Publicar propiedad
+              </Link>
+            ) : null}
           </div>
 
           <div className="col-start-3 flex items-center gap-2 md:hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              isIconOnly
-              aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-              aria-expanded={menuOpen}
-              onPress={() => setMenuOpen((isOpen) => !isOpen)}
-            >
-              {menuOpen ? <CloseIcon /> : <MenuIcon />}
-            </Button>
+            {isLanding ? (
+              <button
+                type="button"
+                aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((isOpen) => !isOpen)}
+                className="flex size-11 items-center justify-center text-ink transition-colors active:bg-delfos-sky outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              >
+                {menuOpen ? <CloseIcon strokeWidth={2.25} /> : <MenuIcon strokeWidth={2.25} />}
+              </button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                isIconOnly
+                aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+                aria-expanded={menuOpen}
+                onPress={() => setMenuOpen((isOpen) => !isOpen)}
+              >
+                {menuOpen ? <CloseIcon /> : <MenuIcon />}
+              </Button>
+            )}
           </div>
         </div>
 
         {alwaysShowSearch && !searchInPage ? <SearchTakeoverPanel takeover={takeover} searchFilters={searchFilters} /> : null}
 
-        {menuOpen ? <MobileMenu userPromise={userPromise} onLogin={loginFromMenu} onClose={closeMenu} /> : null}
+        {menuOpen ? (
+          <MobileMenu userPromise={userPromise} onLogin={loginFromMenu} onClose={closeMenu} brutal={isLanding} />
+        ) : null}
 
         {alwaysShowSearch && !searchInPage ? <SearchTakeoverBackdrop isOpen={takeover.isOpen} onClose={takeover.close} /> : null}
 
@@ -300,6 +377,7 @@ export function SiteNavbar({
         userPromise={userPromise}
         onLoginAction={authModal.open}
         onOpenAccountAction={() => setMenuOpen(true)}
+        brutal={isLanding}
       />
     </>
   );

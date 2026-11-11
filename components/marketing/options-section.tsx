@@ -1,77 +1,93 @@
 import Link from "next/link";
-import type { ComponentType } from "react";
-import { Card } from "@heroui/react";
 
-import { ArrowRightIcon, HomeIcon, KeyIcon, TagIcon } from "@/components/icons";
+import { BLOCK, BORDER, PRESSABLE, SECTION, type Block } from "@/components/marketing/landing-tokens";
+import { LIVE_ICON_TRIGGER, LiveIcon, type LiveIconName } from "@/components/marketing/live-icon";
 import { SectionHeading } from "@/components/marketing/section-heading";
 
 type Option = {
-  icon: ComponentType;
+  icon: LiveIconName;
   title: string;
   body: string;
   cta: string;
   href: string;
+  /** Each path is its own flat color, so the three read as distinct choices at a glance. */
+  block: Block;
 };
 
 const OPTIONS: Option[] = [
   {
-    icon: HomeIcon,
+    icon: "home",
     title: "Compra tu hogar",
     body: "Apartamentos y casas nuevas listas para estrenar o sobre planos, con simulación de crédito y acompañamiento en toda la compra.",
     cta: "Ver en venta",
     href: "/search?operacion=comprar",
+    block: "yellow",
   },
   {
-    icon: KeyIcon,
+    icon: "key",
     title: "Arrienda tu hogar",
     body: "Arriendos verificados con contrato digital, estudio en línea y entrega del inmueble sin trámites eternos.",
     cta: "Ver en arriendo",
     href: "/search?operacion=arrendar",
+    block: "blue",
   },
   {
-    icon: TagIcon,
+    icon: "percent",
     title: "Vivienda asequible",
     body: "Filtra proyectos de interés social y prioritario (VIS y VIP), cuota inicial baja y los subsidios a los que puedes aplicar.",
     cta: "Ver asequibles",
     href: "/search?asequible=si",
+    block: "mint",
   },
 ];
 
-function OptionCard({ option }: { option: Option }) {
-  const { icon: Icon, title, body, cta, href } = option;
+/**
+ * One flat color block per path. The whole block is the link (it's the thing to tap on a phone),
+ * presses into its shadow like a physical button, and plays its icons while hovered or focused.
+ */
+function OptionCard({ option, index }: { option: Option; index: number }) {
+  const { icon, title, body, cta, href, block } = option;
   return (
-    // The whole card is the hit target (stretched link), with the CTA text as its accessible name.
-    <Card className="group relative flex h-full cursor-pointer flex-col border border-transparent p-6 transition-[box-shadow,border-color,transform] duration-200 ease-out hover:border-accent/30 hover:shadow-lg focus-within:border-accent/40 motion-safe:hover:-translate-y-0.5">
-      <div className="flex size-11 items-center justify-center rounded-xl bg-accent-soft text-accent transition-colors duration-200 group-hover:bg-accent group-hover:text-accent-foreground">
-        <Icon />
+    <Link
+      {...LIVE_ICON_TRIGGER}
+      href={href}
+      className={`group flex h-full flex-col p-5 text-ink outline-none sm:p-7 ${BLOCK[block]} ${BORDER} shadow-brut ${PRESSABLE} focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        {/* Icon in a white tile with its own small hard shadow. */}
+        <div className={`flex size-14 items-center justify-center bg-white shadow-brut-sm ${BORDER}`}>
+          <LiveIcon name={icon} size={28} />
+        </div>
+        <span aria-hidden="true" className="border border-ink bg-white px-1.5 font-mono text-sm font-bold">
+          0{index + 1}
+        </span>
       </div>
-      <h3 className="mt-4 font-display text-lg font-semibold">{title}</h3>
-      <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{body}</p>
-      <Link
-        href={href}
-        className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-accent outline-none after:absolute after:inset-0 after:rounded-[inherit] focus-visible:after:ring-2 focus-visible:after:ring-focus"
-      >
+      <h3 className="mt-5 font-display text-2xl font-bold leading-tight tracking-tight">{title}</h3>
+      <p className="mt-3 flex-1 text-[0.95rem] leading-relaxed text-ink/85">{body}</p>
+      {/* Reads as the action; an ink bar spanning the card so it's an obvious, thumb-sized target on phones. */}
+      <span className="mt-6 flex min-h-12 items-center justify-between gap-2 bg-ink px-4 font-mono text-xs font-medium uppercase tracking-[0.16em] text-white">
         {cta}
-        <ArrowRightIcon className="size-4 transition-transform duration-200 motion-safe:group-hover:translate-x-1" />
-      </Link>
-    </Card>
+        <LiveIcon name="arrow" size={20} />
+      </span>
+    </Link>
   );
 }
 
 export function OptionsSection() {
   return (
-    <section id="opciones" className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+    <section id="opciones" className={SECTION}>
       <SectionHeading
-        className="max-w-2xl"
+        className="max-w-3xl"
+        index="01"
         eyebrow="Cómo quieres vivir"
         title="Un mismo lugar para comprar, arrendar o encontrar vivienda asequible"
       >
         Elige el camino que necesitas hoy. Puedes cambiar de opción cuando quieras y guardar tus búsquedas.
       </SectionHeading>
 
-      <div className="mt-12 grid gap-5 md:grid-cols-3">
-        {OPTIONS.map((option) => (
-          <OptionCard key={option.title} option={option} />
+      <div className="mt-10 grid gap-5 sm:mt-14 md:grid-cols-3 md:gap-6">
+        {OPTIONS.map((option, index) => (
+          <OptionCard key={option.title} option={option} index={index} />
         ))}
       </div>
     </section>

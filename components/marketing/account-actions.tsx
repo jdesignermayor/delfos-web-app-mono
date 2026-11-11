@@ -48,8 +48,15 @@ function UserAvatar({ user, size = "sm" }: { user: CurrentUser; size?: "sm" | "m
   );
 }
 
+/**
+ * Landing header (quiet brutalism): plain ink controls on pastel, square, with a soft pastel hover;
+ * no borders or shadows. Shared by the login button, the avatar link and the menu trigger.
+ */
+const BRUTAL_PRESS =
+  "text-ink transition-colors hover:bg-delfos-sky outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+
 /** Desktop: the avatar (opens the profile) and a hamburger menu with the account options. */
-function AccountMenu({ user }: { user: CurrentUser }) {
+function AccountMenu({ user, brutal = false }: { user: CurrentUser; brutal?: boolean }) {
   const router = useRouter();
   const iconRef = useRef<MenuIconHandle>(null);
   const { signOut, isPending } = useSignOut();
@@ -60,12 +67,16 @@ function AccountMenu({ user }: { user: CurrentUser }) {
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <div className={`flex items-center ${brutal ? "gap-2" : "gap-1"}`}>
       <Link
         href={PROFILE_HREF}
         aria-label="Mi perfil"
         title="Mi perfil"
-        className="rounded-full transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className={
+          brutal
+            ? `flex size-10 items-center justify-center ${BRUTAL_PRESS}`
+            : "rounded-full transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        }
       >
         <UserAvatar user={user} />
       </Link>
@@ -77,7 +88,11 @@ function AccountMenu({ user }: { user: CurrentUser }) {
         <Dropdown.Trigger
           aria-label="Menú de la cuenta"
           isDisabled={isPending}
-          className="flex size-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-secondary"
+          className={
+            brutal
+              ? `flex size-10 items-center justify-center ${BRUTAL_PRESS}`
+              : "flex size-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-secondary"
+          }
         >
           <MenuIcon ref={iconRef} size={22} />
         </Dropdown.Trigger>
@@ -152,16 +167,33 @@ export function AccountActions({
   fullWidth = false,
   onLogin,
   onNavigate,
+  brutal = false,
 }: {
   userPromise: Promise<CurrentUser | null>;
   fullWidth?: boolean;
   onLogin: () => void;
   onNavigate?: () => void;
+  /** Landing header: brutalist login button / account controls. */
+  brutal?: boolean;
 }) {
   const user = use(userPromise);
 
   if (!user) {
-    return (
+    return brutal ? (
+      <button
+        type="button"
+        onClick={onLogin}
+        className={`flex h-10 items-center justify-center gap-2 px-3 text-sm font-semibold ${
+          // Full width lives in the phone menu's white panel, so it flips to ink.
+          fullWidth
+            ? "w-full border-[1.5px] border-ink bg-white text-ink transition-colors hover:bg-ink/5 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            : BRUTAL_PRESS
+        }`}
+      >
+        <CircleUserRound className="size-5" strokeWidth={1.75} />
+        Ingresar
+      </button>
+    ) : (
       <Button variant="ghost" size="sm" fullWidth={fullWidth} onPress={onLogin} className="gap-2 font-semibold">
         <CircleUserRound className="size-6" strokeWidth={1.75} />
         Ingresar
@@ -169,5 +201,5 @@ export function AccountActions({
     );
   }
 
-  return fullWidth ? <MobileAccountList user={user} onNavigate={onNavigate} /> : <AccountMenu user={user} />;
+  return fullWidth ? <MobileAccountList user={user} onNavigate={onNavigate} /> : <AccountMenu user={user} brutal={brutal} />;
 }

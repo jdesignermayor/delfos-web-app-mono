@@ -23,12 +23,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function LandingPage() {
   return (
     <div
-      className="light flex min-h-full flex-col bg-background text-foreground pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
+      className="light flex min-h-full flex-col bg-paper text-ink pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
       style={{ colorScheme: "light" }}
     >
       <JsonLd data={SITE_JSON_LD} />
       <SearchModeProvider>
-        <SiteNavbar userPromise={getCurrentUser()} />
+        <SiteNavbar userPromise={getCurrentUser()} tone="landing" />
 
         <main className="flex-1">
           <HeroSection />

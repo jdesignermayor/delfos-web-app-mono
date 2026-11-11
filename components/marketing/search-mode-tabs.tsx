@@ -25,6 +25,20 @@ const VARIANTS = {
     active: "border-foreground bg-foreground text-background",
     inactive: "border-separator text-muted hover:border-foreground hover:text-foreground",
   },
+  /** Landing phone search sheet: segments of one quiet segmented control; the active one is solid ink. */
+  brutalMobile: {
+    iconSize: null,
+    base: "min-h-11 flex-1 basis-0 px-2 py-1.5 text-center text-[15px] font-semibold leading-tight transition-[background-color,color] duration-200 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink",
+    active: "bg-ink text-white",
+    inactive: "text-ink/65 active:bg-ink/[0.06]",
+  },
+  /** Landing header: the desktop tabs in ink, with a square ink underline on the active one. */
+  brutal: {
+    iconSize: 18,
+    base: "flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-[13px] font-semibold transition-colors outline-none focus-visible:bg-delfos-sky",
+    active: "border-ink text-ink",
+    inactive: "border-transparent text-ink/60 hover:border-ink/30 hover:text-ink",
+  },
 } as const;
 
 /**

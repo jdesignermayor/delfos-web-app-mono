@@ -15,6 +15,7 @@ import {
 
 import { TYPE_LABELS, type Operation, type PropertyType } from "@/components/marketing/properties";
 import { OptionCard, PanelHeader, type LucideIcon, type Tone } from "@/components/marketing/search-option-ui";
+import { useBrutalSearch } from "@/components/marketing/search-style";
 
 export type Choice = {
   /** "" stands for "any". */
@@ -41,10 +42,12 @@ export function ChoicePanel({
   value: string;
   onSelect: (value: string) => void;
 }) {
+  const brutal = useBrutalSearch();
   return (
     <>
       <PanelHeader title={title} hint={hint} />
-      <div className={`grid gap-2 ${gridClassName}`}>
+      {/* Brutal: the options cascade in, one after another. */}
+      <div className={`grid ${brutal ? "stagger-in gap-2.5" : "gap-2"} ${gridClassName}`}>
         {choices.map((choice) => (
           <OptionCard
             key={choice.value || "any"}
