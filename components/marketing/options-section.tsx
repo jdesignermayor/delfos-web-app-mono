@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 
 import { BLOCK, BORDER, PRESSABLE, SECTION, type Block } from "@/components/marketing/landing-tokens";
@@ -87,7 +88,9 @@ export function OptionsSection() {
 
       <div className="mt-10 grid gap-5 sm:mt-14 md:grid-cols-3 md:gap-6">
         {OPTIONS.map((option, index) => (
-          <OptionCard key={option.title} option={option} index={index} />
+          <div key={option.title} data-reveal="stamp" style={{ "--i": index } as CSSProperties}>
+            <OptionCard option={option} index={index} />
+          </div>
         ))}
       </div>
     </section>

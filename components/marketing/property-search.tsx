@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type ComponentType, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type ComponentType, type FocusEvent, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { ArrowRight, ChevronDown } from "lucide-react";
@@ -191,6 +191,61 @@ function BrutalSubmitButton({ compact, buttonRef }: { compact: boolean; buttonRe
   );
 }
 
+/**
+ * The landing's resting state (`collapsible`): one quiet line (a magnifier, where you would like to
+ * live or what is picked so far, how many filters are set) and the yellow search block. Hovering,
+ * clicking or tabbing into it opens the full bar.
+ */
+function CollapsedSearchRow({
+  summary,
+  filterCount,
+  onOpen,
+  folded,
+  compact,
+}: {
+  summary: string;
+  filterCount: number;
+  onOpen: () => void;
+  /** The full bar is open: this line is folded away and out of the tab order. */
+  folded: boolean;
+  /** The navbar's version: shorter and smaller. */
+  compact: boolean;
+}) {
+  return (
+    <div className={`flex items-stretch ${compact ? "h-10" : "h-14"}`} aria-hidden={folded || undefined}>
+      <button
+        type="button"
+        tabIndex={folded ? -1 : 0}
+        onClick={onOpen}
+        onFocus={folded ? undefined : onOpen}
+        className={`flex min-w-0 flex-1 items-center text-left ${compact ? "gap-2 px-3" : "gap-3 px-5"} ${SEARCH_BRUTAL.focus} focus-visible:-outline-offset-2`}
+      >
+        <SearchIcon className={`shrink-0 text-ink ${compact ? "size-4" : "size-5"}`} />
+        <span
+          className={`min-w-0 flex-1 truncate ${compact ? "text-sm" : "text-base"} ${summary ? "font-semibold text-ink" : "font-medium text-ink/55"}`}
+        >
+          {summary || "¿Dónde quieres vivir?"}
+        </span>
+        {filterCount > 0 ? (
+          <span className="shrink-0 bg-ink px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white">
+            {filterCount} {filterCount === 1 ? "filtro" : "filtros"}
+          </span>
+        ) : null}
+      </button>
+      <button
+        type="submit"
+        aria-label="Buscar"
+        tabIndex={-1}
+        className={`group flex shrink-0 items-center justify-center border-l-[1.5px] border-ink bg-brut-yellow text-ink transition-colors duration-200 hover:bg-[#e2d095] ${compact ? "w-10" : "w-14"}`}
+      >
+        <SearchIcon
+          className={`transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110 ${compact ? "size-4" : "size-5"}`}
+        />
+      </button>
+    </div>
+  );
+}
+
 /** One clickable segment of the search pill (icon, label and current value). */
 function SearchSegment({
   segment,
@@ -271,8 +326,15 @@ export function PropertySearch({
   onSearchAction,
   brutal = false,
   align = "center",
+  collapsible = false,
 }: {
   compact?: boolean;
+  /**
+   * Landing hero (brutal only): rests as one minimal line and opens into the full bar on hover,
+   * click or keyboard focus, and while a filter panel is open. The container carries
+   * `data-search-expanded` while open, so a parent can grow with it.
+   */
+  collapsible?: boolean;
   /** Where the full-size bar sits in its row: centred (default) or flush left, e.g. under a left-set headline. */
   align?: "center" | "start";
   /**
@@ -298,6 +360,26 @@ export function PropertySearch({
 
   useClickOutside(containerRef, () => setActiveField(null));
 
+  // Collapsible: open while hovered, while focus is inside, or while a panel is open. Leaving waits a
+  // beat, so brushing past the edge does not snap it shut.
+  const [hovered, setHovered] = useState(false);
+  const [focusedInside, setFocusedInside] = useState(false);
+  const expanded = !collapsible || hovered || focusedInside || activeField !== null;
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const fullRowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => () => clearTimeout(leaveTimer.current), []);
+
+  function openFromCollapsed() {
+    setFocusedInside(true);
+    // Keyboard or click: carry focus into the full bar's first field once it is no longer inert.
+    requestAnimationFrame(() =>
+      fullRowRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true }),
+    );
+  }
+  function handleBlur(event: FocusEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusedInside(false);
+  }
+
   const budgetOperation = budgetOperationFor(mode);
   // Buying uses the price-range slider; renting keeps the monthly-rent buckets.
   const usesBudgetRange = budgetOperation === "comprar";
@@ -315,6 +397,7 @@ export function PropertySearch({
     : (budgetOptions.find((option) => option.value === activeBudget)?.label ?? "");
 
   const segments = buildSegments({ draft, mode, compact, budgetLabel, locationLabel: locationsLabel(places, draft.ubicacion) });
+  const pickedFilters = segments.filter((segment) => segment.field !== "ubicacion" && segment.value && !segment.disabled).length;
 
   function runSearch() {
     onSearchAction?.();
@@ -475,7 +558,42 @@ export function PropertySearch({
     <SearchStyleProvider value={brutal}>
       {/* Scopes the sliding segment indicator to this bar (the hero and the navbar each have one). */}
       <LayoutGroup id={layoutId}>
-      <div ref={containerRef} className={`relative w-full ${compact ? "max-w-2xl" : align === "start" ? "max-w-5xl" : "mx-auto max-w-3xl"}`}>
+      <div
+        ref={containerRef}
+        data-search-expanded={collapsible && expanded ? "" : undefined}
+        onPointerEnter={
+          collapsible
+            ? (event) => {
+                if (event.pointerType !== "mouse") return;
+                clearTimeout(leaveTimer.current);
+                setHovered(true);
+              }
+            : undefined
+        }
+        onPointerLeave={
+          collapsible
+            ? (event) => {
+                if (event.pointerType !== "mouse") return;
+                clearTimeout(leaveTimer.current);
+                leaveTimer.current = setTimeout(() => setHovered(false), 260);
+              }
+            : undefined
+        }
+        onFocus={collapsible ? () => setFocusedInside(true) : undefined}
+        onBlur={collapsible ? handleBlur : undefined}
+        className={`relative w-full ${
+          collapsible
+            ? // The navbar's bar sets its own width (narrow at rest, full when open); the hero's parent does it there.
+              compact
+              ? "mx-auto max-w-xs transition-[max-width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] data-[search-expanded]:max-w-2xl motion-reduce:transition-none"
+              : ""
+            : compact
+              ? "max-w-2xl"
+              : align === "start"
+                ? "max-w-5xl"
+                : "mx-auto max-w-3xl"
+        }`}
+      >
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -483,7 +601,50 @@ export function PropertySearch({
             runSearch();
           }}
         >
-          {brutal ? (
+          {brutal && collapsible ? (
+            // Two stacked rows that trade height (grid 0fr / 1fr) while the parent trades width: the
+            // minimal line folds away as the full bar unfolds. The folded full bar is inert; the folded
+            // minimal line only leaves the tab order (making it inert would drop the focus it hands on).
+            <div className={SEARCH_BRUTAL.frame}>
+              <div
+                className={`grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                  expanded ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
+                }`}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  <CollapsedSearchRow
+                    summary={locationsLabel(places, draft.ubicacion)}
+                    filterCount={pickedFilters}
+                    onOpen={openFromCollapsed}
+                    folded={expanded}
+                    compact={compact}
+                  />
+                </div>
+              </div>
+              <div
+                className={`grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                  expanded ? "grid-rows-[1fr] opacity-100 delay-75" : "grid-rows-[0fr] opacity-0"
+                }`}
+                inert={!expanded}
+              >
+                <div ref={fullRowRef} className="min-h-0 overflow-hidden">
+                  <div className="flex flex-col divide-y-[1.5px] divide-ink/15 md:flex-row md:divide-y-0">
+                    {segments.map((segment, index) => (
+                      <BrutalSearchSegment
+                        key={segment.field}
+                        segment={segment}
+                        active={activeField === segment.field}
+                        compact={compact}
+                        showDivider={index > 0}
+                        onToggle={() => toggleField(segment.field)}
+                      />
+                    ))}
+                    <BrutalSubmitButton compact={compact} buttonRef={submitRef} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : brutal ? (
             // Square bar, thin ink frame, no shadow; segments stacked with hairlines on phones, flush in a row from md.
             <div className={`flex flex-col divide-y-[1.5px] divide-ink/15 md:flex-row md:divide-y-0 ${SEARCH_BRUTAL.frame}`}>
               {segments.map((segment, index) => (

@@ -417,6 +417,169 @@ body {
   opacity: 0.45;
 }
 
+/*
+ * Landing page theme: set on <html> by ScrollFx from the section in the middle of the screen
+ * (`data-theme`). The landing's canvas and its navbar read these, and blend between themes.
+ */
+:root {
+  --theme-bg: var(--color-paper);
+  --theme-nav: var(--color-delfos-pastel);
+  --theme-bar: var(--color-ink);
+}
+.theme-surface {
+  background-color: var(--theme-bg);
+  transition: background-color 700ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+.theme-nav {
+  background-color: var(--theme-nav);
+  transition:
+    background-color 700ms cubic-bezier(0.65, 0, 0.35, 1),
+    border-color 200ms ease-out;
+}
+.theme-bar {
+  background-color: var(--theme-bar);
+  transition: background-color 700ms ease;
+}
+@media (max-width: 767px) {
+  .theme-surface,
+  .theme-nav,
+  .theme-bar {
+    transition-duration: 350ms;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-surface,
+  .theme-nav,
+  .theme-bar {
+    transition: none;
+  }
+}
+
+/*
+ * Landing scroll effects (components/marketing/scroll-fx.tsx). Only armed once JS has run
+ * (`data-armed`, set after hydration only on elements still off screen), so without JS — or with
+ * reduced motion — everything simply shows.
+ * Brutalist entrances: hard clip-path wipes and short rises, no fades. The clip keeps a margin
+ * around the box so hard shadows aren't cut off once shown. `--i` staggers siblings.
+ */
+[data-reveal] {
+  --reveal-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  transition:
+    clip-path 900ms var(--reveal-ease),
+    translate 1100ms cubic-bezier(0.22, 1, 0.36, 1),
+    rotate 900ms cubic-bezier(0.22, 1, 0.36, 1),
+    scale 900ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 500ms ease-out;
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+/* Phones: entrances are quicker and tighter, so they keep up with a fast thumb scroll. */
+@media (max-width: 767px) {
+  /* Phones: transform + opacity only (composited, no clip-path repaint each frame), quick and short. */
+  [data-reveal] {
+    clip-path: none;
+    transition:
+      translate 420ms cubic-bezier(0.22, 1, 0.36, 1),
+      rotate 380ms cubic-bezier(0.22, 1, 0.36, 1),
+      scale 380ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 260ms ease-out;
+    transition-delay: calc(var(--i, 0) * 40ms);
+  }
+  [data-reveal][data-armed]:not([data-shown]) {
+    clip-path: none;
+    opacity: 0;
+  }
+  [data-reveal="up"][data-armed]:not([data-shown]),
+  [data-reveal=""][data-armed]:not([data-shown]) {
+    translate: 0 20px;
+  }
+  [data-reveal="left"][data-armed]:not([data-shown]) {
+    translate: -20px 0;
+  }
+  [data-reveal][data-armed]:not([data-shown]) {
+    will-change: transform, opacity;
+  }
+}
+/* Only elements still waiting for their entrance get their own layer. */
+[data-reveal][data-armed]:not([data-shown]) {
+  will-change: clip-path, translate;
+  clip-path: inset(-24px -24px -24px -24px);
+}
+[data-reveal="up"][data-armed]:not([data-shown]),
+[data-reveal=""][data-armed]:not([data-shown]) {
+  clip-path: inset(100% -24px -24px -24px);
+  translate: 0 48px;
+}
+[data-reveal="left"][data-armed]:not([data-shown]) {
+  clip-path: inset(-24px 100% -24px -24px);
+  translate: -32px 0;
+}
+[data-reveal="stamp"][data-armed]:not([data-shown]) {
+  clip-path: inset(-24px -24px -24px -24px);
+  scale: 1.18;
+  rotate: -4deg;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal][data-armed]:not([data-shown]) {
+    clip-path: none;
+    translate: none;
+    scale: none;
+    rotate: none;
+    opacity: 1;
+  }
+}
+
+/* Phones: the same entrance as a composited slide + fade. */
+@keyframes story-in-phone {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+/* "Cómo funciona": each step's text wipes up into place (re-keyed per step). */
+@keyframes story-in {
+  from {
+    clip-path: inset(100% -40px -40px -40px);
+    translate: 0 60px;
+  }
+  to {
+    clip-path: inset(-40px -40px -40px -40px);
+    translate: 0 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .story-in {
+    animation: story-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @media (max-width: 767px) {
+    .story-in {
+      animation: story-in-phone 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+  }
+}
+
+/* Photos drift against the scroll inside their frame (`--py` set by ScrollFx). */
+[data-parallax] img {
+  translate: 0 var(--py, 0px);
+  scale: 1.12;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-parallax] img {
+    translate: none;
+    scale: none;
+  }
+}
+
+/* Outlined tape lettering on the yellow marquee. */
+.marquee-outline {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--color-ink);
+}
+
 /* The last filter is set: "Buscar" bounces once to say "you're ready". */
 @keyframes submit-nudge {
   0%,

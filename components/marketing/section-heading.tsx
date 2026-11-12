@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 /**
  * Eyebrow + h2 + lead paragraph shared by the landing's content sections. Quiet brutalism: a fine
@@ -22,15 +22,15 @@ export function SectionHeading({
 }) {
   return (
     <div className={className}>
-      <span className="inline-flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-[0.2em] text-ink/65">
+      <span data-reveal="left" className="inline-flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-[0.2em] text-ink/65">
         <span aria-hidden="true" className="h-px w-6 bg-ink" />
         {index ? <span className="text-ink">{index}</span> : null}
         {eyebrow}
       </span>
-      <h2 className="mt-4 font-display text-3xl font-bold leading-[1.02] tracking-tight text-balance text-ink sm:text-5xl">
+      <h2 data-reveal="up" style={{ "--i": 1 } as CSSProperties} className="mt-4 font-display text-3xl font-bold leading-[1.02] tracking-tight text-balance text-ink sm:text-5xl">
         {title}
       </h2>
-      <p className="mt-5 max-w-xl text-base leading-relaxed text-ink/80 sm:text-lg">{children}</p>
+      <p data-reveal="up" style={{ "--i": 2 } as CSSProperties} className="mt-5 max-w-xl text-base leading-relaxed text-ink/80 sm:text-lg">{children}</p>
     </div>
   );
 }

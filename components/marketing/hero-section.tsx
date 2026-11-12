@@ -248,15 +248,23 @@ export function HeroSection() {
             Empieza aquí
             <ArrowDown aria-hidden="true" className="cta-bob size-3.5 text-ink" strokeWidth={2.25} />
           </p>
-          <div ref={searchRef} className={`relative max-w-5xl ${hiddenUntil("search")}`}>
+          {/* Holds the open bar's height (6rem), so opening it on hover never pushes the page down. */}
+          <div className="min-h-24">
+          {/* Rests as a short, minimal line and widens into the full bar while the search is open
+              (PropertySearch `collapsible` marks itself `data-search-expanded`); the ink shadow follows. */}
+          <div
+            ref={searchRef}
+            className={`relative max-w-xl transition-[max-width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] has-[[data-search-expanded]]:max-w-5xl motion-reduce:transition-none ${hiddenUntil("search")}`}
+          >
             {/* Yellow hard shadow: slides out when the intro ends, then slowly breathes. */}
             <div
               aria-hidden="true"
               className={`absolute inset-0 bg-ink ${introDone ? "cta-shadow" : "opacity-0 motion-reduce:opacity-100"}`}
             />
             <div className={`relative ${shown("search") ? "" : "md:pointer-events-none motion-reduce:md:pointer-events-auto"}`}>
-              <PropertySearch brutal align="start" />
+              <PropertySearch brutal align="start" collapsible />
             </div>
+          </div>
           </div>
         </div>
 

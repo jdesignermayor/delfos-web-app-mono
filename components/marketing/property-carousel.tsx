@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 
 import { ArrowRightIcon } from "@/components/icons";
 import { PropertyCard } from "@/components/marketing/property-card";
 import type { Property } from "@/components/marketing/properties";
 import { TrackPropertyList } from "@/components/analytics/track-property-view";
+import { registerFx } from "@/components/marketing/scroll-fx";
 
 /** Card width per breakpoint; shared with the skeleton so nothing shifts when listings arrive. */
 const SLIDE_CLASS = "w-[58%] shrink-0 snap-start sm:w-[38%] lg:w-[22%] xl:w-[17%]";
@@ -19,11 +20,14 @@ const SLIDE_SIZES = "(min-width: 1280px) 34vw, (min-width: 1024px) 44vw, (min-wi
  * `gridOnDesktop`: laptops and up lay the cards out in a 3–4 column grid that runs down the page
  * instead of scrolling sideways; smaller screens keep the carousel.
  */
-const GRID_TRACK_CLASS = "lg:grid lg:grid-cols-3 lg:gap-x-5 lg:gap-y-8 lg:overflow-visible xl:grid-cols-4";
-/** Same as `SLIDE_CLASS` below `lg`, then a full grid cell. */
-const GRID_SLIDE_CLASS = "w-[58%] shrink-0 snap-start sm:w-[38%] lg:w-auto";
+const GRID_TRACK_CLASS = "lg:grid lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10 lg:overflow-visible 2xl:grid-cols-4";
+/**
+ * Photos first: big cards — most of the phone's width (the next one peeking), three across on
+ * laptops, four only on very wide screens.
+ */
+const GRID_SLIDE_CLASS = "w-[80%] shrink-0 snap-start sm:w-[46%] lg:w-auto";
 /** Twice the grid card's width (see `SLIDE_SIZES`). */
-const GRID_SLIDE_SIZES = "(min-width: 1280px) 50vw, (min-width: 1024px) 66vw, (min-width: 640px) 76vw, 116vw";
+const GRID_SLIDE_SIZES = "(min-width: 1536px) 50vw, (min-width: 1024px) 66vw, (min-width: 640px) 92vw, 160vw";
 /** "Propiedades destacadas": much bigger cards, as tall as the viewport allows (see `PropertyCard`). */
 const HIGHLIGHTED_SLIDE_CLASS = "shrink-0 snap-start";
 /** The card is at most 44rem tall at 3:4, so never wider than 33rem. */
@@ -72,13 +76,18 @@ export function PropertyCarousel({
 }) {
   const analyticsList = analyticsListId ? { id: analyticsListId, name: title } : undefined;
   const trackRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Landing scroll effects (reveal, photo parallax): registered from here, i.e. only once this
+  // streamed-in list has hydrated, so nothing touches its markup before React does.
+  useEffect(() => (brutal ? registerFx(rootRef.current) : undefined), [brutal, properties]);
 
   function scrollTrack(amount: number) {
     trackRef.current?.scrollBy({ left: amount, behavior: "smooth" });
   }
 
   return (
-    <div>
+    <div ref={rootRef} data-fx-scope="">
       {analyticsList ? (
         <TrackPropertyList listId={analyticsList.id} listName={analyticsList.name} properties={properties} />
       ) : null}
@@ -104,6 +113,9 @@ export function PropertyCarousel({
           <div
             key={property.slug}
             className={highlighted ? HIGHLIGHTED_SLIDE_CLASS : gridOnDesktop ? GRID_SLIDE_CLASS : SLIDE_CLASS}
+            // Landing: each card wipes up into place as it scrolls in, a row at a time (see ScrollFx).
+            data-reveal={brutal ? "up" : undefined}
+            style={brutal ? ({ "--i": index % 4 } as CSSProperties) : undefined}
           >
             <PropertyCard
               property={property}
@@ -125,7 +137,10 @@ export function PropertyCarousel({
 /** The list's heading: a plain bold title, no decoration. */
 function CarouselTitle({ title, brutal }: { title: string; brutal: boolean }) {
   return brutal ? (
-    <h2 className="font-display text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl">
+    <h2
+      data-reveal="left"
+      className="font-display text-3xl font-bold uppercase leading-[0.95] tracking-tight text-ink sm:text-5xl"
+    >
       {title}
     </h2>
   ) : (
@@ -144,7 +159,7 @@ export function PropertyCarouselSkeleton({
   brutal?: boolean;
 }) {
   return (
-    <div aria-busy="true" aria-label="Cargando propiedades">
+    <div aria-busy="true" aria-label="Cargando propiedades" data-fx-scope="">
       <CarouselTitle title={title} brutal={brutal} />
       <div
         className={`flex overflow-hidden ${brutal ? "-mx-2 mt-5 gap-4 px-2 pb-4 pt-2 sm:gap-5 lg:gap-y-10" : "mt-6 gap-3 pb-2 sm:gap-4"} ${
@@ -154,13 +169,11 @@ export function PropertyCarouselSkeleton({
         {Array.from({ length: EAGER_CARDS }, (_, index) =>
           brutal ? (
             <div key={index} className={gridOnDesktop ? GRID_SLIDE_CLASS : SLIDE_CLASS}>
-              <div className="border-[1.5px] border-ink bg-white shadow-brut">
-                <div className="aspect-[4/5] w-full animate-pulse bg-ink/[0.06] motion-reduce:animate-none" />
-                <div className="p-3">
-                  <div className="h-4 w-3/4 animate-pulse bg-ink/10 motion-reduce:animate-none" />
-                  <div className="mt-2 h-3 w-1/2 animate-pulse bg-ink/10 motion-reduce:animate-none" />
-                  <div className="mt-3 h-5 w-2/3 animate-pulse bg-ink/10 motion-reduce:animate-none" />
-                </div>
+              {/* Same frame as the photo-first card: the labels sit on the photo, so no text block below. */}
+              <div className="relative aspect-[3/4] border-[1.5px] border-ink bg-white shadow-brut sm:aspect-[4/5]">
+                <div className="absolute inset-0 animate-pulse bg-ink/[0.06] motion-reduce:animate-none" />
+                <div className="absolute bottom-2.5 left-2.5 h-5 w-24 animate-pulse bg-ink/10 motion-reduce:animate-none" />
+                <div className="absolute bottom-9 left-2.5 h-4 w-16 animate-pulse bg-ink/10 motion-reduce:animate-none" />
               </div>
             </div>
           ) : (

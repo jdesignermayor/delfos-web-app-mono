@@ -148,7 +148,7 @@ function DesktopHeaderCenter({
     <AnimatePresence initial={false}>
       {heroScrolledPast ? (
         <motion.div key="search" {...HEADER_SEARCH_MOTION} className="flex w-full justify-center">
-          <PropertySearch compact brutal={brutal} />
+          <PropertySearch compact brutal={brutal} collapsible={brutal} />
         </motion.div>
       ) : null}
     </AnimatePresence>
@@ -284,7 +284,7 @@ export function SiteNavbar({
         className={
           isLanding
             ? // The border is always there (only its color changes), so nothing shifts when it appears.
-              `sticky top-0 z-50 border-b-[1.5px] bg-delfos-pastel text-ink transition-colors duration-200 ${
+              `theme-nav sticky top-0 z-50 border-b-[1.5px] text-ink ${
                 scrolled ? "border-ink" : "border-transparent"
               }`
             : "sticky top-0 z-50 bg-white/95 backdrop-blur-xl"

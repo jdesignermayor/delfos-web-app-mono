@@ -7,7 +7,7 @@ import { HeartIcon, TrendingUpIcon, type HeartIconHandle, type TrendingUpIconHan
 import { X } from "lucide-react";
 import { useOverlayState } from "@heroui/react";
 
-import { BathIcon, BedIcon, BuildingIcon, MapPinIcon, RulerIcon } from "@/components/icons";
+import { ArrowRightIcon, BathIcon, BedIcon, BuildingIcon, MapPinIcon, RulerIcon } from "@/components/icons";
 import { CardSlideshow } from "@/components/marketing/card-slideshow";
 import { FavoritesLoginPrompt } from "@/components/marketing/favorites-login-prompt";
 import { HighlightedCardMedia } from "@/components/marketing/highlighted-card-media";
@@ -181,30 +181,36 @@ function CardDetails({ property, overlay = false, brutal = false }: { property: 
 }
 
 /**
- * Landing details, laid over the bottom of the photo as a white label in a fine ink frame: title,
- * place, specs, then the price (the loudest thing) with the status as quiet text and VIS as a small
- * pastel tag; one hairline above the price.
+ * Landing details, kept short so the photo leads: two stacked ink-framed labels in the bottom
+ * corner — the price on a yellow tag (with VIS), and the title over a one-line place in mono.
+ * Specs and status live on the project page. An ink arrow tile slides in on hover.
  */
 function BrutalCardDetails({ property, place }: { property: Property; place: string }) {
   return (
-    <div className="absolute inset-x-2.5 bottom-2.5 z-10 border-[1.5px] border-ink bg-white/95 p-3 backdrop-blur-sm sm:p-3.5">
-      <h3 className="truncate font-display text-base font-semibold leading-tight tracking-tight text-ink">
-        {property.title}
-      </h3>
-      {place ? (
-        <p className="mt-1 flex items-center gap-1 text-sm text-ink/60">
-          <MapPinIcon className="size-3.5 shrink-0" />
-          <span className="truncate">{place}</span>
-        </p>
-      ) : null}
-      <ListingSpecs property={property} className="text-[13px] text-ink/70 max-sm:hidden" />
-      <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-ink/10 pt-3">
-        <span className="whitespace-nowrap font-display text-[15px] font-bold leading-none text-ink sm:text-base">Desde {formatPrice(property)}</span>
-        <span className="text-xs text-ink/55">{property.status}</span>
-        {property.affordable ? (
-          <span className="ml-auto bg-delfos-pastel px-1.5 py-0.5 text-[11px] font-semibold leading-none text-ink">VIS</span>
-        ) : null}
+    <div className="absolute inset-x-2.5 bottom-2.5 z-10 flex items-end gap-2">
+      <div className="flex min-w-0 flex-col items-start">
+        <span className="inline-flex items-center gap-2 border-[1.5px] border-b-0 border-ink bg-brut-yellow px-2 py-1 font-display text-[13px] font-bold leading-none text-ink sm:text-sm">
+          <span className="font-mono text-[9px] font-medium uppercase tracking-widest text-ink/70">Desde</span>
+          {formatPrice(property)}
+          {property.affordable ? (
+            <span className="bg-ink px-1 py-0.5 font-mono text-[10px] font-semibold leading-none text-brut-yellow">VIS</span>
+          ) : null}
+        </span>
+        <div className="max-w-full border-[1.5px] border-ink bg-white px-2.5 py-1.5 shadow-brut-sm">
+          <h3 className="truncate font-display text-sm font-bold uppercase leading-tight tracking-tight text-ink sm:text-[15px]">
+            {property.title}
+          </h3>
+          {place ? (
+            <p className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-ink/60">{place}</p>
+          ) : null}
+        </div>
       </div>
+      <span
+        aria-hidden="true"
+        className="ml-auto flex size-9 shrink-0 translate-x-2 items-center justify-center border-[1.5px] border-ink bg-ink text-paper opacity-0 transition-[translate,opacity] duration-200 ease-out group-hover:translate-x-0 group-hover:opacity-100 max-sm:hidden motion-reduce:transition-none"
+      >
+        <ArrowRightIcon className="size-4" />
+      </span>
     </div>
   );
 }
@@ -249,7 +255,9 @@ function CardPhoto({
 }) {
   return (
     <div
-      className={`relative w-full overflow-hidden bg-surface-secondary transition-shadow ${brutal ? "[&_img]:transition-transform [&_img]:duration-700 [&_img]:ease-out group-hover:[&_img]:scale-[1.05] motion-reduce:[&_img]:transition-none" : "rounded-2xl"} ${className}`}
+      // Landing: the photos drift with the scroll inside the frame (see ScrollFx).
+      data-parallax={brutal ? "" : undefined}
+      className={`relative w-full overflow-hidden bg-surface-secondary transition-shadow ${brutal ? "" : "rounded-2xl"} ${className}`}
       style={images.length > 0 ? undefined : placeholderBackground(property.hue)}
     >
       {images.length > 0 ? (
@@ -267,14 +275,9 @@ function CardPhoto({
       ) : (
         <BuildingIcon className="absolute -bottom-6 -right-4 size-40 text-white/25" />
       )}
-      {/* Landing: a soft wash of the Delfos blues that lights every photo a little, the same way;
-          it eases off on hover so the photo shows plain. */}
+      {/* Landing: the photo stays untinted; only a short dark fade under the labels so they sit on it. */}
       {brutal && images.length > 0 ? (
-        <>
-          <span aria-hidden="true" className="photo-glow pointer-events-none absolute inset-0" />
-          {/* A dark fade under the label, so the photo settles into it. */}
-          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-ink/55 to-transparent" />
-        </>
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-ink/45 to-transparent" />
       ) : null}
       {children}
       {property.salesSuccess ? <SalesSuccessBadge iconRef={salesIconRef} brutal={brutal} /> : null}

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 
 import { CheckIcon } from "@/components/icons";
@@ -41,7 +42,7 @@ function FeatureTile({ feature }: { feature: Feature }) {
  */
 export function PublishSection() {
   return (
-    <section id="publicar" className="border-y-[3px] border-ink bg-brut-yellow text-ink">
+    <section id="publicar" className="border-b-[3px] border-ink bg-brut-yellow text-ink">
       <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-2 lg:gap-16">
         <div>
           <SectionHeading
@@ -74,8 +75,10 @@ export function PublishSection() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-5">
-          {INVENTORY_FEATURES.map((feature) => (
-            <FeatureTile key={feature.title} feature={feature} />
+          {INVENTORY_FEATURES.map((feature, index) => (
+            <div key={feature.title} data-reveal="up" style={{ "--i": index } as CSSProperties}>
+              <FeatureTile feature={feature} />
+            </div>
           ))}
         </div>
       </div>
